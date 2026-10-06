@@ -2,7 +2,7 @@
 // // import axios from 'axios';
 // // import { FiTrash2, FiSearch, FiUsers, FiShield, FiBriefcase, FiClock } from 'react-icons/fi';
 
-// // const API = 'http://localhost:5000/api';
+// // const API = `${process.env.REACT_APP_API_URL}/api`;
 // // const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 // // const StatCard = ({ icon: Icon, label, value }) => (
@@ -109,7 +109,7 @@
 //   FiX
 // } from 'react-icons/fi';
 
-// const API = 'http://localhost:5000/api';
+// const API = `${process.env.REACT_APP_API_URL}/api`;
 
 // const cfg = () => ({
 //   headers: {
@@ -617,7 +617,7 @@ import {
   FiX
 } from 'react-icons/fi';
 
-const API = 'http://localhost:5000/api';
+const API = `${process.env.REACT_APP_API_URL}/api`;
 
 const cfg = () => ({
   headers: {

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import { FiPlus, FiTrash2, FiX, FiPrinter } from 'react-icons/fi';
 
-const API = 'http://localhost:5000/api';
+const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const emptyTrainer = { name: '', email: '', password: '' };

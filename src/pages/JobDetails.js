@@ -38,11 +38,11 @@ const JobDetails = () => {
       try {
         const [jobRes, profileRes] = await Promise.all([
           axios.get(
-            `http://localhost:5000/api/jobs/${id}`,
+            `${process.env.REACT_APP_API_URL}/api/jobs/${id}`,
             config
           ),
           axios.get(
-            `http://localhost:5000/api/users/profile`,
+            `${process.env.REACT_APP_API_URL}/api/users/profile`,
             config
           ),
         ]);

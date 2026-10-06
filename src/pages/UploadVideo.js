@@ -16,7 +16,7 @@ const UploadVideo = () => {
 
     try {
       const token = localStorage.getItem('token'); // Or however you store it
-      const res = await axios.post('http://localhost:5000/api/upload-video', formData, {
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/upload-video`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`

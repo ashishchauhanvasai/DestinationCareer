@@ -18,7 +18,7 @@ const Courses = () => {
     const fetchCourses = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('http://localhost:5000/api/courses', {
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/courses`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setCourses(response.data);

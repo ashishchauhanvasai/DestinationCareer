@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { FiPlus, FiEdit, FiTrash2, FiEye } from 'react-icons/fi';
 
-const BASE = 'http://localhost:5000/api';
+const BASE = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const GradeRow = ({ ans, onSaved }) => {

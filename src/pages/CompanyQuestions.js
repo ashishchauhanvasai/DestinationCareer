@@ -17,7 +17,7 @@ const CompanyQuestions = () => {
     const fetchCompanies = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:5000/api/companies', {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/companies`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setCompanies(res.data);

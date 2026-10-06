@@ -15,7 +15,7 @@ const Assignments = () => {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/assignments', {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/assignments`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     }).then((r) => setItems(r.data)).catch((e) => console.error(e));
   }, []);

@@ -22,7 +22,7 @@
 //     const fetchCourse = async () => {
 //       try {
 //         const token = localStorage.getItem('token');
-//         const res = await axios.get(`http://localhost:5000/api/courses/${id}`, {
+//         const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/courses/${id}`, {
 //           headers: { Authorization: `Bearer ${token}` }
 //         });
 //         setCourse(res.data);
@@ -156,7 +156,7 @@ const CoursePlayer = () => {
         const token = localStorage.getItem('token');
 
         const res = await axios.get(
-          `http://localhost:5000/api/courses/${id}`,
+          `${process.env.REACT_APP_API_URL}/api/courses/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiAward, FiCode, FiMessageCircle, FiTarget } from 'react-icons/fi';
 
-const API = 'http://localhost:5000/api';
+const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const StatBox = ({ icon: Icon, label, value }) => (

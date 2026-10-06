@@ -20,7 +20,7 @@
         const fetchCourseData = async () => {
           try {
             const token = localStorage.getItem('token');
-            const res = await axios.get(`http://localhost:5000/api/courses/${id}`, {
+            const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/courses/${id}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             const data = res.data;
@@ -97,13 +97,13 @@
         const token = localStorage.getItem('token');
 
         if (isEditMode) {
-          await axios.put(`http://localhost:5000/api/courses/${id}`, course, {
+          await axios.put(`${process.env.REACT_APP_API_URL}/api/courses/${id}`, course, {
             headers: { Authorization: `Bearer ${token}` }
           });
           alert('Curriculum Updated successfully!');
           navigate('/admin');
         } else {
-          await axios.post('http://localhost:5000/api/courses', course, {
+          await axios.post(`${process.env.REACT_APP_API_URL}/api/courses`, course, {
             headers: { Authorization: `Bearer ${token}` }
           });
           alert('New Curriculum Saved successfully!');

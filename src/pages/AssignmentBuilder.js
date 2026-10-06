@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiPlus, FiSave, FiTrash2, FiImage, FiX } from 'react-icons/fi';
 
-const BASE = 'http://localhost:5000/api';
+const BASE = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const emptyQuestion = () => ({

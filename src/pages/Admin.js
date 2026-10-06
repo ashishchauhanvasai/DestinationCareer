@@ -106,27 +106,27 @@ const Admin = () => {
         studentsRes
       ] = await Promise.all([
         axios
-          .get("http://localhost:5000/api/courses", config)
+          .get(`${process.env.REACT_APP_API_URL}/api/courses`, config)
           .catch(() => ({ data: [] })),
 
         axios
-          .get("http://localhost:5000/api/testimonials")
+          .get(`${process.env.REACT_APP_API_URL}/api/testimonials`)
           .catch(() => ({ data: [] })),
 
         axios
-          .get("http://localhost:5000/api/performers")
+          .get(`${process.env.REACT_APP_API_URL}/api/performers`)
           .catch(() => ({ data: [] })),
 
         axios
-          .get("http://localhost:5000/api/users/pending", config)
+          .get(`${process.env.REACT_APP_API_URL}/api/users/pending`, config)
           .catch(() => ({ data: [] })),
 
         axios
-          .get("http://localhost:5000/api/jobs", config)
+          .get(`${process.env.REACT_APP_API_URL}/api/jobs`, config)
           .catch(() => ({ data: [] })),
 
         axios
-          .get("http://localhost:5000/api/users?role=student", config)
+          .get(`${process.env.REACT_APP_API_URL}/api/users?role=student`, config)
           .catch(() => ({ data: [] }))
       ]);
 
@@ -145,7 +145,7 @@ const Admin = () => {
     if (!window.confirm("Are you sure you want to delete this?")) return;
 
     await axios.delete(
-      `http://localhost:5000/api/${type}/${id}`,
+      `${process.env.REACT_APP_API_URL}/api/${type}/${id}`,
       config
     );
 
@@ -181,13 +181,13 @@ const Admin = () => {
 
     if (editingTestId) {
       await axios.put(
-        `http://localhost:5000/api/testimonials/${editingTestId}`,
+        `${process.env.REACT_APP_API_URL}/api/testimonials/${editingTestId}`,
         testForm,
         config
       );
     } else {
       await axios.post(
-        "http://localhost:5000/api/testimonials",
+        `${process.env.REACT_APP_API_URL}/api/testimonials`,
         testForm,
         config
       );
@@ -230,13 +230,13 @@ const Admin = () => {
 
     if (editingPerfId) {
       await axios.put(
-        `http://localhost:5000/api/performers/${editingPerfId}`,
+        `${process.env.REACT_APP_API_URL}/api/performers/${editingPerfId}`,
         perfForm,
         config
       );
     } else {
       await axios.post(
-        "http://localhost:5000/api/performers",
+        `${process.env.REACT_APP_API_URL}/api/performers`,
         perfForm,
         config
       );
@@ -269,7 +269,7 @@ const Admin = () => {
 
     try {
       await axios.post(
-        "http://localhost:5000/api/jobs",
+        `${process.env.REACT_APP_API_URL}/api/jobs`,
         jobForm,
         config
       );
@@ -306,7 +306,7 @@ const Admin = () => {
 
     try {
       await axios.put(
-        `http://localhost:5000/api/users/${editingStudentId}/admin-edit-profile`,
+        `${process.env.REACT_APP_API_URL}/api/users/${editingStudentId}/admin-edit-profile`,
         studentProfileForm,
         config
       );
@@ -891,7 +891,7 @@ const Admin = () => {
                       reader.onloadend = async () => {
                         try {
                           await axios.post(
-                            "http://localhost:5000/api/banner",
+                            `${process.env.REACT_APP_API_URL}/api/banner`,
                             { imageUrl: reader.result },
                             config
                           );
@@ -967,7 +967,7 @@ const Admin = () => {
                           <button
                             onClick={async () => {
                               await axios.put(
-                                `http://localhost:5000/api/users/${user._id}/status`,
+                                `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
                                 { status: "approved" },
                                 config
                               );
@@ -982,7 +982,7 @@ const Admin = () => {
                           <button
                             onClick={async () => {
                               await axios.put(
-                                `http://localhost:5000/api/users/${user._id}/status`,
+                                `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
                                 { status: "rejected" },
                                 config
                               );

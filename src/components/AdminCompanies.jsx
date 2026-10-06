@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiTrash2, FiEdit, FiPlus, FiX } from 'react-icons/fi';
 
-const API = 'http://localhost:5000/api/companies';
+const API = `${process.env.REACT_APP_API_URL}/api/companies`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const emptyCompany = { name: '', tags: '' };

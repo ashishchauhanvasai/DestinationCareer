@@ -15,7 +15,7 @@
 //     setIsPending(false);
     
 //     try {
-//       const res = await axios.post('http://localhost:5000/api/login', form);
+//       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, form);
       
 //       // If approved, store credentials
 //       localStorage.setItem('token', res.data.token);
@@ -148,7 +148,7 @@ const Login = () => {
     try {
       // Send the deviceId along with email and password
       const payload = { ...form, deviceId };
-      const res = await axios.post('http://localhost:5000/api/login', payload);
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, payload);
       
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('role', res.data.role);
@@ -191,7 +191,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/auth/forgot-password',
+        `${process.env.REACT_APP_API_URL}/api/auth/forgot-password`,
         {
           email: resetEmail.trim()
         }
@@ -226,7 +226,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/auth/verify-otp',
+        `${process.env.REACT_APP_API_URL}/api/auth/verify-otp`,
         {
           email: resetEmail.trim(),
           otp
@@ -267,7 +267,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/auth/reset-password',
+        `${process.env.REACT_APP_API_URL}/api/auth/reset-password`,
         {
           email: resetEmail.trim(),
           otp,

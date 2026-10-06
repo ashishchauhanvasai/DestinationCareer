@@ -5,7 +5,7 @@
 // import ReactMarkdown from 'react-markdown';
 // import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiRotateCcw, FiPlay, FiSend } from 'react-icons/fi';
 
-// const API = 'http://localhost:5000/api/problems';
+// const API = `${process.env.REACT_APP_API_URL}/api/problems`;
 // const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 // // the key includes the question type + signature: if the admin changes it, old drafts are not reused
 // const draftKey = (p) => `tc_draft_${p.slug}_${p.mode || 'stdin'}_${p.functionName || ''}_${p.returnType || ''}_${(p.params || []).map((x) => x.type).join('-')}`;
@@ -234,7 +234,7 @@ import Editor from '@monaco-editor/react';
 import ReactMarkdown from 'react-markdown';
 import { FiArrowLeft, FiChevronLeft, FiChevronRight, FiRotateCcw, FiPlay, FiSend } from 'react-icons/fi';
 
-const API = 'http://localhost:5000/api/problems';
+const API = `${process.env.REACT_APP_API_URL}/api/problems`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 // the key includes the question type + signature: if the admin changes it, old drafts are not reused
 const draftKey = (p) => `tc_draft_${p.slug}_${p.mode || 'stdin'}_${p.functionName || ''}_${p.returnType || ''}_${(p.params || []).map((x) => x.type).join('-')}`;

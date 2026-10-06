@@ -3,7 +3,7 @@ import axios from 'axios';
 import QrScannerModal from '../components/QrScannerModal';
 import { FiCamera, FiCheckCircle } from 'react-icons/fi';
 
-const API = 'http://localhost:5000/api';
+const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const StudentAttendance = () => {

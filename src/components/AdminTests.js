@@ -7,7 +7,7 @@
 // } from 'react-icons/fi';
 // import { parseProblemMd, downloadSampleMd } from '../utils/parseProblemMd';
 
-// const API = 'http://localhost:5000/api/problems';
+// const API = `${process.env.REACT_APP_API_URL}/api/problems`;
 // const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 // const LANGS = [
@@ -591,7 +591,7 @@ import {
 } from 'react-icons/fi';
 import { parseProblemMd, downloadSampleMd } from '../utils/parseProblemMd';
 
-const API = 'http://localhost:5000/api/problems';
+const API = `${process.env.REACT_APP_API_URL}/api/problems`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 const LANGS = [

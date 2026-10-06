@@ -33,13 +33,13 @@ const Dashboard = () => {
 
   //     const [crsRes, testRes, perfRes] = await Promise.all([
   //       axios
-  //         .get("http://localhost:5000/api/courses", config)
+  //         .get(`${process.env.REACT_APP_API_URL}/api/courses`, config)
   //         .catch(() => ({ data: [] })),
   //       axios
-  //         .get("http://localhost:5000/api/testimonials")
+  //         .get(`${process.env.REACT_APP_API_URL}/api/testimonials`)
   //         .catch(() => ({ data: [] })),
   //       axios
-  //         .get("http://localhost:5000/api/performers")
+  //         .get(`${process.env.REACT_APP_API_URL}/api/performers`)
   //         .catch(() => ({ data: [] })),
   //     ]);
   //     setCourses(crsRes.data);
@@ -55,10 +55,10 @@ const Dashboard = () => {
       
       try {
         const [crsRes, testRes, perfRes, bannerRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/courses', config).catch(() => ({ data: [] })),
-          axios.get('http://localhost:5000/api/testimonials').catch(() => ({ data: [] })),
-          axios.get('http://localhost:5000/api/performers').catch(() => ({ data: [] })),
-          axios.get('http://localhost:5000/api/banner').catch(() => ({ data: { imageUrl: '' } })) // NEW FETCH
+          axios.get(`${process.env.REACT_APP_API_URL}/api/courses`, config).catch(() => ({ data: [] })),
+          axios.get(`${process.env.REACT_APP_API_URL}/api/testimonials`).catch(() => ({ data: [] })),
+          axios.get(`${process.env.REACT_APP_API_URL}/api/performers`).catch(() => ({ data: [] })),
+          axios.get(`${process.env.REACT_APP_API_URL}/api/banner`).catch(() => ({ data: { imageUrl: '' } })) // NEW FETCH
         ]);
 
         setCourses(crsRes.data);

@@ -29,7 +29,7 @@ const DoubtSection = ({ videoId }) => {
       setError('');
 
       const res = await axios.get(
-        `http://localhost:5000/api/doubts/${videoId}`,
+        `${process.env.REACT_APP_API_URL}/api/doubts/${videoId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -56,7 +56,7 @@ const DoubtSection = ({ videoId }) => {
 
     try {
       const res = await axios.post(
-        'http://localhost:5000/api/doubts',
+        `${process.env.REACT_APP_API_URL}/api/doubts`,
         {
           videoId,
           question: newQuestion.trim()
@@ -89,7 +89,7 @@ const DoubtSection = ({ videoId }) => {
 
     try {
       const res = await axios.post(
-        `http://localhost:5000/api/doubts/${doubtId}/reply`,
+        `${process.env.REACT_APP_API_URL}/api/doubts/${doubtId}/reply`,
         {
           replyText: text.trim()
         },
@@ -124,7 +124,7 @@ const DoubtSection = ({ videoId }) => {
   ) => {
     try {
       const res = await axios.put(
-        `http://localhost:5000/api/doubts/${doubtId}/replies/${replyId}/correct`,
+        `${process.env.REACT_APP_API_URL}/api/doubts/${doubtId}/replies/${replyId}/correct`,
         {
           isCorrect: !currentStatus
         },

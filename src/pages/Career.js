@@ -5,7 +5,7 @@ const Career = () => {
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/jobs')
+    fetch(`${process.env.REACT_APP_API_URL}/api/jobs`)
       .then(res => res.json())
       .then(data => setJobs(data));
   }, []);

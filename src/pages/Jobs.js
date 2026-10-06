@@ -27,7 +27,7 @@ const Jobs = () => {
   useEffect(() => {
     // Fetch the jobs posted by the Admin
     axios
-      .get("http://localhost:5000/api/jobs", config)
+      .get(`${process.env.REACT_APP_API_URL}/api/jobs`, config)
       .then((res) => setJobs(res.data))
       .catch((err) =>
         console.error("Error fetching jobs:", err)

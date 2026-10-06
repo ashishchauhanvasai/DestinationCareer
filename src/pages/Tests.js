@@ -10,7 +10,7 @@ const Tests = () => {
   const [filter, setFilter] = useState('All');
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/problems', cfg()).then((r) => setProblems(r.data)).catch((e) => console.error(e));
+    axios.get(`${process.env.REACT_APP_API_URL}/api/problems`, cfg()).then((r) => setProblems(r.data)).catch((e) => console.error(e));
   }, []);
 
   const earned = problems.reduce((a, p) => a + (p.bestScore || 0), 0);

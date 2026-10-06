@@ -41,7 +41,7 @@
 //       const fetchProfile = async () => {
 //         try {
 //           const res = await axios.get(
-//             "http://localhost:5000/api/users/profile",
+//             `${process.env.REACT_APP_API_URL}/api/users/profile`,
 //             config
 //           );
 
@@ -68,7 +68,7 @@
 
 //     try {
 //       await axios.put(
-//         "http://localhost:5000/api/users/profile",
+//         `${process.env.REACT_APP_API_URL}/api/users/profile`,
 //         profile,
 //         config
 //       );
@@ -421,7 +421,7 @@ const Profile = () => {
       const fetchProfile = async () => {
         try {
           const res = await axios.get(
-            "http://localhost:5000/api/users/profile",
+            `${process.env.REACT_APP_API_URL}/api/users/profile`,
             config
           );
 
@@ -475,7 +475,7 @@ const Profile = () => {
 
     try {
       await axios.put(
-        "http://localhost:5000/api/users/profile",
+        `${process.env.REACT_APP_API_URL}/api/users/profile`,
         profile,
         config
       );
