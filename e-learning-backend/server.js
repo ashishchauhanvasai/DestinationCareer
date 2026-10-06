@@ -13,7 +13,12 @@ const axios = require('axios');
 // FIX: the JWT secret now comes from .env (falls back to the old value so logged-in users are not kicked out)
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-app.use(cors({ origin: ['https://destinationcareer.pages.dev', 'https://www.yourcustomdomain.com'] }));
+app.use(cors({ 
+  origin: [
+    'https://destinationcareer.pages.dev', 
+    'https://destinationcareer.ashishchauhanvasai.workers.dev'
+  ] 
+}));
 // Increase limits to allow image uploads (Base64 strings)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
