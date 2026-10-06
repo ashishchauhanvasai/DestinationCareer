@@ -1,0 +1,55 @@
+/* src/components/Navbar.css */
+.navbar {
+    background: #1c1c1c;
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .nav-links a {
+    margin-left: 1.5rem;
+    color: white;
+  }
+  
+  .profile-menu {
+    position: relative;
+    display: inline-block;
+    margin-left: 1rem;
+  }
+  
+  .profile-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  
+  .dropdown {
+    position: absolute;
+    right: 0;
+    top: 40px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 0.5rem;
+    z-index: 1000;
+    min-width: 140px;
+  }
+  
+  .dropdown button {
+    display: block;
+    width: 100%;
+    padding: 0.5rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+  }
+  
+  .dropdown button:hover {
+    background: #f0f0f0;
+  }
+  

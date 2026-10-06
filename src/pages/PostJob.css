@@ -1,0 +1,33 @@
+.postjob-container {
+    padding: 30px;
+    background-color: #fff;
+    max-width: 600px;
+    margin: auto;
+  }
+  
+  .postjob-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .postjob-container input,
+  .postjob-container textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  
+  .postjob-container button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  
+  .postjob-container button:hover {
+    background-color: #0056b3;
+  }
+  

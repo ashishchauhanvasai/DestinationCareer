@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* We can keep a few global styles here if needed */
+body {
+  background-color: #F8FAFC; 
+}
