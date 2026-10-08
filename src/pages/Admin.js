@@ -1261,10 +1261,21 @@ const Admin = () => {
               </button>
             </form>
 
+
             <div className="lg:col-span-1 space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
-              <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-4 border-b dark:border-slate-700 pb-2 sticky top-0 bg-gray-50 dark:bg-slate-900 z-10 pt-2 transition-colors">
-                Active Jobs
-              </h3>
+              
+              {/* UPDATED HEADER: Single button next to the title */}
+              <div className="sticky top-0 bg-gray-50 dark:bg-slate-900 z-10 pt-2 pb-2 border-b dark:border-slate-700 mb-4 transition-colors flex justify-between items-center">
+                <h3 className="font-bold text-lg text-gray-800 dark:text-white">
+                  Active Jobs
+                </h3>
+                <button
+                  onClick={() => setSearchParams({ tab: "Applications" })}
+                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-400 text-xs font-bold py-1.5 px-3 rounded transition-colors"
+                >
+                  View Applications →
+                </button>
+              </div>
 
               {jobs.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -1308,17 +1319,12 @@ const Admin = () => {
                       <span className="font-bold">%</span>: {j.reqMinPercentage}
                     </p>
                   </div>
-
-                  {/* FIX 2: Updated this button to use setSearchParams */}
-                  <button
-                    onClick={() => setSearchParams({ tab: "Applications" })}
-                    className="mt-4 w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold py-2 rounded transition-colors"
-                  >
-                    View Applications
-                  </button>
+                  {/* The redundant button has been removed from here */}
                 </div>
               ))}
             </div>
+
+            
           </div>
         )}
         
