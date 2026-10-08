@@ -1310,7 +1310,7 @@ const Admin = () => {
                   </div>
 
                   <button
-                    onClick={() => activeTab("applications")}
+                    onClick={() => setTab("applications")}
                     className="mt-4 w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold py-2 rounded transition-colors"
                   >
                     View Applications
@@ -1558,7 +1558,7 @@ const Admin = () => {
 
         {activeTab === "Manage Users" && <AdminUsers />}
 
-        {activeTab === "applications" && <AdminApplications />}
+        {activeTab === "Applications" && <AdminApplications />}
 
         {activeTab === "Coding Tests" && <AdminTests />}
 
