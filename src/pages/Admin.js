@@ -1558,8 +1558,6 @@ const Admin = () => {
 
         {activeTab === "Manage Users" && <AdminUsers />}
 
-        {activeTab === "Applications" && <AdminApplications />}
-
         {activeTab === "applications" && <AdminApplications />}
 
         {activeTab === "Coding Tests" && <AdminTests />}
