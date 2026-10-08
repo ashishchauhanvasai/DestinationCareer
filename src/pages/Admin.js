@@ -8,7 +8,8 @@ import AdminBatches from "../components/AdminBatches";
 import AdminAttendance from "../components/AdminAttendance";
 import AdminApplications from "../components/AdminApplications";
 import AdminUsers from "../components/AdminUsers";
-import AdminApplications from '../components/AdminApplications';
+
+
 import {
   FiTrash2,
   FiPlus,
@@ -1559,9 +1560,10 @@ const Admin = () => {
 
         {activeTab === "Applications" && <AdminApplications />}
 
+        {activeTab === "applications" && <AdminApplications />}
+
         {activeTab === "Coding Tests" && <AdminTests />}
 
-        {/* {activeTab === 'applications' && <AdminApplications />} */}
       </div>
     </div>
   );
