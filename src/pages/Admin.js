@@ -9,7 +9,6 @@ import AdminAttendance from "../components/AdminAttendance";
 import AdminApplications from "../components/AdminApplications";
 import AdminUsers from "../components/AdminUsers";
 
-
 import {
   FiTrash2,
   FiPlus,
@@ -21,7 +20,8 @@ import {
 } from "react-icons/fi";
 
 const Admin = () => {
-  const [searchParams] = useSearchParams();
+  // FIX 1: Added setSearchParams here so we can change the URL tab
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "Courses";
 
   const [courses, setCourses] = useState([]);
@@ -1309,8 +1309,9 @@ const Admin = () => {
                     </p>
                   </div>
 
+                  {/* FIX 2: Updated this button to use setSearchParams */}
                   <button
-                    onClick={() => setTab("applications")}
+                    onClick={() => setSearchParams({ tab: "Applications" })}
                     className="mt-4 w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold py-2 rounded transition-colors"
                   >
                     View Applications
@@ -1320,6 +1321,7 @@ const Admin = () => {
             </div>
           </div>
         )}
+        
         {/* Student Profiles Edit Tab */}
         {activeTab === "Student Profiles" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
