@@ -400,6 +400,7 @@ app.get('/api/jobs', async (req, res) => {
 
 // 2. Post a new job (Admin)
 app.post('/api/jobs', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
   try {
     const newJob = new Job(req.body);
     const savedJob = await newJob.save();
@@ -408,15 +409,7 @@ app.post('/api/jobs', verifyToken, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-// 4. Delete a job (Admin) - THIS FIXES YOUR 404 ERROR
-app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
-  try {
-    await Job.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Job deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+
 
 // --- Testimonials API ---
 app.get('/api/testimonials', async (req, res) => {
@@ -536,7 +529,6 @@ app.get('/api/users/profile', verifyToken, async (req, res) => {
   }
 });
 
-
 // --- STUDENT PROFILE ROUTES ---
 
 // Update Profile (Student - One Time Only)
@@ -574,27 +566,6 @@ app.put('/api/users/profile', verifyToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// // Admin Override Route (Required so admins can fix locked profiles)
-// app.put('/api/users/:id/admin-edit-profile', verifyToken, async (req, res) => {
-//   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-//     return res.status(403).json({ message: 'Access denied' });
-//   }
-  
-//   try {
-//     const { highestQualification, passingYear, percentage, backlogs, educationGap, readyForRelocation, skillsAcquired, profileLocked } = req.body;
-    
-//     const updatedUser = await User.findByIdAndUpdate(
-//       req.params.id, 
-//       { highestQualification, passingYear, percentage, backlogs, educationGap, readyForRelocation, skillsAcquired, profileLocked }, 
-//       { returnDocument: 'after' }
-//     ).select('-password');
-    
-//     res.json(updatedUser);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
 
 
 // ================= COMMUNITY DOUBTS & DISCUSSIONS =================
@@ -723,6 +694,7 @@ app.get('/api/jobs/:id', verifyToken, async (req, res) => {
 
 // 2. Admin: Toggle Job Status (OPEN/CLOSED)
 app.put('/api/jobs/:id/status', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
   try {
     const { status } = req.body;
     const job = await Job.findByIdAndUpdate(req.params.id, { status }, { returnDocument: 'after' });
@@ -730,13 +702,6 @@ app.put('/api/jobs/:id/status', verifyToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// 3. Student: Apply for Job
-app.post('/api/jobs/:id/apply', verifyToken, async (req, res) => {
-  try {
-    // Logic to store the application can be expanded here later
-    res.json({ message: "Application submitted successfully!" });
-  } catch (error) { res.status(500).json({ error: error.message }); }
-});
 
 
 // --- COMPANY QUESTIONS ---
@@ -1332,14 +1297,8 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     // Keep password handling consistent
     // with the existing User schema.
-    await User.updateOne(
-      { _id: user._id },
-      {
-        $set: {
-          password: newPassword
-        }
-      }
-    );
+        user.password = newPassword;
+    await user.save();
 
     // OTP can be used only once.
     await OTP.deleteMany({
@@ -2051,6 +2010,332 @@ app.post('/api/problems/:slug/submit', verifyToken, cooldown(5000), async (req, 
     res.status(500).json({ message: judgeErrorMessage(e) });
   }
 });
+
+// ============================================================================
+// JOB APPLICATIONS  (photo + resume are stored inside MongoDB using GridFS)
+//
+// HOW TO USE
+//  1. In e-learning-backend run:  npm install multer
+//  2. Paste this whole file into server.js, just ABOVE the line  app.listen(port, ...)
+//  3. Delete the OLD routes that this file replaces (otherwise the old ones win):
+//       - app.post('/api/jobs/:id/apply', ...)   <- the small stub
+//       - app.delete('/api/jobs/:id', ...)       <- replaced below (adds admin check + cleanup)
+// ============================================================================
+const multer = require('multer');
+
+const APP_STATUSES = ['Applied', 'Shortlisted', 'Interview Scheduled', 'Next Round', 'Selected', 'Rejected'];
+
+// ---------- Schema ----------
+const applicationSchema = new mongoose.Schema({
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  job: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
+
+  // details typed by the student on the apply form
+  email: { type: String, required: true, trim: true },
+  phone: { type: String, required: true },
+  parentPhone: { type: String, required: true },
+  linkedin: { type: String, required: true },
+  github: { type: String, required: true },
+
+  // ids of the files stored in GridFS (the files themselves are NOT inside this document)
+  photoFileId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  resumeFileId: { type: mongoose.Schema.Types.ObjectId, required: true },
+
+  // hiring pipeline (updated by admin)
+  status: { type: String, enum: APP_STATUSES, default: 'Applied' },
+  roundNo: { type: Number, default: 1 },
+  interviewDate: { type: String, default: '' },
+  remarks: { type: String, default: '' }
+}, { timestamps: true });
+applicationSchema.index({ student: 1, job: 1 }, { unique: true }); // one application per student per job
+const Application = mongoose.model('Application', applicationSchema);
+
+// ---------- GridFS helpers ----------
+let filesBucket;
+const getBucket = () => {
+  if (!filesBucket) {
+    filesBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'applicationFiles' });
+  }
+  return filesBucket;
+};
+
+const saveToGridFS = (file, kind) => new Promise((resolve, reject) => {
+  const stream = getBucket().openUploadStream(file.originalname, {
+    contentType: file.mimetype,
+    metadata: { kind }
+  });
+  stream.on('error', reject);
+  stream.on('finish', () => resolve(stream.id));
+  stream.end(file.buffer);
+});
+
+const deleteGridFile = async (id) => {
+  try { await getBucket().delete(new mongoose.Types.ObjectId(String(id))); }
+  catch (e) { /* file already gone - nothing to do */ }
+};
+
+// ---------- Validation helpers ----------
+const PHOTO_MAX = 1 * 1024 * 1024;   // 1 MB (the browser already shrinks it to ~100 KB)
+const RESUME_MAX = 2 * 1024 * 1024;  // 2 MB (also enforced by multer below)
+
+const looksLikePdf = (b) => b.length > 5 && b.slice(0, 5).toString() === '%PDF-';
+const looksLikeJpgOrPng = (b) =>
+  b.length > 8 &&
+  ((b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) ||
+    (b[0] === 0x89 && b.slice(1, 4).toString() === 'PNG'));
+
+const emailOk = (v) => /^\S+@\S+\.\S+$/.test(v || '');
+const phoneOk = (v) => /^\d{10}$/.test(v || '');
+const urlOn = (value, domain) => {
+  try {
+    const u = new URL(value);
+    return ['http:', 'https:'].includes(u.protocol) && (u.hostname === domain || u.hostname.endsWith('.' + domain));
+  } catch { return false; }
+};
+
+const appUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: RESUME_MAX, files: 2 }
+}).fields([{ name: 'photo', maxCount: 1 }, { name: 'resume', maxCount: 1 }]);
+
+// Same rules as the smart-matching check in JobDetails.js, but enforced on the SERVER,
+// so a student cannot skip the check by calling the API directly.
+const checkJobEligibility = (j, p) => {
+  const reasons = [];
+  if (!p.highestQualification || !p.highestQualification.toLowerCase().includes(String(j.reqQualification).toLowerCase())) {
+    reasons.push(`Qualification mismatch. Required: ${j.reqQualification}`);
+  }
+  if (String(p.passingYear) !== String(j.reqPassingYear)) reasons.push(`Passing year mismatch. Required: ${j.reqPassingYear}`);
+  if (!(Number(p.percentage) >= Number(j.reqMinPercentage))) reasons.push(`Percentage too low. Required: ${j.reqMinPercentage}%`);
+  if (Number(p.employabilityScore || 0) < Number(j.reqEmployabilityScore)) reasons.push(`Employability score too low. Required: ${j.reqEmployabilityScore}`);
+  if (Number(p.backlogs || 0) > Number(j.reqMaxBacklogs)) reasons.push(`Too many active backlogs. Allowed: ${j.reqMaxBacklogs}`);
+  if (Number(p.educationGap || 0) > Number(j.reqMaxEducationGap)) reasons.push(`Education gap too large. Allowed: ${j.reqMaxEducationGap} years`);
+  return reasons;
+};
+
+// ---------- STUDENT: apply ----------
+app.post('/api/jobs/:id/apply', verifyToken, (req, res) => {
+  appUpload(req, res, async (uploadErr) => {
+    if (uploadErr) {
+      return res.status(400).json({
+        message: uploadErr.code === 'LIMIT_FILE_SIZE' ? 'File too large. Photo max 1 MB, resume max 2 MB.' : uploadErr.message
+      });
+    }
+    const savedIds = []; // so we can clean up if anything fails half-way
+    try {
+      if (req.user.role !== 'student') return res.status(403).json({ message: 'Only students can apply for jobs' });
+
+      const job = await Job.findById(req.params.id);
+      if (!job) return res.status(404).json({ message: 'Job not found' });
+      if (job.status === 'CLOSED' || new Date(job.lastDateToApply) < new Date()) {
+        return res.status(400).json({ message: 'Applications for this job are closed' });
+      }
+
+      const student = await User.findById(req.user.id).select('-password');
+      const reasons = checkJobEligibility(job, student);
+      if (reasons.length) return res.status(403).json({ message: 'You are not eligible for this job.', reasons });
+
+      if (await Application.findOne({ student: student._id, job: job._id })) {
+        return res.status(400).json({ message: 'You have already applied for this job' });
+      }
+
+      const email = String(req.body.email || '').trim();
+      const phone = String(req.body.phone || '').trim();
+      const parentPhone = String(req.body.parentPhone || '').trim();
+      const linkedin = String(req.body.linkedin || '').trim();
+      const github = String(req.body.github || '').trim();
+
+      if (!emailOk(email)) return res.status(400).json({ message: 'Enter a valid email address' });
+      if (!phoneOk(phone)) return res.status(400).json({ message: 'Contact number must be 10 digits' });
+      if (!phoneOk(parentPhone)) return res.status(400).json({ message: "Parent's contact number must be 10 digits" });
+      if (!urlOn(linkedin, 'linkedin.com')) return res.status(400).json({ message: 'Enter a valid LinkedIn profile link' });
+      if (!urlOn(github, 'github.com')) return res.status(400).json({ message: 'Enter a valid GitHub profile link' });
+
+      const photo = req.files?.photo?.[0];
+      const resume = req.files?.resume?.[0];
+      if (!photo) return res.status(400).json({ message: 'Upload your passport-size photo' });
+      if (!resume) return res.status(400).json({ message: 'Upload your resume (PDF)' });
+      if (photo.size > PHOTO_MAX) return res.status(400).json({ message: 'Photo must be under 1 MB' });
+      if (!looksLikeJpgOrPng(photo.buffer)) return res.status(400).json({ message: 'Photo must be a JPG or PNG image' });
+      if (!looksLikePdf(resume.buffer)) return res.status(400).json({ message: 'Resume must be a PDF file' });
+
+      const photoFileId = await saveToGridFS(photo, 'photo'); savedIds.push(photoFileId);
+      const resumeFileId = await saveToGridFS(resume, 'resume'); savedIds.push(resumeFileId);
+
+      const doc = await Application.create({
+        student: student._id, job: job._id,
+        email, phone, parentPhone, linkedin, github,
+        photoFileId, resumeFileId
+      });
+
+      res.status(201).json({
+        message: 'Application submitted successfully!',
+        application: { status: doc.status, roundNo: doc.roundNo, interviewDate: doc.interviewDate, createdAt: doc.createdAt }
+      });
+    } catch (e) {
+      await Promise.all(savedIds.map(deleteGridFile)); // no orphan files left behind
+      if (e.code === 11000) return res.status(400).json({ message: 'You have already applied for this job' });
+      console.error('Apply error:', e);
+      res.status(500).json({ message: e.message });
+    }
+  });
+});
+
+// ---------- STUDENT: my application status ----------
+// (admin remarks are NOT sent to the student)
+app.get('/api/jobs/:id/my-application', verifyToken, async (req, res) => {
+  try {
+    const a = await Application.findOne({ student: req.user.id, job: req.params.id })
+      .select('status roundNo interviewDate createdAt');
+    res.json(a || null);
+  } catch (e) { res.status(400).json({ message: 'Invalid job id' }); }
+});
+
+app.get('/api/applications/mine', verifyToken, async (req, res) => {
+  try {
+    const list = await Application.find({ student: req.user.id })
+      .populate('job', 'jobId title location')
+      .select('job status roundNo interviewDate createdAt')
+      .sort({ createdAt: -1 });
+    res.json(list);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ---------- FILES: stream a photo / resume out of MongoDB ----------
+// Allowed: the admin, or the student who owns the application. Never public.
+app.get('/api/files/:id', verifyToken, async (req, res) => {
+  try {
+    const id = new mongoose.Types.ObjectId(req.params.id);
+    const owner = await Application.findOne({ $or: [{ photoFileId: id }, { resumeFileId: id }] }).select('student');
+    if (!owner) return res.status(404).json({ message: 'File not found' });
+    if (!isAdminOrSuper(req) && String(owner.student) !== req.user.id) return res.status(403).json({ message: 'Access denied' });
+
+    const files = await getBucket().find({ _id: id }).toArray();
+    if (!files.length) return res.status(404).json({ message: 'File not found' });
+
+    res.set('Content-Type', files[0].contentType || 'application/octet-stream');
+    res.set('Cache-Control', 'private, max-age=3600');
+    getBucket().openDownloadStream(id).on('error', () => res.end()).pipe(res);
+  } catch (e) { res.status(404).json({ message: 'File not found' }); }
+});
+
+// ---------- ADMIN: overview (per job + per student counts) ----------
+app.get('/api/applications/summary', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const [jobs, apps] = await Promise.all([
+      Job.find().select('jobId title lastDateToApply status').sort({ datePosted: -1 }).lean(),
+      Application.find().populate('student', 'name email').select('student job status').lean()
+    ]);
+    const emptyCounts = () => Object.fromEntries(APP_STATUSES.map((s) => [s, 0]));
+
+    const byJob = new Map(jobs.map((j) => [String(j._id), { job: j, counts: emptyCounts(), total: 0 }]));
+    const byStudent = new Map();
+
+    apps.forEach((a) => {
+      const jobRow = byJob.get(String(a.job));
+      if (jobRow) { jobRow.counts[a.status]++; jobRow.total++; }
+      if (!a.student) return;
+      const key = String(a.student._id);
+      if (!byStudent.has(key)) byStudent.set(key, { student: a.student, counts: emptyCounts(), total: 0, applications: [] });
+      const row = byStudent.get(key);
+      row.counts[a.status]++;
+      row.total++;
+      row.applications.push({ jobId: jobRow?.job.jobId, title: jobRow?.job.title, status: a.status });
+    });
+
+    res.json({
+      statuses: APP_STATUSES,
+      byJob: [...byJob.values()],
+      byStudent: [...byStudent.values()].sort((x, y) => y.total - x.total)
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ---------- ADMIN: applicants of one job ----------
+app.get('/api/jobs/:id/applications', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const list = await Application.find({ job: req.params.id })
+      .populate('student', 'name email highestQualification passingYear percentage backlogs educationGap skillsAcquired employabilityScore')
+      .sort({ createdAt: -1 });
+    res.json(list);
+  } catch (e) { res.status(400).json({ message: 'Invalid job id' }); }
+});
+
+// ---------- ADMIN: update status / round / interview date / remarks ----------
+app.put('/api/applications/:id/status', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const { status, roundNo, interviewDate, remarks } = req.body;
+    const update = {};
+    if (status !== undefined) {
+      if (!APP_STATUSES.includes(status)) return res.status(400).json({ message: 'Invalid status' });
+      update.status = status;
+    }
+    if (roundNo !== undefined) update.roundNo = Math.max(1, Math.min(Number(roundNo) || 1, 20));
+    if (interviewDate !== undefined) update.interviewDate = String(interviewDate).slice(0, 100);
+    if (remarks !== undefined) update.remarks = String(remarks).slice(0, 1000);
+
+    const a = await Application.findByIdAndUpdate(req.params.id, update, { returnDocument: 'after' });
+    if (!a) return res.status(404).json({ message: 'Application not found' });
+    res.json({ message: 'Updated', status: a.status });
+  } catch (e) { res.status(400).json({ message: e.message }); }
+});
+
+// ---------- ADMIN: download candidate details as CSV (opens in Excel) ----------
+// /api/applications/export            -> every application
+// /api/applications/export?jobId=XYZ  -> one job only
+const csvCell = (v) => {
+  let s = v === null || v === undefined ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // stops spreadsheet formula injection
+  return '"' + s.replace(/"/g, '""') + '"';
+};
+
+app.get('/api/applications/export', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const filter = req.query.jobId ? { job: req.query.jobId } : {};
+    const apps = await Application.find(filter)
+      .populate('student', 'name highestQualification passingYear percentage backlogs educationGap skillsAcquired')
+      .populate('job', 'jobId title')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const header = ['Job ID', 'Job Title', 'Student Name', 'Email', 'Contact Number', 'Parent Contact Number',
+      'LinkedIn', 'GitHub', 'Qualification', 'Passing Year', 'Percentage', 'Backlogs', 'Education Gap',
+      'Skills', 'Status', 'Round', 'Interview Date', 'Remarks', 'Applied On'];
+
+    const rows = apps.map((a) => [
+      a.job?.jobId, a.job?.title, a.student?.name, a.email, a.phone, a.parentPhone,
+      a.linkedin, a.github, a.student?.highestQualification, a.student?.passingYear, a.student?.percentage,
+      a.student?.backlogs, a.student?.educationGap, a.student?.skillsAcquired,
+      a.status, a.roundNo, a.interviewDate, a.remarks, new Date(a.createdAt).toISOString().slice(0, 10)
+    ]);
+
+    const csv = '\uFEFF' + [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n');
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', 'attachment; filename="applications.csv"');
+    res.send(csv);
+  } catch (e) { res.status(400).json({ message: e.message }); }
+});
+
+// ---------- ADMIN: delete a job (also removes its applications + their files) ----------
+app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const apps = await Application.find({ job: req.params.id }).select('photoFileId resumeFileId');
+    for (const a of apps) {
+      await deleteGridFile(a.photoFileId);
+      await deleteGridFile(a.resumeFileId);
+    }
+    await Application.deleteMany({ job: req.params.id });
+    await Job.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Job deleted successfully' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);
 });

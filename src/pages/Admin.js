@@ -6,6 +6,7 @@ import AdminAssignments from "../components/AdminAssignments";
 import AdminTests from "../components/AdminTests";
 import AdminBatches from "../components/AdminBatches";
 import AdminAttendance from "../components/AdminAttendance";
+import AdminApplications from "../components/AdminApplications";
 import AdminUsers from "../components/AdminUsers";
 import {
   FiTrash2,
@@ -14,7 +15,7 @@ import {
   FiX,
   FiUploadCloud,
   FiLock,
-  FiUnlock
+  FiUnlock,
 } from "react-icons/fi";
 
 const Admin = () => {
@@ -38,7 +39,7 @@ const Admin = () => {
     educationGap: 0,
     readyForRelocation: false,
     skillsAcquired: "",
-    profileLocked: false
+    profileLocked: false,
   });
 
   const [testForm, setTestForm] = useState({
@@ -50,14 +51,14 @@ const Admin = () => {
     passoutYear: "",
     collegeName: "",
     role: "",
-    salaryPackage: ""
+    salaryPackage: "",
   });
 
   const [perfForm, setPerfForm] = useState({
     category: "Java",
     studentName: "",
     imageUrl: "",
-    metric: ""
+    metric: "",
   });
 
   const [jobForm, setJobForm] = useState({
@@ -77,7 +78,7 @@ const Admin = () => {
     reqMinPercentage: 0,
     reqMaxBacklogs: 0,
     reqMaxEducationGap: 0,
-    reqSkills: ""
+    reqSkills: "",
   });
 
   const [editingTestId, setEditingTestId] = useState(null);
@@ -87,8 +88,8 @@ const Admin = () => {
 
   const config = {
     headers: {
-      Authorization: `Bearer ${token}`
-    }
+      Authorization: `Bearer ${token}`,
+    },
   };
 
   useEffect(() => {
@@ -97,38 +98,35 @@ const Admin = () => {
 
   const fetchData = async () => {
     try {
-      const [
-        crsRes,
-        testRes,
-        perfRes,
-        pendingRes,
-        jobsRes,
-        studentsRes
-      ] = await Promise.all([
-        axios
-          .get(`${process.env.REACT_APP_API_URL}/api/courses`, config)
-          .catch(() => ({ data: [] })),
+      const [crsRes, testRes, perfRes, pendingRes, jobsRes, studentsRes] =
+        await Promise.all([
+          axios
+            .get(`${process.env.REACT_APP_API_URL}/api/courses`, config)
+            .catch(() => ({ data: [] })),
 
-        axios
-          .get(`${process.env.REACT_APP_API_URL}/api/testimonials`)
-          .catch(() => ({ data: [] })),
+          axios
+            .get(`${process.env.REACT_APP_API_URL}/api/testimonials`)
+            .catch(() => ({ data: [] })),
 
-        axios
-          .get(`${process.env.REACT_APP_API_URL}/api/performers`)
-          .catch(() => ({ data: [] })),
+          axios
+            .get(`${process.env.REACT_APP_API_URL}/api/performers`)
+            .catch(() => ({ data: [] })),
 
-        axios
-          .get(`${process.env.REACT_APP_API_URL}/api/users/pending`, config)
-          .catch(() => ({ data: [] })),
+          axios
+            .get(`${process.env.REACT_APP_API_URL}/api/users/pending`, config)
+            .catch(() => ({ data: [] })),
 
-        axios
-          .get(`${process.env.REACT_APP_API_URL}/api/jobs`, config)
-          .catch(() => ({ data: [] })),
+          axios
+            .get(`${process.env.REACT_APP_API_URL}/api/jobs`, config)
+            .catch(() => ({ data: [] })),
 
-        axios
-          .get(`${process.env.REACT_APP_API_URL}/api/users?role=student`, config)
-          .catch(() => ({ data: [] }))
-      ]);
+          axios
+            .get(
+              `${process.env.REACT_APP_API_URL}/api/users?role=student`,
+              config,
+            )
+            .catch(() => ({ data: [] })),
+        ]);
 
       setCourses(crsRes.data);
       setTestimonials(testRes.data);
@@ -146,7 +144,7 @@ const Admin = () => {
 
     await axios.delete(
       `${process.env.REACT_APP_API_URL}/api/${type}/${id}`,
-      config
+      config,
     );
 
     fetchData();
@@ -162,12 +160,12 @@ const Admin = () => {
         if (formType === "test") {
           setTestForm({
             ...testForm,
-            imageUrl: reader.result
+            imageUrl: reader.result,
           });
         } else {
           setPerfForm({
             ...perfForm,
-            imageUrl: reader.result
+            imageUrl: reader.result,
           });
         }
       };
@@ -183,13 +181,13 @@ const Admin = () => {
       await axios.put(
         `${process.env.REACT_APP_API_URL}/api/testimonials/${editingTestId}`,
         testForm,
-        config
+        config,
       );
     } else {
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/testimonials`,
         testForm,
-        config
+        config,
       );
     }
 
@@ -202,7 +200,7 @@ const Admin = () => {
       passoutYear: "",
       collegeName: "",
       role: "",
-      salaryPackage: ""
+      salaryPackage: "",
     });
 
     setEditingTestId(null);
@@ -219,7 +217,7 @@ const Admin = () => {
       passoutYear: t.passoutYear || "",
       collegeName: t.collegeName || "",
       role: t.role || "",
-      salaryPackage: t.salaryPackage || ""
+      salaryPackage: t.salaryPackage || "",
     });
 
     setEditingTestId(t._id);
@@ -232,13 +230,13 @@ const Admin = () => {
       await axios.put(
         `${process.env.REACT_APP_API_URL}/api/performers/${editingPerfId}`,
         perfForm,
-        config
+        config,
       );
     } else {
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/performers`,
         perfForm,
-        config
+        config,
       );
     }
 
@@ -246,7 +244,7 @@ const Admin = () => {
       category: "Java",
       studentName: "",
       imageUrl: "",
-      metric: ""
+      metric: "",
     });
 
     setEditingPerfId(null);
@@ -258,7 +256,7 @@ const Admin = () => {
       category: p.category,
       studentName: p.studentName,
       imageUrl: p.imageUrl,
-      metric: p.metric
+      metric: p.metric,
     });
 
     setEditingPerfId(p._id);
@@ -271,7 +269,7 @@ const Admin = () => {
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/jobs`,
         jobForm,
-        config
+        config,
       );
 
       setJobForm({
@@ -291,7 +289,7 @@ const Admin = () => {
         reqMinPercentage: 0,
         reqMaxBacklogs: 0,
         reqMaxEducationGap: 0,
-        reqSkills: ""
+        reqSkills: "",
       });
 
       fetchData();
@@ -308,7 +306,7 @@ const Admin = () => {
       await axios.put(
         `${process.env.REACT_APP_API_URL}/api/users/${editingStudentId}/admin-edit-profile`,
         studentProfileForm,
-        config
+        config,
       );
 
       alert("Student profile updated successfully!");
@@ -327,7 +325,6 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 md:p-6 transition-colors">
       <div className="max-w-7xl mx-auto">
-
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
@@ -342,13 +339,13 @@ const Admin = () => {
         {/* Courses */}
         {activeTab === "Courses" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
-
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">
                 All Courses
               </h2>
 
-              <Link to="/add-course"
+              <Link
+                to="/add-course"
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors"
               >
                 <FiPlus size={18} />
@@ -375,9 +372,8 @@ const Admin = () => {
                     {courses.map((c) => {
                       const totalVideos =
                         c.topics?.reduce(
-                          (acc, t) =>
-                            acc + (t.videos?.length || 0),
-                          0
+                          (acc, t) => acc + (t.videos?.length || 0),
+                          0,
                         ) || 0;
 
                       return (
@@ -392,30 +388,28 @@ const Admin = () => {
                           </td>
 
                           <td className="p-4 text-sm text-gray-500 dark:text-gray-400">
-                            {c.topics?.length || 0} topics •{" "}
-                            {totalVideos} videos
+                            {c.topics?.length || 0} topics • {totalVideos}{" "}
+                            videos
                           </td>
 
                           <td className="p-4">
                             <div className="flex justify-end gap-2">
-  <Link
-    to={`/edit-course/${c._id}`}
-    className="text-blue-500 hover:text-blue-400 p-2"
-    title="Edit Course"
-  >
-    <FiEdit size={18} />
-  </Link>
+                              <Link
+                                to={`/edit-course/${c._id}`}
+                                className="text-blue-500 hover:text-blue-400 p-2"
+                                title="Edit Course"
+                              >
+                                <FiEdit size={18} />
+                              </Link>
 
-  <button
-    onClick={() =>
-      handleDelete("courses", c._id)
-    }
-    className="text-red-500 hover:text-red-400 p-2"
-    title="Delete Course"
-  >
-    <FiTrash2 size={18} />
-  </button>
-</div>
+                              <button
+                                onClick={() => handleDelete("courses", c._id)}
+                                className="text-red-500 hover:text-red-400 p-2"
+                                title="Delete Course"
+                              >
+                                <FiTrash2 size={18} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -430,7 +424,6 @@ const Admin = () => {
         {/* Testimonials */}
         {activeTab === "Testimonials" && (
           <div className="grid lg:grid-cols-3 gap-6">
-
             <form
               onSubmit={handleTestSubmit}
               className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700 space-y-4 transition-colors ${
@@ -441,9 +434,7 @@ const Admin = () => {
             >
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-lg text-gray-800 dark:text-white">
-                  {editingTestId
-                    ? "Edit Testimonial"
-                    : "Add Testimonial"}
+                  {editingTestId ? "Edit Testimonial" : "Add Testimonial"}
                 </h3>
 
                 {editingTestId && (
@@ -460,7 +451,7 @@ const Admin = () => {
                         passoutYear: "",
                         collegeName: "",
                         role: "",
-                        salaryPackage: ""
+                        salaryPackage: "",
                       });
                     }}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -478,7 +469,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setTestForm({
                     ...testForm,
-                    studentName: e.target.value
+                    studentName: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -492,7 +483,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setTestForm({
                     ...testForm,
-                    company: e.target.value
+                    company: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -505,7 +496,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setTestForm({
                     ...testForm,
-                    role: e.target.value
+                    role: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -518,7 +509,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setTestForm({
                     ...testForm,
-                    salaryPackage: e.target.value
+                    salaryPackage: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -532,7 +523,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setTestForm({
                       ...testForm,
-                      education: e.target.value
+                      education: e.target.value,
                     })
                   }
                   className={`${inputStyles} w-1/2`}
@@ -545,7 +536,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setTestForm({
                       ...testForm,
-                      passoutYear: e.target.value
+                      passoutYear: e.target.value,
                     })
                   }
                   className={`${inputStyles} w-1/2`}
@@ -559,7 +550,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setTestForm({
                     ...testForm,
-                    collegeName: e.target.value
+                    collegeName: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -567,19 +558,12 @@ const Admin = () => {
 
               <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 text-center hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                 <label className="cursor-pointer text-sm font-bold text-gray-600 dark:text-gray-300 flex flex-col items-center gap-2">
-                  <FiUploadCloud
-                    size={24}
-                    className="text-blue-500"
-                  />
-
+                  <FiUploadCloud size={24} className="text-blue-500" />
                   Upload Profile Picture
-
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) =>
-                      handleImageUpload(e, "test")
-                    }
+                    onChange={(e) => handleImageUpload(e, "test")}
                     className="hidden"
                   />
                 </label>
@@ -600,7 +584,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setTestForm({
                     ...testForm,
-                    message: e.target.value
+                    message: e.target.value,
                   })
                 }
                 className={`${inputStyles} h-24`}
@@ -614,9 +598,7 @@ const Admin = () => {
                     : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
-                {editingTestId
-                  ? "Update Data"
-                  : "Save to Database"}
+                {editingTestId ? "Update Data" : "Save to Database"}
               </button>
             </form>
 
@@ -627,10 +609,7 @@ const Admin = () => {
                   className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 flex gap-4 transition-colors"
                 >
                   <img
-                    src={
-                      t.imageUrl ||
-                      "https://via.placeholder.com/50"
-                    }
+                    src={t.imageUrl || "https://via.placeholder.com/50"}
                     alt=""
                     className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-slate-600 bg-gray-100 dark:bg-slate-700"
                   />
@@ -646,9 +625,7 @@ const Admin = () => {
                     </p>
 
                     <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 space-y-0.5">
-                      {t.salaryPackage && (
-                        <p>💰 {t.salaryPackage}</p>
-                      )}
+                      {t.salaryPackage && <p>💰 {t.salaryPackage}</p>}
 
                       {(t.education || t.passoutYear) && (
                         <p>
@@ -667,9 +644,7 @@ const Admin = () => {
                     </button>
 
                     <button
-                      onClick={() =>
-                        handleDelete("testimonials", t._id)
-                      }
+                      onClick={() => handleDelete("testimonials", t._id)}
                       className="text-red-500 hover:text-red-400 p-1"
                     >
                       <FiTrash2 size={18} />
@@ -684,7 +659,6 @@ const Admin = () => {
         {/* Performers */}
         {activeTab === "Performers" && (
           <div className="grid md:grid-cols-3 gap-6">
-
             <form
               onSubmit={handlePerfSubmit}
               className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700 col-span-1 space-y-4 transition-colors ${
@@ -695,9 +669,7 @@ const Admin = () => {
             >
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-lg text-gray-800 dark:text-white">
-                  {editingPerfId
-                    ? "Edit Performer"
-                    : "Set Top Performer"}
+                  {editingPerfId ? "Edit Performer" : "Set Top Performer"}
                 </h3>
 
                 {editingPerfId && (
@@ -709,7 +681,7 @@ const Admin = () => {
                         category: "Java",
                         studentName: "",
                         imageUrl: "",
-                        metric: ""
+                        metric: "",
                       });
                     }}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -724,7 +696,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setPerfForm({
                     ...perfForm,
-                    category: e.target.value
+                    category: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -743,7 +715,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setPerfForm({
                     ...perfForm,
-                    studentName: e.target.value
+                    studentName: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -757,7 +729,7 @@ const Admin = () => {
                 onChange={(e) =>
                   setPerfForm({
                     ...perfForm,
-                    metric: e.target.value
+                    metric: e.target.value,
                   })
                 }
                 className={inputStyles}
@@ -765,19 +737,12 @@ const Admin = () => {
 
               <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 text-center hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                 <label className="cursor-pointer text-sm font-bold text-gray-600 dark:text-gray-300 flex flex-col items-center gap-2">
-                  <FiUploadCloud
-                    size={24}
-                    className="text-blue-500"
-                  />
-
+                  <FiUploadCloud size={24} className="text-blue-500" />
                   Upload Profile Picture
-
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) =>
-                      handleImageUpload(e, "perf")
-                    }
+                    onChange={(e) => handleImageUpload(e, "perf")}
                     className="hidden"
                   />
                 </label>
@@ -799,9 +764,7 @@ const Admin = () => {
                     : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
-                {editingPerfId
-                  ? "Update Data"
-                  : "Save to Database"}
+                {editingPerfId ? "Update Data" : "Save to Database"}
               </button>
             </form>
 
@@ -813,10 +776,7 @@ const Admin = () => {
                 >
                   <div className="flex items-center gap-3">
                     <img
-                      src={
-                        p.imageUrl ||
-                        "https://via.placeholder.com/50"
-                      }
+                      src={p.imageUrl || "https://via.placeholder.com/50"}
                       alt=""
                       className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-slate-600 bg-gray-100 dark:bg-slate-700"
                     />
@@ -841,9 +801,7 @@ const Admin = () => {
                     </button>
 
                     <button
-                      onClick={() =>
-                        handleDelete("performers", p._id)
-                      }
+                      onClick={() => handleDelete("performers", p._id)}
                       className="text-red-500 hover:text-red-400 p-2"
                     >
                       <FiTrash2 size={18} />
@@ -863,16 +821,12 @@ const Admin = () => {
             </h2>
 
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-              Upload a high-quality, wide image (e.g., 1200x300
-              pixels).
+              Upload a high-quality, wide image (e.g., 1200x300 pixels).
             </p>
 
             <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-8 text-center hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
               <label className="cursor-pointer flex flex-col items-center gap-3">
-                <FiUploadCloud
-                  size={32}
-                  className="text-blue-500"
-                />
+                <FiUploadCloud size={32} className="text-blue-500" />
 
                 <span className="font-bold text-gray-700 dark:text-gray-300">
                   Click to Upload New Banner
@@ -893,16 +847,12 @@ const Admin = () => {
                           await axios.post(
                             `${process.env.REACT_APP_API_URL}/api/banner`,
                             { imageUrl: reader.result },
-                            config
+                            config,
                           );
 
-                          alert(
-                            "Banner updated successfully!"
-                          );
+                          alert("Banner updated successfully!");
                         } catch (err) {
-                          alert(
-                            "Failed to upload banner."
-                          );
+                          alert("Failed to upload banner.");
                         }
                       };
 
@@ -918,7 +868,6 @@ const Admin = () => {
         {/* Approvals */}
         {activeTab === "Approvals" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 overflow-hidden mt-4 transition-colors">
-
             <div className="p-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
               <h2 className="font-bold text-gray-800 dark:text-white">
                 Pending Registrations
@@ -936,9 +885,7 @@ const Admin = () => {
                     <th className="p-4">Name</th>
                     <th className="p-4">Email</th>
                     <th className="p-4">Role</th>
-                    <th className="p-4 text-center">
-                      Actions
-                    </th>
+                    <th className="p-4 text-center">Actions</th>
                   </tr>
                 </thead>
 
@@ -969,7 +916,7 @@ const Admin = () => {
                               await axios.put(
                                 `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
                                 { status: "approved" },
-                                config
+                                config,
                               );
 
                               fetchData();
@@ -984,7 +931,7 @@ const Admin = () => {
                               await axios.put(
                                 `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
                                 { status: "rejected" },
-                                config
+                                config,
                               );
 
                               fetchData();
@@ -1006,7 +953,6 @@ const Admin = () => {
         {/* Jobs */}
         {activeTab === "Jobs" && (
           <div className="grid lg:grid-cols-3 gap-6">
-
             <form
               onSubmit={handleJobSubmit}
               className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700 lg:col-span-2 space-y-4 transition-colors"
@@ -1016,7 +962,6 @@ const Admin = () => {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                 <input
                   type="text"
                   placeholder="Job ID (e.g. TCS-01)"
@@ -1025,7 +970,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      jobId: e.target.value
+                      jobId: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1039,7 +984,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      title: e.target.value
+                      title: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1053,7 +998,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        companyAbout: e.target.value
+                        companyAbout: e.target.value,
                       })
                     }
                     className={inputStyles}
@@ -1069,7 +1014,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        description: e.target.value
+                        description: e.target.value,
                       })
                     }
                     className={inputStyles}
@@ -1084,7 +1029,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      location: e.target.value
+                      location: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1097,7 +1042,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      salary: e.target.value
+                      salary: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1108,7 +1053,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      hiringProcess: e.target.value
+                      hiringProcess: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1130,7 +1075,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        lastDateToApply: e.target.value
+                        lastDateToApply: e.target.value,
                       })
                     }
                     className={inputStyles}
@@ -1144,7 +1089,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      interviewDate: e.target.value
+                      interviewDate: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1157,7 +1102,7 @@ const Admin = () => {
                   onChange={(e) =>
                     setJobForm({
                       ...jobForm,
-                      interviewLocation: e.target.value
+                      interviewLocation: e.target.value,
                     })
                   }
                   className={inputStyles}
@@ -1182,7 +1127,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqQualification: e.target.value
+                        reqQualification: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1202,7 +1147,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqPassingYear: e.target.value
+                        reqPassingYear: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1222,7 +1167,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqMinPercentage: e.target.value
+                        reqMinPercentage: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1241,7 +1186,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqEmployabilityScore: e.target.value
+                        reqEmployabilityScore: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1260,7 +1205,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqMaxBacklogs: e.target.value
+                        reqMaxBacklogs: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1279,7 +1224,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqMaxEducationGap: e.target.value
+                        reqMaxEducationGap: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1298,7 +1243,7 @@ const Admin = () => {
                     onChange={(e) =>
                       setJobForm({
                         ...jobForm,
-                        reqSkills: e.target.value
+                        reqSkills: e.target.value,
                       })
                     }
                     className={`${inputStyles} bg-blue-50 dark:bg-blue-900/20`}
@@ -1315,7 +1260,6 @@ const Admin = () => {
             </form>
 
             <div className="lg:col-span-1 space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
-
               <h3 className="font-bold text-lg text-gray-800 dark:text-white mb-4 border-b dark:border-slate-700 pb-2 sticky top-0 bg-gray-50 dark:bg-slate-900 z-10 pt-2 transition-colors">
                 Active Jobs
               </h3>
@@ -1332,9 +1276,7 @@ const Admin = () => {
                   className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 relative shadow-sm hover:shadow-md transition-all"
                 >
                   <button
-                    onClick={() =>
-                      handleDelete("jobs", j._id)
-                    }
+                    onClick={() => handleDelete("jobs", j._id)}
                     className="absolute top-3 right-3 text-red-500 hover:text-red-400 bg-red-50 dark:bg-red-900/20 p-1.5 rounded"
                   >
                     <FiTrash2 size={16} />
@@ -1361,8 +1303,7 @@ const Admin = () => {
                     <p>
                       📊 <span className="font-bold">Score:</span>{" "}
                       {j.reqEmployabilityScore} |{" "}
-                      <span className="font-bold">%</span>:{" "}
-                      {j.reqMinPercentage}
+                      <span className="font-bold">%</span>: {j.reqMinPercentage}
                     </p>
                   </div>
                 </div>
@@ -1374,7 +1315,6 @@ const Admin = () => {
         {/* Student Profiles Edit Tab */}
         {activeTab === "Student Profiles" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
-
             <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">
               Manage Student Profiles
             </h2>
@@ -1389,7 +1329,6 @@ const Admin = () => {
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
                   <div>
                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">
                       Highest Qualification
@@ -1401,8 +1340,7 @@ const Admin = () => {
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          highestQualification:
-                            e.target.value
+                          highestQualification: e.target.value,
                         })
                       }
                       className={inputStyles}
@@ -1420,7 +1358,7 @@ const Admin = () => {
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          passingYear: e.target.value
+                          passingYear: e.target.value,
                         })
                       }
                       className={inputStyles}
@@ -1439,7 +1377,7 @@ const Admin = () => {
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          percentage: e.target.value
+                          percentage: e.target.value,
                         })
                       }
                       className={inputStyles}
@@ -1457,7 +1395,7 @@ const Admin = () => {
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          backlogs: e.target.value
+                          backlogs: e.target.value,
                         })
                       }
                       className={inputStyles}
@@ -1475,7 +1413,7 @@ const Admin = () => {
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          educationGap: e.target.value
+                          educationGap: e.target.value,
                         })
                       }
                       className={inputStyles}
@@ -1493,7 +1431,7 @@ const Admin = () => {
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          skillsAcquired: e.target.value
+                          skillsAcquired: e.target.value,
                         })
                       }
                       className={inputStyles}
@@ -1502,15 +1440,14 @@ const Admin = () => {
                 </div>
 
                 <div className="mt-4 p-4 bg-white dark:bg-slate-800 rounded border dark:border-slate-700 flex items-center justify-between">
-
                   <div>
                     <h4 className="font-bold text-gray-700 dark:text-gray-200">
                       Profile Lock Status
                     </h4>
 
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Unlocking will allow the student to edit
-                      their profile again.
+                      Unlocking will allow the student to edit their profile
+                      again.
                     </p>
                   </div>
 
@@ -1518,14 +1455,11 @@ const Admin = () => {
                     <input
                       type="checkbox"
                       className="sr-only peer"
-                      checked={
-                        studentProfileForm.profileLocked
-                      }
+                      checked={studentProfileForm.profileLocked}
                       onChange={(e) =>
                         setStudentProfileForm({
                           ...studentProfileForm,
-                          profileLocked:
-                            e.target.checked
+                          profileLocked: e.target.checked,
                         })
                       }
                     />
@@ -1535,7 +1469,6 @@ const Admin = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4 border-t dark:border-slate-700">
-
                   <button
                     type="submit"
                     className="bg-blue-600 text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition-colors"
@@ -1545,9 +1478,7 @@ const Admin = () => {
 
                   <button
                     type="button"
-                    onClick={() =>
-                      setEditingStudentId(null)
-                    }
+                    onClick={() => setEditingStudentId(null)}
                     className="bg-gray-400 dark:bg-slate-600 text-white px-6 py-2 rounded font-bold hover:bg-gray-500 transition-colors"
                   >
                     Cancel
@@ -1556,7 +1487,6 @@ const Admin = () => {
               </form>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
                 {students.map((s) => (
                   <div
                     key={s._id}
@@ -1564,7 +1494,6 @@ const Admin = () => {
                   >
                     <div>
                       <div className="flex justify-between items-start mb-2">
-
                         <h4 className="font-bold text-gray-800 dark:text-white">
                           {s.name}
                         </h4>
@@ -1589,7 +1518,7 @@ const Admin = () => {
                       onClick={() => {
                         setEditingStudentId(s._id);
                         setStudentProfileForm({
-                          ...s
+                          ...s,
                         });
                       }}
                       className="mt-3 w-full border border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 py-1.5 rounded text-sm font-bold flex items-center justify-center gap-2 transition-colors"
@@ -1611,30 +1540,19 @@ const Admin = () => {
         )}
 
         {/* Existing Components */}
-        {activeTab === "Company Questions" && (
-          <AdminCompanies />
-        )}
+        {activeTab === "Company Questions" && <AdminCompanies />}
 
-        {activeTab === "Assignments" && (
-          <AdminAssignments />
-        )}
+        {activeTab === "Assignments" && <AdminAssignments />}
 
-        {activeTab === "Batches" && (
-          <AdminBatches />
-        )}
+        {activeTab === "Batches" && <AdminBatches />}
 
-        {activeTab === "Attendance Reports" && (
-          <AdminAttendance />
-        )}
+        {activeTab === "Attendance Reports" && <AdminAttendance />}
 
-        {activeTab === "Manage Users" && (
-          <AdminUsers />
-        )}
+        {activeTab === "Manage Users" && <AdminUsers />}
 
-        {activeTab === "Coding Tests" && (
-          <AdminTests />
-        )}
+        {activeTab === "Applications" && <AdminApplications />}
 
+        {activeTab === "Coding Tests" && <AdminTests />}
       </div>
     </div>
   );

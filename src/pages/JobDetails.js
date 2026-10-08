@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
@@ -12,6 +11,7 @@ import {
   FiBriefcase,
   FiAlertCircle,
 } from "react-icons/fi";
+import ApplyJobForm from "../components/ApplyJobForm";
 
 const JobDetails = () => {
   const { id } = useParams();
@@ -19,7 +19,8 @@ const JobDetails = () => {
   const [job, setJob] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-
+  const [showApply, setShowApply] = useState(false);
+  const [application, setApplication] = useState(null);
   const [eligibility, setEligibility] = useState({
     isEligible: false,
     reasons: [],
@@ -37,13 +38,10 @@ const JobDetails = () => {
     const fetchDetails = async () => {
       try {
         const [jobRes, profileRes] = await Promise.all([
-          axios.get(
-            `${process.env.REACT_APP_API_URL}/api/jobs/${id}`,
-            config
-          ),
+          axios.get(`${process.env.REACT_APP_API_URL}/api/jobs/${id}`, config),
           axios.get(
             `${process.env.REACT_APP_API_URL}/api/users/profile`,
-            config
+            config,
           ),
         ]);
 
@@ -52,6 +50,15 @@ const JobDetails = () => {
 
         setJob(jobData);
         setProfile(profileData);
+        try {
+          const appRes = await axios.get(
+            `${process.env.REACT_APP_API_URL}/api/jobs/${id}/my-application`,
+            config,
+          );
+          setApplication(appRes.data);
+        } catch (e) {
+          /* not applied yet */
+        }
 
         checkEligibility(jobData, profileData);
         setLoading(false);
@@ -81,7 +88,7 @@ const JobDetails = () => {
       reasons.push(
         `Qualification mismatch. Required: ${j.reqQualification}, Yours: ${
           p.highestQualification || "Not provided"
-        }`
+        }`,
       );
     }
 
@@ -91,7 +98,7 @@ const JobDetails = () => {
       reasons.push(
         `Passing year mismatch. Required: ${j.reqPassingYear}, Yours: ${
           p.passingYear || "Not provided"
-        }`
+        }`,
       );
     }
 
@@ -101,7 +108,7 @@ const JobDetails = () => {
       reasons.push(
         `Percentage too low. Required: ${j.reqMinPercentage}%, Yours: ${
           p.percentage || 0
-        }%`
+        }%`,
       );
     }
 
@@ -111,7 +118,7 @@ const JobDetails = () => {
       reasons.push(
         `Employability score too low. Required: ${j.reqEmployabilityScore}, Yours: ${
           p.employabilityScore || 0
-        }`
+        }`,
       );
     }
 
@@ -121,7 +128,7 @@ const JobDetails = () => {
       reasons.push(
         `Too many active backlogs. Allowed: ${j.reqMaxBacklogs}, Yours: ${
           p.backlogs || 0
-        }`
+        }`,
       );
     }
 
@@ -131,7 +138,7 @@ const JobDetails = () => {
       reasons.push(
         `Education gap too large. Allowed: ${j.reqMaxEducationGap} years, Yours: ${
           p.educationGap || 0
-        } years`
+        } years`,
       );
     }
 
@@ -142,9 +149,7 @@ const JobDetails = () => {
   };
 
   const handleApply = () => {
-    alert(
-      "Application submitted successfully! HR will contact you soon."
-    );
+    const handleApply = () => setShowApply(true);
   };
 
   if (loading) {
@@ -161,9 +166,7 @@ const JobDetails = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-500 font-medium text-lg">
-            Job not found.
-          </p>
+          <p className="text-gray-500 font-medium text-lg">Job not found.</p>
 
           <Link
             to="/jobs"
@@ -177,18 +180,26 @@ const JobDetails = () => {
     );
   }
 
-  const isExpired =
-    new Date(job.lastDateToApply) < new Date();
+  const isExpired = new Date(job.lastDateToApply) < new Date();
 
   // 1. THIS IS THE NEW ADMIN CHECK
   const isAdmin =
-    profile?.role === "admin" ||
-    localStorage.getItem("role") === "admin";
+    profile?.role === "admin" || localStorage.getItem("role") === "admin";
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
-
+        {showApply && (
+          <ApplyJobForm
+            job={job}
+            profile={profile}
+            onClose={() => setShowApply(false)}
+            onApplied={(a) => {
+              setApplication(a);
+              setShowApply(false);
+            }}
+          />
+        )}
         {/* Back to Job Board */}
         <Link
           to="/jobs"
@@ -223,9 +234,7 @@ const JobDetails = () => {
               <div>
                 <h2
                   className={`text-xl font-bold ${
-                    eligibility.isEligible
-                      ? "text-green-800"
-                      : "text-red-800"
+                    eligibility.isEligible ? "text-green-800" : "text-red-800"
                   }`}
                 >
                   {eligibility.isEligible
@@ -241,25 +250,23 @@ const JobDetails = () => {
                     </h3>
 
                     <ul className="space-y-2">
-                      {eligibility.reasons.map(
-                        (reason, index) => (
-                          <li
-                            key={index}
-                            className="text-sm text-red-700 flex items-start gap-2"
-                          >
-                            <span>•</span>
-                            <span>{reason}</span>
-                          </li>
-                        )
-                      )}
+                      {eligibility.reasons.map((reason, index) => (
+                        <li
+                          key={index}
+                          className="text-sm text-red-700 flex items-start gap-2"
+                        >
+                          <span>•</span>
+                          <span>{reason}</span>
+                        </li>
+                      ))}
                     </ul>
 
                     <Link
                       to="/profile"
                       className="inline-block mt-4 text-sm font-bold text-blue-600 hover:text-blue-800 underline"
                     >
-                      Click here to update your profile if this
-                      data is incorrect.
+                      Click here to update your profile if this data is
+                      incorrect.
                     </Link>
                   </div>
                 )}
@@ -270,7 +277,6 @@ const JobDetails = () => {
 
         {/* JOB DETAILS CARD */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-
           {/* Job Header */}
           <div className="p-6 sm:p-8 border-b border-gray-100">
             <div className="flex items-center gap-3 mb-4">
@@ -293,15 +299,12 @@ const JobDetails = () => {
               {job.title}
             </h1>
 
-            <p className="text-gray-600 leading-relaxed">
-              {job.companyAbout}
-            </p>
+            <p className="text-gray-600 leading-relaxed">{job.companyAbout}</p>
           </div>
 
           {/* Job Information */}
           <div className="p-6 sm:p-8 border-b border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-
               <div>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
                   Apply Before
@@ -309,9 +312,7 @@ const JobDetails = () => {
 
                 <p className="font-bold text-gray-800 flex items-center gap-2">
                   <FiCalendar className="text-blue-500" />
-                  {new Date(
-                    job.lastDateToApply
-                  ).toLocaleDateString()}
+                  {new Date(job.lastDateToApply).toLocaleDateString()}
                 </p>
               </div>
 
@@ -353,9 +354,7 @@ const JobDetails = () => {
                   Interview
                 </p>
 
-                <p className="font-bold text-gray-800">
-                  {job.interviewDate}
-                </p>
+                <p className="font-bold text-gray-800">{job.interviewDate}</p>
               </div>
             </div>
           </div>
@@ -379,51 +378,60 @@ const JobDetails = () => {
 
             <div className="flex flex-wrap gap-2">
               {job.reqSkills &&
-                job.reqSkills
-                  .split(",")
-                  .map((skill, i) => (
-                    <span
-                      key={i}
-                      className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-medium"
-                    >
-                      {skill.trim()}
-                    </span>
-                  ))}
+                job.reqSkills.split(",").map((skill, i) => (
+                  <span
+                    key={i}
+                    className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-medium"
+                  >
+                    {skill.trim()}
+                  </span>
+                ))}
             </div>
           </div>
 
           {/* APPLICATION ACTION - MODIFIED FOR ADMINS */}
-          <div className="p-6 sm:p-8 flex justify-end">
-            {isAdmin ? (
-              <button
-                disabled
-                className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
-              >
-                Admins Cannot Apply for Jobs
-              </button>
-            ) : isExpired ? (
-              <button
-                disabled
-                className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
-              >
-                Job Application Closed
-              </button>
-            ) : eligibility.isEligible ? (
-              <button
-                onClick={handleApply}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-sm"
-              >
-                Apply Now
-              </button>
-            ) : (
-              <button
-                disabled
-                className="bg-gray-300 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed"
-              >
-                Not Eligible to Apply
-              </button>
-            )}
-          </div>
+         ```jsx
+<div className="p-6 sm:p-8 flex justify-end">
+
+  {isAdmin ? (
+    <button
+      disabled
+      className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
+    >
+      Admins Cannot Apply for Jobs
+    </button>
+  ) : application ? (
+    <button
+      disabled
+      className="bg-blue-100 text-blue-700 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
+    >
+      Applied · {application.status}
+    </button>
+  ) : isExpired ? (
+    <button
+      disabled
+      className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
+    >
+      Job Application Closed
+    </button>
+  ) : eligibility.isEligible ? (
+    <button
+      onClick={handleApply}
+      className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-sm"
+    >
+      Apply Now
+    </button>
+  ) : (
+    <button
+      disabled
+      className="bg-gray-300 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed"
+    >
+      Not Eligible to Apply
+    </button>
+  )}
+
+</div>
+```
         </div>
       </div>
     </div>
