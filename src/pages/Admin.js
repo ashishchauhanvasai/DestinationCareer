@@ -8,6 +8,7 @@ import AdminBatches from "../components/AdminBatches";
 import AdminAttendance from "../components/AdminAttendance";
 import AdminApplications from "../components/AdminApplications";
 import AdminUsers from "../components/AdminUsers";
+import AdminApplications from '../components/AdminApplications';
 import {
   FiTrash2,
   FiPlus,
@@ -1273,7 +1274,7 @@ const Admin = () => {
               {jobs.map((j) => (
                 <div
                   key={j._id}
-                  className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 relative shadow-sm hover:shadow-md transition-all"
+                  className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 relative shadow-sm hover:shadow-md transition-all flex flex-col"
                 >
                   <button
                     onClick={() => handleDelete("jobs", j._id)}
@@ -1282,7 +1283,7 @@ const Admin = () => {
                     <FiTrash2 size={16} />
                   </button>
 
-                  <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-2 py-0.5 rounded">
+                  <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400 px-2 py-0.5 rounded w-fit">
                     {j.jobId}
                   </span>
 
@@ -1290,7 +1291,7 @@ const Admin = () => {
                     {j.title}
                   </h4>
 
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {j.location} • {j.salary}
                   </p>
 
@@ -1306,12 +1307,18 @@ const Admin = () => {
                       <span className="font-bold">%</span>: {j.reqMinPercentage}
                     </p>
                   </div>
+
+                  <button
+                    onClick={() => setActiveTab("applications")}
+                    className="mt-4 w-full bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-xs font-bold py-2 rounded transition-colors"
+                  >
+                    View Applications
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         )}
-
         {/* Student Profiles Edit Tab */}
         {activeTab === "Student Profiles" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
@@ -1553,6 +1560,8 @@ const Admin = () => {
         {activeTab === "Applications" && <AdminApplications />}
 
         {activeTab === "Coding Tests" && <AdminTests />}
+
+        {activeTab === 'applications' && <AdminApplications />}
       </div>
     </div>
   );
