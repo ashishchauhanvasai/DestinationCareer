@@ -26,28 +26,6 @@ const Dashboard = () => {
   const [performers, setPerformers] = useState([]);
   const [banner, setBanner] = useState(''); // NEW STATE
 
-  // useEffect(() => {
-  //   const fetchData = async () => {
-  //     const token = localStorage.getItem("token");
-  //     const config = { headers: { Authorization: `Bearer ${token}` } };
-
-  //     const [crsRes, testRes, perfRes] = await Promise.all([
-  //       axios
-  //         .get(`${process.env.REACT_APP_API_URL}/api/courses`, config)
-  //         .catch(() => ({ data: [] })),
-  //       axios
-  //         .get(`${process.env.REACT_APP_API_URL}/api/testimonials`)
-  //         .catch(() => ({ data: [] })),
-  //       axios
-  //         .get(`${process.env.REACT_APP_API_URL}/api/performers`)
-  //         .catch(() => ({ data: [] })),
-  //     ]);
-  //     setCourses(crsRes.data);
-  //     setTestimonials(testRes.data);
-  //     setPerformers(perfRes.data);
-  //   };
-  //   fetchData();
-  // }, []);
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
