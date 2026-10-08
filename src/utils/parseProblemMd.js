@@ -159,7 +159,7 @@ function parseTestCase(sub, index) {
   let mode = null;
 
   for (const raw of sub.body) {
-    if (FENCE.test(raw)) continue; 
+    if (FENCE.test(raw)) continue;  
     const stripped = raw.replace(/\*\*|__/g, '');
     const m = stripped.match(/^\s*(input|expected output|expected|output)\s*:\s*(.*)$/i);
     if (m) {

@@ -19,8 +19,11 @@ const JobDetails = () => {
   const [job, setJob] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Application states
   const [showApply, setShowApply] = useState(false);
   const [application, setApplication] = useState(null);
+
   const [eligibility, setEligibility] = useState({
     isEligible: false,
     reasons: [],
@@ -50,17 +53,22 @@ const JobDetails = () => {
 
         setJob(jobData);
         setProfile(profileData);
+
+        // Check whether the current student has already applied
         try {
           const appRes = await axios.get(
             `${process.env.REACT_APP_API_URL}/api/jobs/${id}/my-application`,
             config,
           );
+
           setApplication(appRes.data);
         } catch (e) {
-          /* not applied yet */
+          // User has not applied yet
+          setApplication(null);
         }
 
         checkEligibility(jobData, profileData);
+
         setLoading(false);
       } catch (err) {
         console.error("Failed to load data", err);
@@ -148,9 +156,10 @@ const JobDetails = () => {
     });
   };
 
-  const handleApply = () => {
-    const handleApply = () => setShowApply(true);
-  };
+  // IMPORTANT:
+  // This only opens the Apply Job form.
+  // It does NOT directly submit the application.
+  const handleApply = () => setShowApply(true);
 
   if (loading) {
     return (
@@ -166,7 +175,9 @@ const JobDetails = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-500 font-medium text-lg">Job not found.</p>
+          <p className="text-gray-500 font-medium text-lg">
+            Job not found.
+          </p>
 
           <Link
             to="/jobs"
@@ -182,13 +193,16 @@ const JobDetails = () => {
 
   const isExpired = new Date(job.lastDateToApply) < new Date();
 
-  // 1. THIS IS THE NEW ADMIN CHECK
+  // Admin check
   const isAdmin =
-    profile?.role === "admin" || localStorage.getItem("role") === "admin";
+    profile?.role === "admin" ||
+    localStorage.getItem("role") === "admin";
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
+
+        {/* APPLY JOB MODAL */}
         {showApply && (
           <ApplyJobForm
             job={job}
@@ -200,6 +214,7 @@ const JobDetails = () => {
             }}
           />
         )}
+
         {/* Back to Job Board */}
         <Link
           to="/jobs"
@@ -209,7 +224,7 @@ const JobDetails = () => {
           Back to Job Board
         </Link>
 
-        {/* 2. MATCHING ENGINE PANEL - NOW HIDDEN IF USER IS ADMIN */}
+        {/* MATCHING ENGINE PANEL - HIDDEN FOR ADMINS */}
         {!isAdmin && (
           <div
             className={`rounded-2xl border p-6 mb-6 ${
@@ -234,7 +249,9 @@ const JobDetails = () => {
               <div>
                 <h2
                   className={`text-xl font-bold ${
-                    eligibility.isEligible ? "text-green-800" : "text-red-800"
+                    eligibility.isEligible
+                      ? "text-green-800"
+                      : "text-red-800"
                   }`}
                 >
                   {eligibility.isEligible
@@ -277,6 +294,7 @@ const JobDetails = () => {
 
         {/* JOB DETAILS CARD */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+
           {/* Job Header */}
           <div className="p-6 sm:p-8 border-b border-gray-100">
             <div className="flex items-center gap-3 mb-4">
@@ -299,12 +317,15 @@ const JobDetails = () => {
               {job.title}
             </h1>
 
-            <p className="text-gray-600 leading-relaxed">{job.companyAbout}</p>
+            <p className="text-gray-600 leading-relaxed">
+              {job.companyAbout}
+            </p>
           </div>
 
           {/* Job Information */}
           <div className="p-6 sm:p-8 border-b border-gray-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
               <div>
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">
                   Apply Before
@@ -354,8 +375,11 @@ const JobDetails = () => {
                   Interview
                 </p>
 
-                <p className="font-bold text-gray-800">{job.interviewDate}</p>
+                <p className="font-bold text-gray-800">
+                  {job.interviewDate}
+                </p>
               </div>
+
             </div>
           </div>
 
@@ -389,49 +413,51 @@ const JobDetails = () => {
             </div>
           </div>
 
-          {/* APPLICATION ACTION - MODIFIED FOR ADMINS */}
-         
-<div className="p-6 sm:p-8 flex justify-end">
+          {/* APPLICATION ACTION */}
+          <div className="p-6 sm:p-8 flex justify-end">
 
-  {isAdmin ? (
-    <button
-      disabled
-      className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
-    >
-      Admins Cannot Apply for Jobs
-    </button>
-  ) : application ? (
-    <button
-      disabled
-      className="bg-blue-100 text-blue-700 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
-    >
-      Applied · {application.status}
-    </button>
-  ) : isExpired ? (
-    <button
-      disabled
-      className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
-    >
-      Job Application Closed
-    </button>
-  ) : eligibility.isEligible ? (
-    <button
-      onClick={handleApply}
-      className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-sm"
-    >
-      Apply Now
-    </button>
-  ) : (
-    <button
-      disabled
-      className="bg-gray-300 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed"
-    >
-      Not Eligible to Apply
-    </button>
-  )}
+            {isAdmin ? (
+              <button
+                disabled
+                className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
+              >
+                Admins Cannot Apply for Jobs
+              </button>
 
-</div>
+            ) : application ? (
+              <button
+                disabled
+                className="bg-blue-100 text-blue-700 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
+              >
+                Applied · {application.status}
+              </button>
 
+            ) : isExpired ? (
+              <button
+                disabled
+                className="bg-gray-300 text-gray-600 px-6 py-3 rounded-xl font-bold cursor-not-allowed"
+              >
+                Job Application Closed
+              </button>
+
+            ) : eligibility.isEligible ? (
+              <button
+                onClick={handleApply}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold transition-colors shadow-sm"
+              >
+                Apply Now
+              </button>
+
+            ) : (
+              <button
+                disabled
+                className="bg-gray-300 text-gray-600 px-8 py-3 rounded-xl font-bold cursor-not-allowed"
+              >
+                Not Eligible to Apply
+              </button>
+            )}
+
+          </div>
         </div>
       </div>
     </div>
