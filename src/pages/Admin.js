@@ -1561,7 +1561,7 @@ const Admin = () => {
 
         {activeTab === "Coding Tests" && <AdminTests />}
 
-        {activeTab === 'applications' && <AdminApplications />}
+        {/* {activeTab === 'applications' && <AdminApplications />} */}
       </div>
     </div>
   );
