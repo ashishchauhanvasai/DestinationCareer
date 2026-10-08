@@ -390,7 +390,7 @@ const JobDetails = () => {
           </div>
 
           {/* APPLICATION ACTION - MODIFIED FOR ADMINS */}
-         ```jsx
+         
 <div className="p-6 sm:p-8 flex justify-end">
 
   {isAdmin ? (
@@ -431,7 +431,7 @@ const JobDetails = () => {
   )}
 
 </div>
-```
+
         </div>
       </div>
     </div>
