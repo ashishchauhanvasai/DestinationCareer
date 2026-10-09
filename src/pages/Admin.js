@@ -867,7 +867,7 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Approvals */}
+       {/* Approvals */}
         {activeTab === "Approvals" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 overflow-hidden mt-4 transition-colors">
             <div className="p-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
@@ -881,73 +881,77 @@ const Admin = () => {
                 No pending accounts to approve.
               </p>
             ) : (
-              <table className="w-full text-left">
-                <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 text-sm border-b dark:border-slate-700">
-                  <tr>
-                    <th className="p-4">Name</th>
-                    <th className="p-4">Email</th>
-                    <th className="p-4">Role</th>
-                    <th className="p-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                  {pendingUsers.map((user) => (
-                    <tr
-                      key={user._id}
-                      className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
-                    >
-                      <td className="p-4 font-bold text-gray-800 dark:text-gray-200">
-                        {user.name}
-                      </td>
-
-                      <td className="p-4 text-gray-600 dark:text-gray-400">
-                        {user.email}
-                      </td>
-
-                      <td className="p-4">
-                        <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-xs font-bold px-2 py-1 rounded uppercase">
-                          {user.role}
-                        </span>
-                      </td>
-
-                      <td className="p-4 text-center">
-                        <div className="flex justify-center gap-3">
-                          <button
-                            onClick={async () => {
-                              await axios.put(
-                                `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
-                                { status: "approved" },
-                                config,
-                              );
-
-                              fetchData();
-                            }}
-                            className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 px-3 py-1 rounded font-bold text-sm transition-colors"
-                          >
-                            Approve
-                          </button>
-
-                          <button
-                            onClick={async () => {
-                              await axios.put(
-                                `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
-                                { status: "rejected" },
-                                config,
-                              );
-
-                              fetchData();
-                            }}
-                            className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 px-3 py-1 rounded font-bold text-sm transition-colors"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </td>
+              /* FIX: Added this scrollable wrapper */
+              <div className="overflow-x-auto w-full custom-scrollbar">
+                {/* FIX: Added whitespace-nowrap so text doesn't squish */ }
+                <table className="w-full text-left whitespace-nowrap">
+                  <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 text-sm border-b dark:border-slate-700">
+                    <tr>
+                      <th className="p-4">Name</th>
+                      <th className="p-4">Email</th>
+                      <th className="p-4">Role</th>
+                      <th className="p-4 text-center">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                    {pendingUsers.map((user) => (
+                      <tr
+                        key={user._id}
+                        className="hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
+                      >
+                        <td className="p-4 font-bold text-gray-800 dark:text-gray-200">
+                          {user.name}
+                        </td>
+
+                        <td className="p-4 text-gray-600 dark:text-gray-400">
+                          {user.email}
+                        </td>
+
+                        <td className="p-4">
+                          <span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 text-xs font-bold px-2 py-1 rounded uppercase">
+                            {user.role}
+                          </span>
+                        </td>
+
+                        <td className="p-4 text-center">
+                          <div className="flex justify-center gap-3">
+                            <button
+                              onClick={async () => {
+                                await axios.put(
+                                  `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
+                                  { status: "approved" },
+                                  config,
+                                );
+
+                                fetchData();
+                              }}
+                              className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 px-3 py-1 rounded font-bold text-sm transition-colors"
+                            >
+                              Approve
+                            </button>
+
+                            <button
+                              onClick={async () => {
+                                await axios.put(
+                                  `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
+                                  { status: "rejected" },
+                                  config,
+                                );
+
+                                fetchData();
+                              }}
+                              className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 px-3 py-1 rounded font-bold text-sm transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}

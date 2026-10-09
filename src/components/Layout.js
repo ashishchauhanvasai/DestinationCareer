@@ -361,7 +361,6 @@ const Layout = ({ children }) => {
 
       {/* Main Content Wrapper */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
         {/* Mobile Top Header containing Hamburger Menu */}
         <header className="md:hidden bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-3">
