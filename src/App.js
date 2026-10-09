@@ -26,7 +26,7 @@ import Jobs from './pages/Jobs';
 import CompanyQuestions from './pages/CompanyQuestions';
 import Profile from './pages/Profile';
 import AskTAI from './pages/AskTAI';
-import Bookmarks from './pages/Bookmarks';
+import MyApplications from './pages/MyApplications';
 
 // Legacy & Admin Pages
 import About from './pages/About';
@@ -67,7 +67,7 @@ function App() {
         <Route path="/company-questions" element={<PrivateRoute><Layout><CompanyQuestions /></Layout></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
         <Route path="/ask-tai" element={<PrivateRoute><Layout><AskTAI /></Layout></PrivateRoute>} />
-        <Route path="/bookmarks" element={<PrivateRoute><Layout><Bookmarks /></Layout></PrivateRoute>} />
+        <Route path="/my-applications" element={<PrivateRoute><Layout><MyApplications /></Layout></PrivateRoute>} />
         <Route path="/about" element={<PrivateRoute><Layout><About /></Layout></PrivateRoute>} />
         <Route path="/user" element={<PrivateRoute role="user"><Layout><User /></Layout></PrivateRoute>} />
         <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />

@@ -1,7 +1,7 @@
-// Save as: src/components/AdminApplications.js
+// Save as: src/components/AdminApplications.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { FiDownload, FiArrowLeft, FiFileText, FiChevronDown, FiChevronUp } from 'react-icons/fi';
+import { FiDownload, FiArrowLeft, FiFileText, FiChevronDown, FiChevronUp, FiClock } from 'react-icons/fi';
 
 const API = process.env.REACT_APP_API_URL;
 const STATUSES = ['Applied', 'Shortlisted', 'Interview Scheduled', 'Next Round', 'Selected', 'Rejected'];
@@ -76,21 +76,91 @@ const CountChips = ({ counts, total }) => (
   </div>
 );
 
+// Big totals across ALL jobs (the admin's running record)
+const OverallTotals = ({ rows }) => {
+  const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
+  let total = 0;
+  rows.forEach((r) => {
+    total += r.total;
+    STATUSES.forEach((s) => {
+      counts[s] += r.counts[s] || 0;
+    });
+  });
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="rounded-xl border p-4 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">{total}</p>
+        <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded bg-gray-800 text-white dark:bg-white dark:text-gray-900">
+          Total
+        </span>
+      </div>
+      {STATUSES.map((s) => (
+        <div key={s} className="rounded-xl border p-4 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{counts[s]}</p>
+          <span className={`inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded ${STATUS_STYLE[s]}`}>{s}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// Log of every status change (newest first)
+const HistoryTimeline = ({ history, createdAt }) => {
+  const items = (history && history.length
+    ? history
+    : [{ status: 'Applied', roundNo: 1, changedBy: 'Student', changedAt: createdAt }]
+  )
+    .slice()
+    .reverse();
+
+  return (
+    <ol className="mt-4 border-l-2 border-gray-200 dark:border-slate-600 ml-2 space-y-3">
+      {items.map((h, i) => (
+        <li key={i} className="pl-4 relative text-sm">
+          <span className="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-blue-600" />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded ${STATUS_STYLE[h.status]}`}>{h.status}</span>
+            <span className="text-xs text-gray-400">{new Date(h.changedAt).toLocaleString()}</span>
+            <span className="text-xs text-gray-400">by {h.changedBy || 'Admin'}</span>
+          </div>
+          {(h.status === 'Interview Scheduled' || h.status === 'Next Round') && (
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+              Round {h.roundNo}
+              {h.interviewDate ? `, ${h.interviewDate}` : ''}
+            </p>
+          )}
+          {h.message && <p className="text-gray-700 dark:text-gray-200 mt-1">Message sent: {h.message}</p>}
+        </li>
+      ))}
+    </ol>
+  );
+};
+
 const ApplicantCard = ({ app, onSaved }) => {
   const [status, setStatus] = useState(app.status);
   const [roundNo, setRoundNo] = useState(app.roundNo);
   const [interviewDate, setInterviewDate] = useState(app.interviewDate || '');
   const [remarks, setRemarks] = useState(app.remarks || '');
+  const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [note, setNote] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
   const s = app.student || {};
 
   const save = async () => {
     setSaving(true);
+    setNote('');
     try {
-      await axios.put(`${API}/api/applications/${app._id}/status`, { status, roundNo, interviewDate, remarks }, authHeaders());
+      const res = await axios.put(
+        `${API}/api/applications/${app._id}/status`,
+        { status, roundNo, interviewDate, remarks, message },
+        authHeaders()
+      );
+      setNote(res.data.notified ? 'Saved. The student was notified by email.' : 'Saved. Nothing changed, so no email was sent.');
+      setMessage('');
       onSaved();
     } catch (err) {
-      alert(err.response?.data?.message || 'Could not save changes');
+      setNote(err.response?.data?.message || 'Could not save changes');
     } finally {
       setSaving(false);
     }
@@ -105,48 +175,64 @@ const ApplicantCard = ({ app, onSaved }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl p-4 flex flex-col lg:flex-row gap-4">
-      <AuthImage fileId={app.photoFileId} className="w-24 h-28 object-cover rounded border dark:border-slate-600 shrink-0" />
+    <div className="bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-xl p-4">
+      <div className="flex flex-col lg:flex-row gap-4">
+        <AuthImage fileId={app.photoFileId} className="w-24 h-28 object-cover rounded border dark:border-slate-600 shrink-0" />
 
-      <div className="flex-1 min-w-0 text-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <h4 className="font-bold text-gray-900 dark:text-white">{s.name || 'Deleted user'}</h4>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded ${STATUS_STYLE[app.status]}`}>{app.status}</span>
+        <div className="flex-1 min-w-0 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="font-bold text-gray-900 dark:text-white">{s.name || 'Deleted user'}</h4>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded ${STATUS_STYLE[app.status]}`}>{app.status}</span>
+          </div>
+          <p className="text-gray-600 dark:text-gray-300 break-all">{app.email}</p>
+          <p className="text-gray-600 dark:text-gray-300">
+            Contact: {app.phone} | Parent: {app.parentPhone}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {s.highestQualification || '-'} ({s.passingYear || '-'}), {s.percentage ?? '-'}%, backlogs {s.backlogs ?? 0}, gap {s.educationGap ?? 0} yrs
+          </p>
+          {s.skillsAcquired && <p className="text-xs text-gray-500 dark:text-gray-400">Skills: {s.skillsAcquired}</p>}
+          <p className="text-xs text-gray-400 mt-1">Applied on {new Date(app.createdAt).toLocaleDateString()}</p>
+
+          <div className="flex flex-wrap gap-3 mt-3">
+            <a href={app.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">LinkedIn</a>
+            <a href={app.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">GitHub</a>
+            <button type="button" onClick={downloadResume} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold hover:underline">
+              <FiFileText /> Resume
+            </button>
+            <button type="button" onClick={() => setShowHistory(!showHistory)} className="flex items-center gap-1 text-gray-600 dark:text-gray-300 font-bold hover:underline">
+              <FiClock /> {showHistory ? 'Hide history' : 'History'}
+            </button>
+          </div>
         </div>
-        <p className="text-gray-600 dark:text-gray-300 break-all">{app.email}</p>
-        <p className="text-gray-600 dark:text-gray-300">
-          Contact: {app.phone} | Parent: {app.parentPhone}
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {s.highestQualification || '-'} ({s.passingYear || '-'}), {s.percentage ?? '-'}%, backlogs {s.backlogs ?? 0}, gap {s.educationGap ?? 0} yrs
-        </p>
-        {s.skillsAcquired && <p className="text-xs text-gray-500 dark:text-gray-400">Skills: {s.skillsAcquired}</p>}
-        <p className="text-xs text-gray-400 mt-1">Applied on {new Date(app.createdAt).toLocaleDateString()}</p>
 
-        <div className="flex flex-wrap gap-3 mt-3">
-          <a href={app.linkedin} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">LinkedIn</a>
-          <a href={app.github} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 font-bold hover:underline">GitHub</a>
-          <button type="button" onClick={downloadResume} className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-bold hover:underline">
-            <FiFileText /> Resume
+        <div className="lg:w-72 space-y-2 shrink-0">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputStyles}>
+            {STATUSES.map((st) => (
+              <option key={st}>{st}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <input type="number" min="1" max="20" value={roundNo} onChange={(e) => setRoundNo(e.target.value)} title="Round number" className={`${inputStyles} w-20`} />
+            <input type="text" placeholder="Interview date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} className={inputStyles} />
+          </div>
+          <input
+            type="text"
+            placeholder="Message to student (emailed, optional)"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            maxLength={500}
+            className={inputStyles}
+          />
+          <input type="text" placeholder="Private remarks (admins only)" value={remarks} onChange={(e) => setRemarks(e.target.value)} className={inputStyles} />
+          <button type="button" onClick={save} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2 rounded text-sm">
+            {saving ? 'Saving...' : 'Save and notify student'}
           </button>
+          {note && <p className="text-xs text-gray-600 dark:text-gray-300">{note}</p>}
         </div>
       </div>
 
-      <div className="lg:w-72 space-y-2 shrink-0">
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputStyles}>
-          {STATUSES.map((st) => (
-            <option key={st}>{st}</option>
-          ))}
-        </select>
-        <div className="flex gap-2">
-          <input type="number" min="1" max="20" value={roundNo} onChange={(e) => setRoundNo(e.target.value)} title="Round number" className={`${inputStyles} w-20`} />
-          <input type="text" placeholder="Interview date" value={interviewDate} onChange={(e) => setInterviewDate(e.target.value)} className={inputStyles} />
-        </div>
-        <input type="text" placeholder="Remarks (only admins see this)" value={remarks} onChange={(e) => setRemarks(e.target.value)} className={inputStyles} />
-        <button type="button" onClick={save} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-2 rounded text-sm">
-          {saving ? 'Saving...' : 'Save changes'}
-        </button>
-      </div>
+      {showHistory && <HistoryTimeline history={app.history} createdAt={app.createdAt} />}
     </div>
   );
 };
@@ -248,6 +334,11 @@ const AdminApplications = () => {
   // ----- overview -----
   return (
     <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">All jobs combined</h2>
+        <OverallTotals rows={summary.byJob} />
+      </div>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2">
           {[['jobs', 'By job'], ['students', 'By student']].map(([key, label]) => (

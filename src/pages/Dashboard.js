@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { FiTrendingUp, FiAward, FiStar } from "react-icons/fi";
+import ApplicationsSummary from "../components/ApplicationsSummary";
 
 // --- NEW GOOGLE DRIVE THUMBNAIL CONVERTER ---
 const getDirectImageUrl = (url) => {
@@ -77,6 +78,9 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* MY JOB APPLICATIONS (shows only after the student has applied for a job) */}
+      <ApplicationsSummary />
 
       {/* MY LEARNING */}
       <section>

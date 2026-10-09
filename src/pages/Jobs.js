@@ -25,14 +25,14 @@ const Jobs = () => {
   };
 
   useEffect(() => {
-    // Fetch the jobs posted by the Admin
-    axios
-      .get(`${process.env.REACT_APP_API_URL}/api/jobs`, config)
-      .then((res) => setJobs(res.data))
-      .catch((err) =>
-        console.error("Error fetching jobs:", err)
-      );
-  }, [config]);
+  const token = localStorage.getItem("token");
+  axios
+    .get(`${process.env.REACT_APP_API_URL}/api/jobs`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    .then((res) => setJobs(res.data))
+    .catch((err) => console.error("Error fetching jobs:", err));
+}, []);
 
   // Filter jobs based on search input
   const filteredJobs = jobs.filter(
