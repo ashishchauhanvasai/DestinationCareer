@@ -1,3 +1,4 @@
+// Save as: src/pages/AssignmentBuilder.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,7 +11,10 @@ const emptyQuestion = () => ({
   qType: 'Descriptive', text: '', images: [], options: ['', ''], correctIndex: 0, explanation: '', marks: 1
 });
 const emptyTopic = () => ({ topicName: '', questions: [emptyQuestion()] });
-const emptyAssignment = () => ({ title: '', level: 'Beginner', description: '', topics: [emptyTopic()] });
+const emptyAssignment = () => ({
+  title: '', level: 'Beginner', description: '', topics: [emptyTopic()],
+  audience: 'everyone', batches: []
+});
 
 // Shrink big screenshots/diagrams before upload (white background so PNG transparency doesn't turn black)
 const compressImage = (file, maxW = 1400) =>
@@ -42,18 +46,36 @@ const AssignmentBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
-  const [a, setA] = useState(emptyAssignment());
+
+  // Admins and trainers both use this page. A trainer can only pick his own batches.
+  const isTrainer = localStorage.getItem('role') === 'trainer';
+  const home = isTrainer ? '/trainer/assignments' : '/admin?tab=Assignments';
+
+  const [a, setA] = useState(() => ({ ...emptyAssignment(), audience: isTrainer ? 'batches' : 'everyone' }));
+  const [batchList, setBatchList] = useState([]);
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    axios.get(`${BASE}/staff/batches`, cfg())
+      .then((r) => setBatchList(r.data.batches))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
     axios.get(`${BASE}/assignments/${id}`, cfg())
-      .then((r) => setA(r.data))
+      .then((r) => setA({ ...r.data, audience: r.data.audience || 'everyone', batches: (r.data.batches || []).map(String) }))
       .catch(() => alert('Could not load assignment'));
   }, [id, isEdit]);
 
   // Clone, change, save — keeps every handler tiny
   const mutate = (fn) => setA((prev) => { const n = JSON.parse(JSON.stringify(prev)); fn(n); return n; });
+
+  const toggleBatch = (batchId) => mutate((n) => {
+    const i = n.batches.indexOf(batchId);
+    if (i >= 0) n.batches.splice(i, 1);
+    else n.batches.push(batchId);
+  });
 
   const uploadImages = async (ti, qi, files) => {
     setUploading(true);
@@ -78,22 +100,28 @@ const AssignmentBuilder = () => {
         }
       }
     }
+    if ((isTrainer || a.audience === 'batches') && a.batches.length === 0) {
+      return alert('Choose at least one batch for this assignment.');
+    }
     try {
-      if (isEdit) await axios.put(`${BASE}/assignments/${id}`, a, cfg());
-      else await axios.post(`${BASE}/assignments`, a, cfg());
+      const payload = { ...a, audience: isTrainer ? 'batches' : a.audience, batchIds: a.batches };
+      if (isEdit) await axios.put(`${BASE}/assignments/${id}`, payload, cfg());
+      else await axios.post(`${BASE}/assignments`, payload, cfg());
       alert('Assignment saved!');
-      navigate('/admin');
+      navigate(home);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save');
     }
   };
+
+  const showBatchPicker = isTrainer || a.audience === 'batches';
 
   return (
     <form onSubmit={save} className="max-w-4xl mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-900">{isEdit ? 'Edit Assignment' : 'Assignment Builder'}</h1>
         <div className="flex gap-3">
-          <button type="button" onClick={() => navigate('/admin')} className="px-6 py-2 rounded-lg font-bold border border-gray-300 text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button type="button" onClick={() => navigate(home)} className="px-6 py-2 rounded-lg font-bold border border-gray-300 text-gray-600 hover:bg-gray-50">Cancel</button>
           <button type="submit" disabled={uploading} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2">
             <FiSave /> {uploading ? 'Uploading image...' : 'Save Assignment'}
           </button>
@@ -107,6 +135,49 @@ const AssignmentBuilder = () => {
           <option>Beginner</option><option>Intermediate</option><option>Advanced</option>
         </select>
         <textarea placeholder="Short description (optional)" value={a.description} onChange={(e) => mutate((n) => { n.description = e.target.value; })} className="w-full p-3 border rounded-lg bg-gray-50" rows="2" />
+      </div>
+
+      {/* WHO CAN SEE IT */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border mb-8 space-y-4">
+        <h2 className="font-bold text-lg">2. Who can see this assignment?</h2>
+
+        {!isTrainer && (
+          <div className="flex flex-wrap gap-6">
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+              <input type="radio" name="audience" checked={a.audience === 'everyone'} onChange={() => mutate((n) => { n.audience = 'everyone'; })} />
+              Everyone (all students)
+            </label>
+            <label className="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+              <input type="radio" name="audience" checked={a.audience === 'batches'} onChange={() => mutate((n) => { n.audience = 'batches'; })} />
+              Only selected batches
+            </label>
+          </div>
+        )}
+
+        {showBatchPicker && (
+          <div>
+            <p className="text-xs text-gray-500 mb-2">
+              {isTrainer
+                ? 'Only students of the batches you tick will see this assignment. A student joins a batch when they scan attendance.'
+                : 'Only students of the ticked batches will see it. A student joins a batch when they scan attendance.'}
+            </p>
+            {batchList.length === 0 ? (
+              <p className="text-sm text-gray-500">{isTrainer ? 'No batches are assigned to you yet.' : 'No batches created yet.'}</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 gap-2">
+                {batchList.map((b) => (
+                  <label key={b._id} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer text-sm ${a.batches.includes(String(b._id)) ? 'border-blue-500 bg-blue-50' : 'bg-gray-50'}`}>
+                    <input type="checkbox" checked={a.batches.includes(String(b._id))} onChange={() => toggleBatch(String(b._id))} />
+                    <span>
+                      <b>{b.subject}</b> <span className="text-xs text-gray-500">({b.batchCode})</span>
+                      {!isTrainer && b.trainerName && <span className="block text-xs text-gray-400">Trainer: {b.trainerName}</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {a.topics.map((t, ti) => (

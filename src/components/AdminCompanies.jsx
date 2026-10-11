@@ -1,3 +1,4 @@
+// Save as: src/components/AdminCompanies.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiTrash2, FiEdit, FiPlus, FiX } from 'react-icons/fi';
@@ -9,6 +10,9 @@ const emptyCompany = { name: '', tags: '' };
 const emptyQ = { title: '', difficulty: 'Easy', topic: '', description: '', answer: '' };
 
 const AdminCompanies = () => {
+  // Admins and trainers both use this page. Only admins can delete a whole company.
+  const canDeleteCompany = ['admin', 'superadmin'].includes(localStorage.getItem('role'));
+
   const [companies, setCompanies] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [cForm, setCForm] = useState(emptyCompany);
@@ -53,9 +57,13 @@ const AdminCompanies = () => {
 
   const deleteCompany = async (id) => {
     if (!window.confirm('Delete this company and all its questions?')) return;
-    await axios.delete(`${API}/${id}`, cfg());
-    if (selectedId === id) setSelectedId(null);
-    load();
+    try {
+      await axios.delete(`${API}/${id}`, cfg());
+      if (selectedId === id) setSelectedId(null);
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not delete the company');
+    }
   };
 
   // ---- Questions ----
@@ -85,8 +93,12 @@ const AdminCompanies = () => {
 
   const deleteQuestion = async (qid) => {
     if (!window.confirm('Delete this question?')) return;
-    await axios.delete(`${API}/${selectedId}/questions/${qid}`, cfg());
-    load();
+    try {
+      await axios.delete(`${API}/${selectedId}/questions/${qid}`, cfg());
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not delete the question');
+    }
   };
 
   return (
@@ -117,7 +129,9 @@ const AdminCompanies = () => {
               </div>
               <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => editCompany(c)} className="text-blue-500 p-1"><FiEdit size={16} /></button>
-                <button onClick={() => deleteCompany(c._id)} className="text-red-500 p-1"><FiTrash2 size={16} /></button>
+                {canDeleteCompany && (
+                  <button onClick={() => deleteCompany(c._id)} className="text-red-500 p-1"><FiTrash2 size={16} /></button>
+                )}
               </div>
             </div>
           ))}

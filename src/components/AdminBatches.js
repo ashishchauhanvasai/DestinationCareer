@@ -1,3 +1,4 @@
+// Save as: src/components/AdminBatches.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -6,7 +7,8 @@ import { FiPlus, FiTrash2, FiX, FiPrinter } from 'react-icons/fi';
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-const emptyTrainer = { name: '', email: '', password: '' };
+const DOMAINS = ['Java', 'Python', 'Data Analytics', 'Frontend'];
+const emptyTrainer = { name: '', email: '', password: '', domain: '' };
 const emptyBatch = { batchCode: '', subject: '', trainerId: '', venue: '', location: '', scheduledStartTime: '', scheduledEndTime: '', durationMinutes: 60, expectedStrength: '' };
 
 const AdminBatches = () => {
@@ -18,7 +20,7 @@ const AdminBatches = () => {
 
   const load = async () => {
     try {
-      const [t, b] = await Promise.all([axios.get(`${API}/trainers`, cfg()), axios.get(`${API}/batches`, cfg())]);
+      const [t, b] = await Promise.all([axios.get(`${API}/trainers/overview`, cfg()), axios.get(`${API}/batches`, cfg())]);
       setTrainers(t.data); setBatches(b.data);
     } catch (e) { console.error(e); }
   };
@@ -27,11 +29,20 @@ const AdminBatches = () => {
   const addTrainer = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/trainers`, tForm, cfg());
+      const { domain, ...account } = tForm;
+      const created = await axios.post(`${API}/trainers`, account, cfg());
+      if (domain) await axios.put(`${API}/trainers/${created.data._id}/domain`, { domain }, cfg());
       setTForm(emptyTrainer);
       load();
       alert('Trainer account created. Share these login details with them.');
     } catch (err) { alert(err.response?.data?.message || 'Failed to add trainer'); }
+  };
+
+  const changeDomain = async (trainerId, domain) => {
+    try {
+      await axios.put(`${API}/trainers/${trainerId}/domain`, { domain }, cfg());
+      load();
+    } catch (err) { alert(err.response?.data?.message || 'Could not change the domain'); }
   };
 
   const addBatch = async (e) => {
@@ -62,16 +73,26 @@ const AdminBatches = () => {
           <input required placeholder="Full name" value={tForm.name} onChange={(e) => setTForm({ ...tForm, name: e.target.value })} className="w-full p-2 border rounded" />
           <input required type="email" placeholder="Email" value={tForm.email} onChange={(e) => setTForm({ ...tForm, email: e.target.value })} className="w-full p-2 border rounded" />
           <input required type="text" placeholder="Password (share this with them)" value={tForm.password} onChange={(e) => setTForm({ ...tForm, password: e.target.value })} className="w-full p-2 border rounded" />
+          <select value={tForm.domain} onChange={(e) => setTForm({ ...tForm, domain: e.target.value })} className="w-full p-2 border rounded text-sm">
+            <option value="">Domain (decides which top performers they manage)</option>
+            {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
+          </select>
           <button className="w-full bg-blue-600 text-white p-2 rounded font-bold flex items-center justify-center gap-2"><FiPlus /> Add Trainer</button>
         </form>
 
-        <div className="bg-white rounded-2xl shadow-sm border divide-y max-h-[260px] overflow-y-auto">
+        <div className="bg-white rounded-2xl shadow-sm border divide-y max-h-[320px] overflow-y-auto">
           <div className="p-4 bg-gray-50 font-bold rounded-t-2xl">Trainers ({trainers.length})</div>
           {trainers.length === 0 && <p className="p-6 text-center text-gray-500 text-sm">No trainers added yet.</p>}
           {trainers.map((t) => (
-            <div key={t._id} className="p-4 text-sm">
-              <p className="font-semibold">{t.name}</p>
-              <p className="text-xs text-gray-500">{t.email}</p>
+            <div key={t._id} className="p-4 text-sm flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold">{t.name}</p>
+                <p className="text-xs text-gray-500 truncate">{t.email}</p>
+              </div>
+              <select value={t.domain || ''} onChange={(e) => changeDomain(t._id, e.target.value)} className="p-1 border rounded text-xs" title="Trainer domain">
+                <option value="">No domain</option>
+                {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
             </div>
           ))}
         </div>

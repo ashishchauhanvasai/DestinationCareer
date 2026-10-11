@@ -1,5 +1,3 @@
-
-
 const LANG_ALIASES = {
   java: 'java',
   python: 'python',

@@ -1,3 +1,4 @@
+// Save as: src/components/AdminAssignments.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -38,6 +39,11 @@ const GradeRow = ({ ans, onSaved }) => {
 };
 
 const AdminAssignments = () => {
+  // Admins and trainers use this same component; the links differ by role.
+  const isTrainer = localStorage.getItem('role') === 'trainer';
+  const addLink = isTrainer ? '/trainer/add-assignment' : '/add-assignment';
+  const editLink = (id) => (isTrainer ? `/trainer/edit-assignment/${id}` : `/edit-assignment/${id}`);
+
   const [list, setList] = useState([]);
   const [review, setReview] = useState(null); // { id, title, answers }
 
@@ -51,14 +57,16 @@ const AdminAssignments = () => {
     try {
       const r = await axios.get(`${BASE}/assignments/${id}/review`, cfg());
       setReview({ id, ...r.data });
-    } catch { alert('Could not load answers'); }
+    } catch (err) { alert(err.response?.data?.message || 'Could not load answers'); }
   };
 
   const del = async (id) => {
     if (!window.confirm('Delete this assignment, its images and all student answers?')) return;
-    await axios.delete(`${BASE}/assignments/${id}`, cfg());
-    if (review?.id === id) setReview(null);
-    load();
+    try {
+      await axios.delete(`${BASE}/assignments/${id}`, cfg());
+      if (review?.id === id) setReview(null);
+      load();
+    } catch (err) { alert(err.response?.data?.message || 'Could not delete'); }
   };
 
   // Per-student summary from the answers
@@ -75,26 +83,41 @@ const AdminAssignments = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">All Assignments</h2>
-        <Link to="/add-assignment" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700"><FiPlus size={18} /> Add Assignment</Link>
+        <h2 className="text-xl font-bold text-gray-800 dark:text-white">{isTrainer ? 'My Assignments' : 'All Assignments'}</h2>
+        <Link to={addLink} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-blue-700"><FiPlus size={18} /> Add Assignment</Link>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
         <table className="w-full text-left">
           <thead className="bg-gray-50 text-gray-500 text-sm border-b">
-            <tr><th className="p-4">Title</th><th className="p-4 text-center">Topics / Questions</th><th className="p-4 text-center">Total marks</th><th className="p-4 text-center">Actions</th></tr>
+            <tr>
+              <th className="p-4">Title</th>
+              <th className="p-4">For</th>
+              {!isTrainer && <th className="p-4">Created by</th>}
+              <th className="p-4 text-center">Topics / Questions</th>
+              <th className="p-4 text-center">Total marks</th>
+              <th className="p-4 text-center">Actions</th>
+            </tr>
           </thead>
           <tbody className="divide-y">
-            {list.length === 0 && <tr><td colSpan="4" className="p-8 text-center text-gray-500">No assignments yet.</td></tr>}
+            {list.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-500">No assignments yet.</td></tr>}
             {list.map((a) => (
               <tr key={a._id}>
                 <td className="p-4 font-semibold text-gray-800">{a.title} <span className="text-xs text-gray-400">({a.level})</span></td>
+                <td className="p-4 text-sm">
+                  {a.audience === 'batches' ? (
+                    <span className="text-purple-700">{a.batchLabels.length ? a.batchLabels.join(', ') : 'Selected batches'}</span>
+                  ) : (
+                    <span className="text-green-700 font-semibold">Everyone</span>
+                  )}
+                </td>
+                {!isTrainer && <td className="p-4 text-sm text-gray-500">{a.createdByName || 'Admin'}</td>}
                 <td className="p-4 text-center text-sm text-gray-500">{a.modules} topics • {a.questions} questions</td>
                 <td className="p-4 text-center text-sm">{a.totalMarks}</td>
                 <td className="p-4">
                   <div className="flex justify-center gap-2">
                     <button onClick={() => openReview(a._id)} className="text-green-600 p-2" title="Review student answers"><FiEye size={18} /></button>
-                    <Link to={`/edit-assignment/${a._id}`} className="text-blue-500 p-2" title="Edit"><FiEdit size={18} /></Link>
+                    <Link to={editLink(a._id)} className="text-blue-500 p-2" title="Edit"><FiEdit size={18} /></Link>
                     <button onClick={() => del(a._id)} className="text-red-500 p-2" title="Delete"><FiTrash2 size={18} /></button>
                   </div>
                 </td>
