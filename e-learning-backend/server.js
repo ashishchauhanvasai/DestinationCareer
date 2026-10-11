@@ -99,11 +99,16 @@ const userSchema = new mongoose.Schema({
   // --- Flag to lock profile after first edit ---
   profileLocked: { type: Boolean, default: false },
 
-  // --- NEW: SINGLE DEVICE BINDING ---
-  allowedDeviceId: { type: String, default: null }, // The authorized device
-  pendingDeviceId: { type: String, default: null }, // The new device waiting for approval
-  deviceChangeRequested: { type: Boolean, default: false }, // Flag to alert admin
-  tokenVersion: { type: Number, default: 0 }, // Used to instantly log out old devices
+
+  // --- STRICT 1 DESKTOP + 1 MOBILE BINDING ---
+  allowedDesktopId: { type: String, default: null },
+  pendingDesktopId: { type: String, default: null },
+  desktopChangeRequested: { type: Boolean, default: false },
+  allowedMobileId: { type: String, default: null },
+  pendingMobileId: { type: String, default: null },
+  mobileChangeRequested: { type: Boolean, default: false },
+  
+  tokenVersion: { type: Number, default: 0 },
 
   // trainers only: the top-performer category he can manage
   domain: { type: String, enum: ['', 'Java', 'Python', 'Data Analytics', 'Frontend'], default: '' }
@@ -286,43 +291,122 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+
+
+
+
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password, deviceId } = req.body; // NEW: extract deviceId
-    
+    const { email, password } = req.body;
+
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+    if (!user) {
+      return res.status(400).json({
+        message: 'Invalid credentials'
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
-    if (user.status === 'pending') return res.status(403).json({ message: 'Pending verification.' });
-    if (user.status === 'rejected') return res.status(403).json({ message: 'Registration declined.' });
+    if (!isMatch) {
+      return res.status(400).json({
+        message: 'Invalid credentials'
+      });
+    }
 
-    // --- NEW: DEVICE BINDING LOGIC (For Students Only) ---
+    if (user.status === 'pending') {
+      return res.status(403).json({
+        message: 'Pending verification.'
+      });
+    }
+
+    if (user.status === 'rejected') {
+      return res.status(403).json({
+        message: 'Registration declined.'
+      });
+    }
+
+    // --- DEVICE BINDING LOGIC (For Students Only) ---
     if (user.role === 'student') {
-      if (!deviceId) return res.status(400).json({ message: 'Device identification missing.' });
+      const { deviceId, deviceType } = req.body;
 
-      if (!user.allowedDeviceId) {
-        // First ever login: bind this device automatically
-        user.allowedDeviceId = deviceId;
-        await user.save();
-      } else if (user.allowedDeviceId !== deviceId) {
-        // Different device detected! Block login and alert admin.
-        user.pendingDeviceId = deviceId;
-        user.deviceChangeRequested = true;
-        await user.save();
-        return res.status(403).json({ message: 'New device detected. Approval requested from your admin. Please try again later.' });
+      if (!deviceId || !deviceType) {
+        return res.status(400).json({
+          message: 'Device identification or type missing.'
+        });
+      }
+
+      if (deviceType === 'desktop') {
+
+        if (!user.allowedDesktopId) {
+          // First ever desktop login: bind automatically
+          user.allowedDesktopId = deviceId;
+          await user.save();
+
+        } else if (user.allowedDesktopId !== deviceId) {
+          // Different desktop detected: block and alert admin
+          user.pendingDesktopId = deviceId;
+          user.desktopChangeRequested = true;
+          await user.save();
+
+          return res.status(403).json({
+            message: 'New computer detected. Approval requested from your admin. Please try again later.'
+          });
+        }
+
+      } else if (deviceType === 'mobile') {
+
+        if (!user.allowedMobileId) {
+          // First ever mobile login: bind automatically
+          user.allowedMobileId = deviceId;
+          await user.save();
+
+        } else if (user.allowedMobileId !== deviceId) {
+          // Different mobile detected: block and alert admin
+          user.pendingMobileId = deviceId;
+          user.mobileChangeRequested = true;
+          await user.save();
+
+          return res.status(403).json({
+            message: 'New mobile phone detected. Approval requested from your admin. Please try again later.'
+          });
+        }
+
+      } else {
+        return res.status(400).json({
+          message: 'Invalid device type. Use desktop or mobile.'
+        });
       }
     }
 
-    // Include the tokenVersion in the JWT payload
-    const token = jwt.sign({ id: user._id, role: user.role, version: user.tokenVersion }, JWT_SECRET, { expiresIn: '4h' });
-    res.json({ message: 'Login successful', role: user.role, token, userId: user._id });
+    // --- JWT TOKEN GENERATION ---
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+        version: user.tokenVersion
+      },
+      JWT_SECRET,
+      {
+        expiresIn: '4h'
+      }
+    );
+
+    res.json({
+      message: 'Login successful',
+      role: user.role,
+      token,
+      userId: user._id
+    });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
+
 
 
 
@@ -334,20 +418,57 @@ app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Swap the pending device to allowed
-    user.allowedDeviceId = user.pendingDeviceId;
-    user.pendingDeviceId = null;
-    user.deviceChangeRequested = false;
+    let deviceApproved = false;
+
+    // Check if there is a pending desktop request
+    if (user.desktopChangeRequested) {
+      user.allowedDesktopId = user.pendingDesktopId;
+      user.pendingDesktopId = null;
+      user.desktopChangeRequested = false;
+      deviceApproved = true;
+    }
     
-    // CRITICAL: Increment token version to instantly log out the old device
-    user.tokenVersion += 1; 
-    
-    await user.save();
-    res.json({ message: 'New device approved. Old device has been logged out.' });
+    // Check if there is a pending mobile request
+    if (user.mobileChangeRequested) {
+      user.allowedMobileId = user.pendingMobileId;
+      user.pendingMobileId = null;
+      user.mobileChangeRequested = false;
+      deviceApproved = true;
+    }
+
+    if (deviceApproved) {
+      // Increment token version to log out the old device immediately
+      user.tokenVersion += 1; 
+      await user.save();
+      res.json({ message: 'New device approved. Old device has been logged out.' });
+    } else {
+      res.status(400).json({ message: 'No pending device requests found for this user.' });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+// app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
+//   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
+  
+//   try {
+//     const user = await User.findById(req.params.id);
+//     if (!user) return res.status(404).json({ message: 'User not found' });
+
+//     // Swap the pending device to allowed
+//     user.allowedDeviceId = user.pendingDeviceId;
+//     user.pendingDeviceId = null;
+//     user.deviceChangeRequested = false;
+    
+//     // CRITICAL: Increment token version to instantly log out the old device
+//     user.tokenVersion += 1; 
+    
+//     await user.save();
+//     res.json({ message: 'New device approved. Old device has been logged out.' });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // --- Course Routes ---
 app.get('/api/courses', verifyToken, async (req, res) => {

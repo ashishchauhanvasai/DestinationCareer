@@ -11,9 +11,17 @@ const Navbar = () => {
 
   const toggleDropdown = () => setDropdownVisible(!dropdownVisible);
 
+  // ==========================================
+  // UPDATED LOGOUT FUNCTION
+  // ==========================================
   const handleLogout = () => {
     setIsLoggedIn(false);
-    localStorage.clear();
+    
+    // Only remove auth keys, keep deviceId intact!
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('isLoggedIn');
+    
     setDropdownVisible(false);
     navigate('/'); // redirect to home
   };
@@ -27,12 +35,12 @@ const Navbar = () => {
         <Link to="/">Home</Link>
         <Link to="/courses">Courses</Link>
         <Link to="/about">About</Link>
-        <Link to="/career">Career</Link> {/* NEW: Visible to all */}
+        <Link to="/career">Career</Link>
 
         {isLoggedIn && userRole === 'admin' && (
           <>
             <Link to="/add-course">Add Course</Link>
-            <Link to="/post-job">Post Job</Link> {/* NEW: Admin only */}
+            <Link to="/post-job">Post Job</Link>
           </>
         )}
 

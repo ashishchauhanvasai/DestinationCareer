@@ -16,16 +16,12 @@ const LANG_ALIASES = {
 const langId = (s) => LANG_ALIASES[(s || '').trim().toLowerCase()] || null;
 // the only languages students can use
 const ALLOWED_LANGS = ['java', 'python', 'javascript'];
-
-
 const FENCE = /^\s*(?:```+|~~~+)\s*(\S*)/;
-
 // Used to recover when an author forgets to close a code fence.
 const KNOWN_H2 =
   /^##\s+(problem statement|statement|description|difficulty|points|marks|time limit|memory limit|test cases?|starter code|constraints|examples?)\s*$/i;
 const LANG_H3 = /^###\s+(java|python|py|javascript|js|c\+\+|cpp|c|c#|csharp)\s*$/i;
 const STARTER_RE = /starter|boilerplate|template/i;
-
 // ---- function signature helpers ----
 const TYPE_ALIASES = {
   int: 'int', integer: 'int', long: 'long', double: 'double', float: 'double',
@@ -34,7 +30,6 @@ const TYPE_ALIASES = {
   'string[]': 'String[]', 'int[][]': 'int[][]',
 };
 const normType = (t) => TYPE_ALIASES[(t || '').replace(/[`\s]/g, '').toLowerCase()] || null;
-
 /** Reads:   Name: twoSum / Returns: int[] / Parameters: / - nums: int[] / - target: int */
 function parseSignature(lines, warnings) {
   const out = { mode: 'function', functionName: '', returnType: '', params: [] };

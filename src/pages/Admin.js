@@ -868,7 +868,7 @@ const Admin = () => {
           </div>
         )}
 
-       {/* Approvals */}
+        {/* Approvals */}
         {activeTab === "Approvals" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 overflow-hidden mt-4 transition-colors">
             <div className="p-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
@@ -884,7 +884,7 @@ const Admin = () => {
             ) : (
               /* FIX: Added this scrollable wrapper */
               <div className="overflow-x-auto w-full custom-scrollbar">
-                {/* FIX: Added whitespace-nowrap so text doesn't squish */ }
+                {/* FIX: Added whitespace-nowrap so text doesn't squish */}
                 <table className="w-full text-left whitespace-nowrap">
                   <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 text-sm border-b dark:border-slate-700">
                     <tr>
@@ -1266,9 +1266,7 @@ const Admin = () => {
               </button>
             </form>
 
-
             <div className="lg:col-span-1 space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
-              
               {/* UPDATED HEADER: Single button next to the title */}
               <div className="sticky top-0 bg-gray-50 dark:bg-slate-900 z-10 pt-2 pb-2 border-b dark:border-slate-700 mb-4 transition-colors flex justify-between items-center">
                 <h3 className="font-bold text-lg text-gray-800 dark:text-white">
@@ -1328,11 +1326,9 @@ const Admin = () => {
                 </div>
               ))}
             </div>
-
-            
           </div>
         )}
-        
+
         {/* Student Profiles Edit Tab */}
         {activeTab === "Student Profiles" && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
@@ -1576,7 +1572,6 @@ const Admin = () => {
         {activeTab === "Students by Batch" && <StaffBatchTracker />}
 
         {activeTab === "Coding Tests" && <AdminTests />}
-
       </div>
     </div>
   );

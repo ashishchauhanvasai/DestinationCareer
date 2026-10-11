@@ -1,127 +1,16 @@
-// import React, { useState } from 'react';
-// import axios from 'axios';
-// import { Link, useNavigate } from 'react-router-dom';
-// import { FiLock } from 'react-icons/fi';
-
-// const Login = () => {
-//   const [form, setForm] = useState({ email: '', password: '' });
-//   const [error, setError] = useState('');
-//   const [isPending, setIsPending] = useState(false);
-//   const navigate = useNavigate();
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     setError('');
-//     setIsPending(false);
-    
-//     try {
-//       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, form);
-      
-//       // If approved, store credentials
-//       localStorage.setItem('token', res.data.token);
-//       localStorage.setItem('role', res.data.role);
-//       localStorage.setItem('isLoggedIn', 'true'); // Kept for your legacy components
-      
-//       // Route based on role
-//      if (res.data.role === 'admin' || res.data.role === 'superadmin') {
-//   navigate('/admin');
-// } else if (res.data.role === 'trainer') {
-//   navigate('/trainer');
-// } else {
-//   navigate('/');
-// }
-//     } catch (err) {
-//       const errorMessage = err.response?.data?.message || 'Login failed';
-      
-//       // Check if the specific error is because the account is pending approval
-//       if (err.response?.status === 403 && errorMessage.toLowerCase().includes('pending')) {
-//         setIsPending(true); 
-//       }
-      
-//       setError(errorMessage);
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-//       <div className="max-w-md w-full bg-white rounded-2xl shadow-lg border p-8">
-//         <div className="text-center mb-8">
-//           <h1 className="text-3xl font-bold text-blue-600 mb-2">Destination Career</h1>
-//           <p className="text-gray-500">Welcome back! Please enter your details.</p>
-//         </div>
-//         {error && (
-//           <div className={`p-4 rounded-lg mb-6 flex items-start gap-3 text-sm font-medium border ${
-//             isPending 
-//               ? 'bg-orange-50 text-orange-800 border-orange-200' 
-//               : 'bg-red-50 text-red-700 border-red-200'
-//           }`}>
-//              <FiLock className="mt-0.5 shrink-0" size={18} />
-//              <span>{error}</span>
-//           </div>
-//         )}
-//         <form onSubmit={handleSubmit} className="space-y-5">
-//           <div>
-//             <label className="block text-sm font-bold text-gray-700 mb-1">Email</label>
-//             <input 
-//               type="email" 
-//               required 
-//               value={form.email} 
-//               onChange={(e) => setForm({...form, email: e.target.value})} 
-//               className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-//             />
-//           </div>
-//           <div>
-//             <label className="block text-sm font-bold text-gray-700 mb-1">Password</label>
-//             <input 
-//               type="password" 
-//               required 
-//               value={form.password} 
-//               onChange={(e) => setForm({...form, password: e.target.value})} 
-//               className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-//             />
-//           </div>
-//           <button 
-//             type="submit" 
-//             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors mt-2"
-//           >
-//             Sign In
-//           </button>
-//         </form>
-
-//         <p className="text-center text-sm text-gray-500 mt-6">
-//           Don't have an account? <Link to="/register" className="font-bold text-blue-600 hover:underline">Register</Link>
-//         </p>
-//       </div>
-//     </div>
-//   );
-// };
-// export default Login;
-
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiLock, FiCheckCircle } from 'react-icons/fi';
+// NEW: Import device detection
+import { isMobile } from 'react-device-detect'; 
 
 const Login = () => {
-  // -----------------------------
-  // LOGIN STATE
-  // -----------------------------
-  const [form, setForm] = useState({
-    email: '',
-    password: ''
-  });
-
-  // -----------------------------
-  // FORGOT PASSWORD STATE
-  // -----------------------------
+  const [form, setForm] = useState({ email: '', password: '' });
   const [view, setView] = useState('login');
   const [resetEmail, setResetEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
-
-  // -----------------------------
-  // UI STATE
-  // -----------------------------
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isPending, setIsPending] = useState(false);
@@ -129,25 +18,25 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  // =========================================================
-  // STANDARD LOGIN
-  // =========================================================
-  // --- 1. Standard Login Handler ---
   const handleLogin = async (e) => {
     e.preventDefault();
     setError(''); setSuccess(''); setIsPending(false); setIsLoading(true);
     
-    // --- NEW: Generate or retrieve a unique Device ID ---
+    // Retrieve or create deviceId
     let deviceId = localStorage.getItem('deviceId');
     if (!deviceId) {
-      // Create a random unique ID for this browser and save it permanently
       deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
       localStorage.setItem('deviceId', deviceId);
     }
     
     try {
-      // Send the deviceId along with email and password
-      const payload = { ...form, deviceId };
+      // NEW: Add deviceType to the payload
+      const payload = { 
+        ...form, 
+        deviceId,
+        deviceType: isMobile ? 'mobile' : 'desktop' 
+      };
+      
       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, payload);
       
       localStorage.setItem('token', res.data.token);
@@ -163,7 +52,6 @@ const Login = () => {
       }
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed';
-      // If pending registration OR pending device approval
       if (err.response?.status === 403 && (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('device'))) {
         setIsPending(true); 
       }
@@ -172,6 +60,85 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  // ... (The rest of your functions: handleRequestOTP, handleVerifyOTP, handleResetPassword, clearMessages remain exactly the same) ...
+
+
+// import React, { useState } from 'react';
+// import axios from 'axios';
+// import { Link, useNavigate } from 'react-router-dom';
+// import { FiLock, FiCheckCircle } from 'react-icons/fi';
+
+// const Login = () => {
+//   // -----------------------------
+//   // LOGIN STATE
+//   // -----------------------------
+//   const [form, setForm] = useState({
+//     email: '',
+//     password: ''
+//   });
+
+//   // -----------------------------
+//   // FORGOT PASSWORD STATE
+//   // -----------------------------
+//   const [view, setView] = useState('login');
+//   const [resetEmail, setResetEmail] = useState('');
+//   const [otp, setOtp] = useState('');
+//   const [newPassword, setNewPassword] = useState('');
+
+//   // -----------------------------
+//   // UI STATE
+//   // -----------------------------
+//   const [error, setError] = useState('');
+//   const [success, setSuccess] = useState('');
+//   const [isPending, setIsPending] = useState(false);
+//   const [isLoading, setIsLoading] = useState(false);
+
+//   const navigate = useNavigate();
+
+//   // =========================================================
+//   // STANDARD LOGIN
+//   // =========================================================
+//   // --- 1. Standard Login Handler ---
+//   const handleLogin = async (e) => {
+//     e.preventDefault();
+//     setError(''); setSuccess(''); setIsPending(false); setIsLoading(true);
+    
+//     // --- NEW: Generate or retrieve a unique Device ID ---
+//     let deviceId = localStorage.getItem('deviceId');
+//     if (!deviceId) {
+//       // Create a random unique ID for this browser and save it permanently
+//       deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
+//       localStorage.setItem('deviceId', deviceId);
+//     }
+    
+//     try {
+//       // Send the deviceId along with email and password
+//       const payload = { ...form, deviceId };
+//       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, payload);
+      
+//       localStorage.setItem('token', res.data.token);
+//       localStorage.setItem('role', res.data.role);
+//       localStorage.setItem('isLoggedIn', 'true');
+      
+//       if (res.data.role === 'admin' || res.data.role === 'superadmin') {
+//         navigate('/admin');
+//       } else if (res.data.role === 'trainer') {
+//         navigate('/trainer');
+//       } else {
+//         navigate('/');
+//       }
+//     } catch (err) {
+//       const errorMessage = err.response?.data?.message || 'Login failed';
+//       // If pending registration OR pending device approval
+//       if (err.response?.status === 403 && (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('device'))) {
+//         setIsPending(true); 
+//       }
+//       setError(errorMessage);
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
 
   // =========================================================
   // REQUEST OTP
