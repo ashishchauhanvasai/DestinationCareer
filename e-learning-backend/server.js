@@ -3834,7 +3834,13 @@ app.post('/api/attendance/mark', verifyToken, async (req, res) => {
     if (await Attendance.findOne({ session: session._id, student: req.user.id })) {
       return res.status(400).json({ message: 'You have already marked attendance for this class' });
     }
-    await Attendance.create({ session: session._id, student: req.user.id });
+        await Attendance.create({ session: session._id, student: req.user.id });
+    // the student joins this batch the first time they scan
+    await BatchMember.updateOne(
+      { batch: session.batch._id, student: req.user.id },
+      { $setOnInsert: { joinedAt: new Date() } },
+      { upsert: true }
+    );
     res.json({ message: `Attendance marked for ${session.batch.subject} (${session.batch.batchCode})` });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -4765,6 +4771,319 @@ app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
     await Job.findByIdAndDelete(req.params.id);
     res.json({ message: 'Job deleted successfully' });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ============================================================================
+// BATCH MEMBERS + STAFF TRACKING (admin / super admin / trainer)
+//
+// HOW TO USE
+//  1. Copy this whole file and paste it into server.js, just ABOVE the line  app.listen(port, ...)
+//  2. Make the ONE small edit in the "mark attendance" route (explained in my chat message)
+//  3. Restart the backend
+//
+// WHAT IT DOES
+//  - A student joins a batch automatically the first time they scan attendance for it.
+//    (Students who already scanned before are added automatically when the server starts.)
+//  - Admin / super admin see ALL batches and ALL students. A trainer sees only his own batches.
+// ============================================================================
+
+// ---------- Batch membership ----------
+const batchMemberSchema = new mongoose.Schema({
+  batch: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  joinedAt: { type: Date, default: Date.now }
+});
+batchMemberSchema.index({ batch: 1, student: 1 }, { unique: true });
+const BatchMember = mongoose.model('BatchMember', batchMemberSchema);
+
+// Safe to run on every start: adds a member for every (batch, student) pair that already has attendance.
+const backfillBatchMembers = async () => {
+  try {
+    const pairs = await Attendance.aggregate([
+      { $lookup: { from: ClassSession.collection.name, localField: 'session', foreignField: '_id', as: 's' } },
+      { $unwind: '$s' },
+      { $group: { _id: { batch: '$s.batch', student: '$student' }, joinedAt: { $min: '$markedAt' } } }
+    ]);
+    if (pairs.length) {
+      await BatchMember.bulkWrite(pairs.map((p) => ({
+        updateOne: {
+          filter: { batch: p._id.batch, student: p._id.student },
+          update: { $setOnInsert: { joinedAt: p.joinedAt } },
+          upsert: true
+        }
+      })));
+    }
+    console.log(`✅ Batch members checked (${pairs.length} batch/student pairs from attendance)`);
+  } catch (e) { console.error('Batch member backfill failed:', e); }
+};
+backfillBatchMembers();
+
+// ---------- Helpers ----------
+const isStaff = (req) => isAdminOrSuper(req) || isTrainer(req);
+const r1 = (n) => Math.round((n || 0) * 10) / 10;
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // a "mock day" is a calendar day in India time
+const istDay = (d) => new Date(new Date(d).getTime() + IST_OFFSET_MS).toISOString().slice(0, 10);
+
+// Returns the batch if this user may see it, otherwise sends the error and returns null.
+const getAccessibleBatch = async (req, res, batchId) => {
+  if (!mongoose.isValidObjectId(batchId)) { res.status(400).json({ message: 'Invalid batch id' }); return null; }
+  const batch = await Batch.findById(batchId);
+  if (!batch) { res.status(404).json({ message: 'Batch not found' }); return null; }
+  if (isTrainer(req) && String(batch.trainer) !== req.user.id) { res.status(403).json({ message: 'Not your batch' }); return null; }
+  return batch;
+};
+
+// ---------- 1. List of batches (admin: all, trainer: his own) ----------
+app.get('/api/staff/batches', verifyToken, async (req, res) => {
+  if (!isStaff(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const filter = isTrainer(req) ? { trainer: req.user.id } : {};
+    const batches = await Batch.find(filter).sort({ createdAt: -1 }).lean();
+    const ids = batches.map((b) => b._id);
+
+    const [members, sessions, mockRows] = await Promise.all([
+      BatchMember.aggregate([{ $match: { batch: { $in: ids } } }, { $group: { _id: '$batch', n: { $sum: 1 } } }]),
+      ClassSession.aggregate([{ $match: { batch: { $in: ids } } }, { $group: { _id: '$batch', n: { $sum: 1 } } }]),
+      MockRating.find({ batch: { $in: ids } }).select('batch createdAt').lean()
+    ]);
+    const toMap = (arr) => Object.fromEntries(arr.map((x) => [String(x._id), x.n]));
+    const memberMap = toMap(members);
+    const sessionMap = toMap(sessions);
+
+    const mockDays = {}; // batch -> set of days
+    mockRows.forEach((m) => {
+      const k = String(m.batch);
+      (mockDays[k] = mockDays[k] || new Set()).add(istDay(m.createdAt));
+    });
+
+    let unassignedCount = null;
+    if (isAdminOrSuper(req)) {
+      const memberIds = await BatchMember.distinct('student');
+      unassignedCount = await User.countDocuments({ role: 'student', _id: { $nin: memberIds } });
+    }
+
+    res.json({
+      unassignedCount,
+      batches: batches.map((b) => ({
+        _id: b._id, batchCode: b.batchCode, subject: b.subject, trainerName: b.trainerName, venue: b.venue,
+        studentCount: memberMap[String(b._id)] || 0,
+        classesTaken: sessionMap[String(b._id)] || 0,
+        mocksTaken: mockDays[String(b._id)] ? mockDays[String(b._id)].size : 0
+      }))
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ---------- 2. Students of one batch, with a short summary each ----------
+// :id can also be the word "unassigned" (admin only) = students who never scanned attendance
+app.get('/api/staff/batches/:id/students', verifyToken, async (req, res) => {
+  if (!isStaff(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    let batch = null;
+    let studentIds;
+    let totalClasses = 0;
+
+    if (req.params.id === 'unassigned') {
+      if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+      const memberIds = await BatchMember.distinct('student');
+      studentIds = await User.find({ role: 'student', _id: { $nin: memberIds } }).distinct('_id');
+    } else {
+      batch = await getAccessibleBatch(req, res, req.params.id);
+      if (!batch) return;
+      studentIds = await BatchMember.distinct('student', { batch: batch._id });
+      totalClasses = await ClassSession.countDocuments({ batch: batch._id });
+    }
+
+    const sessionIds = batch ? await ClassSession.distinct('_id', { batch: batch._id }) : [];
+    const mockMatch = batch ? { batch: batch._id, student: { $in: studentIds } } : { student: { $in: studentIds } };
+
+    const [students, attended, assignStats, mockStats] = await Promise.all([
+      User.find({ _id: { $in: studentIds } }).select('name email status').sort({ name: 1 }).lean(),
+      batch
+        ? Attendance.aggregate([
+            { $match: { session: { $in: sessionIds }, student: { $in: studentIds } } },
+            { $group: { _id: '$student', n: { $sum: 1 } } }
+          ])
+        : [],
+      AssignmentAnswer.aggregate([
+        { $match: { user: { $in: studentIds } } },
+        { $group: { _id: '$user', answered: { $sum: 1 }, marks: { $sum: '$marks' }, pending: { $sum: { $cond: ['$graded', 0, 1] } } } }
+      ]),
+      MockRating.aggregate([
+        { $match: mockMatch },
+        { $group: { _id: '$student', n: { $sum: 1 }, tech: { $avg: '$technicalRating' }, comm: { $avg: '$communicationRating' }, code: { $avg: '$codingRating' } } }
+      ])
+    ]);
+
+    const keyed = (arr) => Object.fromEntries(arr.map((x) => [String(x._id), x]));
+    const attMap = keyed(attended);
+    const asgMap = keyed(assignStats);
+    const mockMap = keyed(mockStats);
+
+    res.json({
+      batch: batch ? { _id: batch._id, subject: batch.subject, batchCode: batch.batchCode, trainerName: batch.trainerName } : null,
+      totalClasses,
+      students: students.map((s) => {
+        const k = String(s._id);
+        return {
+          _id: s._id, name: s.name, email: s.email, status: s.status,
+          attended: attMap[k]?.n || 0,
+          assignmentsAnswered: asgMap[k]?.answered || 0,
+          assignmentMarks: asgMap[k]?.marks || 0,
+          assignmentsPending: asgMap[k]?.pending || 0,
+          mocks: mockMap[k]?.n || 0,
+          avgTechnical: r1(mockMap[k]?.tech),
+          avgCommunication: r1(mockMap[k]?.comm),
+          avgCoding: r1(mockMap[k]?.code)
+        };
+      })
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ---------- 3. Mock history of one batch, grouped by date ----------
+app.get('/api/staff/batches/:id/mocks', verifyToken, async (req, res) => {
+  if (!isStaff(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const batch = await getAccessibleBatch(req, res, req.params.id);
+    if (!batch) return;
+
+    const ratings = await MockRating.find({ batch: batch._id })
+      .populate('student', 'name email')
+      .populate('trainer', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const byDay = new Map();
+    ratings.forEach((r) => {
+      const day = istDay(r.createdAt);
+      if (!byDay.has(day)) byDay.set(day, []);
+      byDay.get(day).push(r);
+    });
+
+    const avg = (list, key) => r1(list.reduce((s, x) => s + (x[key] || 0), 0) / (list.length || 1));
+    const rounds = [...byDay.entries()].map(([date, list]) => ({
+      date,
+      count: list.length,
+      avgTechnical: avg(list, 'technicalRating'),
+      avgCommunication: avg(list, 'communicationRating'),
+      avgCoding: avg(list, 'codingRating'),
+      ratings: list.map((r) => ({
+        _id: r._id,
+        studentName: r.student?.name || 'Deleted user',
+        studentEmail: r.student?.email || '',
+        trainerName: r.trainer?.name || '',
+        technicalRating: r.technicalRating,
+        communicationRating: r.communicationRating,
+        codingRating: r.codingRating,
+        remarks: r.remarks
+      }))
+    }));
+
+    res.json({
+      batch: { _id: batch._id, subject: batch.subject, batchCode: batch.batchCode },
+      totalMocks: rounds.length,
+      rounds
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ---------- 4. Full history of one student ----------
+// Admin: everything. Trainer: only students of his batches, and attendance/mocks only for his batches.
+app.get('/api/staff/students/:id/history', verifyToken, async (req, res) => {
+  if (!isStaff(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid student id' });
+    const student = await User.findOne({ _id: req.params.id, role: 'student' })
+      .select('name email status highestQualification passingYear percentage backlogs educationGap skillsAcquired')
+      .lean();
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+
+    let memberships = await BatchMember.find({ student: student._id })
+      .populate('batch', 'batchCode subject trainer trainerName')
+      .lean();
+    memberships = memberships.filter((m) => m.batch);
+
+    let allowed = null; // null = no restriction
+    if (isTrainer(req)) {
+      memberships = memberships.filter((m) => String(m.batch.trainer) === req.user.id);
+      if (memberships.length === 0) return res.status(403).json({ message: 'This student is not in your batches' });
+      allowed = new Set(memberships.map((m) => String(m.batch._id)));
+    }
+
+    // attendance
+    const attRows = await Attendance.find({ student: student._id })
+      .populate({ path: 'session', select: 'batch dateKey', populate: { path: 'batch', select: 'batchCode subject' } })
+      .sort({ markedAt: -1 })
+      .lean();
+    const attendance = attRows
+      .filter((r) => r.session && r.session.batch && (!allowed || allowed.has(String(r.session.batch._id))))
+      .map((r) => ({
+        date: r.session.dateKey, subject: r.session.batch.subject,
+        batchCode: r.session.batch.batchCode, batchId: String(r.session.batch._id), markedAt: r.markedAt
+      }));
+
+    const batches = await Promise.all(memberships.map(async (m) => ({
+      _id: m.batch._id, batchCode: m.batch.batchCode, subject: m.batch.subject,
+      trainerName: m.batch.trainerName, joinedAt: m.joinedAt,
+      attended: attendance.filter((a) => a.batchId === String(m.batch._id)).length,
+      totalClasses: await ClassSession.countDocuments({ batch: m.batch._id })
+    })));
+
+    // assignments
+    const [assignments, answers] = await Promise.all([
+      Assignment.find().select('title level topics').lean(),
+      AssignmentAnswer.find({ user: student._id }).lean()
+    ]);
+    const assignmentList = assignments.map((a) => {
+      const qs = a.topics.flatMap((t) => t.questions);
+      const mine = answers.filter((x) => String(x.assignment) === String(a._id));
+      return {
+        _id: a._id, title: a.title, level: a.level,
+        totalQuestions: qs.length,
+        totalMarks: qs.reduce((s, q) => s + (q.marks || 0), 0),
+        answered: mine.length,
+        marks: mine.reduce((s, x) => s + (x.marks || 0), 0),
+        pending: mine.filter((x) => !x.graded).length
+      };
+    });
+    const assignmentSummary = {
+      assigned: assignmentList.length,
+      attempted: assignmentList.filter((a) => a.answered > 0).length,
+      completed: assignmentList.filter((a) => a.totalQuestions > 0 && a.answered >= a.totalQuestions).length,
+      marks: assignmentList.reduce((s, a) => s + a.marks, 0),
+      totalMarks: assignmentList.reduce((s, a) => s + a.totalMarks, 0)
+    };
+
+    // mock ratings
+    const mockFilter = { student: student._id };
+    if (allowed) mockFilter.batch = { $in: memberships.map((m) => m.batch._id) };
+    const mockRows = await MockRating.find(mockFilter)
+      .populate('batch', 'subject batchCode')
+      .populate('trainer', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+    const mockAvg = (key) => r1(mockRows.reduce((s, x) => s + (x[key] || 0), 0) / (mockRows.length || 1));
+
+    res.json({
+      student,
+      batches,
+      attendance,
+      assignments: { summary: assignmentSummary, list: assignmentList },
+      mocks: {
+        count: mockRows.length,
+        avgTechnical: mockAvg('technicalRating'),
+        avgCommunication: mockAvg('communicationRating'),
+        avgCoding: mockAvg('codingRating'),
+        list: mockRows.map((m) => ({
+          _id: m._id, date: m.createdAt,
+          subject: m.batch?.subject, batchCode: m.batch?.batchCode, trainerName: m.trainer?.name || '',
+          technicalRating: m.technicalRating, communicationRating: m.communicationRating,
+          codingRating: m.codingRating, remarks: m.remarks
+        }))
+      }
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 

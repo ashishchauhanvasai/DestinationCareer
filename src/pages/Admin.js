@@ -7,6 +7,7 @@ import AdminTests from "../components/AdminTests";
 import AdminBatches from "../components/AdminBatches";
 import AdminAttendance from "../components/AdminAttendance";
 import AdminApplications from "../components/AdminApplications";
+import StaffBatchTracker from "../components/StaffBatchTracker";
 import AdminUsers from "../components/AdminUsers";
 
 import {
@@ -1571,6 +1572,8 @@ const Admin = () => {
         {activeTab === "Manage Users" && <AdminUsers />}
 
         {activeTab === "Applications" && <AdminApplications />}
+
+        {activeTab === "Students by Batch" && <StaffBatchTracker />}
 
         {activeTab === "Coding Tests" && <AdminTests />}
 

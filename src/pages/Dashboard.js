@@ -226,7 +226,6 @@ const Dashboard = () => {
 
               {/* PROFESSIONAL DETAILS SECTION */}
               <div className="px-6 py-5 border-b border-gray-100 dark:border-slate-700 relative bg-white dark:bg-slate-800 z-10 shadow-sm transition-colors flex flex-col justify-center">
-                
                 {/* Header: Name and Role */}
                 <div className="text-center mb-4">
                   <h4 className="font-extrabold text-gray-900 dark:text-white text-xl tracking-tight">{t.studentName}</h4>
