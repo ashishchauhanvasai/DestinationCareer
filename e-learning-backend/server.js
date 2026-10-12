@@ -495,22 +495,58 @@ app.post('/api/courses', verifyToken, async (req, res) => {
 });
 
 // NEW: UPDATE ROUTE (Needed for Editing)
+// NEW: UPDATE ROUTE (Editing Course + Auto-delete removed video doubts)
 app.put('/api/courses/:id', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
   try {
-    // FIX: { new: true } is deprecated in Mongoose, { returnDocument: 'after' } does the same thing
+    const oldCourse = await Course.findById(req.params.id);
     const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
+    
+    // --- NEW: Automatically delete doubts for videos that were removed during edit ---
+    if (oldCourse && updatedCourse) {
+       const oldVideoIds = oldCourse.topics.flatMap(t => t.videos.flatMap(v => [String(v._id), v.youtubeUrl]));
+       const newVideoIds = updatedCourse.topics.flatMap(t => t.videos.flatMap(v => [String(v._id), v.youtubeUrl]));
+       const removed = oldVideoIds.filter(id => !newVideoIds.includes(id));
+       if (removed.length > 0) {
+          await Doubt.deleteMany({ videoId: { $in: removed } });
+       }
+    }
+
     res.json({ message: 'Course updated', course: updatedCourse });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// NEW: DELETE ROUTE (Delete Course + Auto-delete ALL its doubts)
 app.delete('/api/courses/:id', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
   try {
-    await Course.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Course deleted successfully' });
+    const course = await Course.findById(req.params.id);
+    if (course) {
+      // Collect all video IDs and YouTube URLs attached to this course
+      const videoIds = course.topics.flatMap(t => t.videos.flatMap(v => [String(v._id), v.youtubeUrl]));
+      // Delete all doubts linked to any of these videos
+      await Doubt.deleteMany({ videoId: { $in: videoIds } });
+      await course.deleteOne();
+    }
+    res.json({ message: 'Course and related discussions deleted successfully' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// app.put('/api/courses/:id', verifyToken, async (req, res) => {
+//   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
+//   try {
+//     // FIX: { new: true } is deprecated in Mongoose, { returnDocument: 'after' } does the same thing
+//     const updatedCourse = await Course.findByIdAndUpdate(req.params.id, req.body, { returnDocument: 'after' });
+//     res.json({ message: 'Course updated', course: updatedCourse });
+//   } catch (err) { res.status(500).json({ error: err.message }); }
+// });
+
+// app.delete('/api/courses/:id', verifyToken, async (req, res) => {
+//   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
+//   try {
+//     await Course.findByIdAndDelete(req.params.id);
+//     res.json({ message: 'Course deleted successfully' });
+//   } catch (err) { res.status(500).json({ error: err.message }); }
+// });
 
 
 // 1. Fetch all jobs
@@ -760,7 +796,6 @@ app.put('/api/doubts/:id/replies/:replyId/correct', verifyToken, async (req, res
   if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Only trainers or admins can validate answers.' });
   }
-  
   try {
     const doubt = await Doubt.findById(req.params.id);  
     if (!doubt) return res.status(404).json({ message: 'Doubt thread not found' });
@@ -776,6 +811,18 @@ app.put('/api/doubts/:id/replies/:replyId/correct', verifyToken, async (req, res
     await doubt.populate('user', 'name role');
     await doubt.populate('replies.user', 'name role');
     res.json(doubt);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+// 5. Admin/Trainer deletes a doubt thread manually
+app.delete('/api/doubts/:id', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Only trainers or admins can delete doubts.' });
+  }
+  try {
+    await Doubt.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Doubt thread deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1518,6 +1565,30 @@ app.get('/api/batches/:id/students', verifyToken, async (req, res) => {
   const sessionIds = (await ClassSession.find({ batch: batch._id }).select('_id')).map((s) => s._id);
   const studentIds = await Attendance.find({ session: { $in: sessionIds } }).distinct('student');
   res.json(await User.find({ _id: { $in: studentIds } }).select('name email'));
+});
+// ---------- ADMIN: Move Student to Another Batch ----------
+app.put('/api/staff/batches/change-student', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
+  try {
+    const { studentId, oldBatchId, newBatchId } = req.body;
+    if (!studentId || !oldBatchId || !newBatchId) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    
+    // Remove from the old batch
+    await BatchMember.deleteOne({ student: studentId, batch: oldBatchId });
+    
+    // Add to the new batch
+    await BatchMember.updateOne(
+      { student: studentId, batch: newBatchId },
+      { $setOnInsert: { joinedAt: new Date() } },
+      { upsert: true }
+    );
+    
+    res.json({ message: 'Student successfully moved to the new batch' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // Trainer's past classes for a batch, with present/absent counts
