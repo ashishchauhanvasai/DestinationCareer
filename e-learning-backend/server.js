@@ -2853,13 +2853,55 @@ const requireTrainerDomain = async (req, res) => {
   return me.domain;
 };
 
+// =========================================================
+// TOP PERFORMERS API
+// =========================================================
 app.get('/api/trainer/performers', verifyToken, async (req, res) => {
-  if (!isTrainer(req)) return res.status(403).json({ message: 'Only trainers can use this' });
-  try {
-    const me = await User.findById(req.user.id).select('domain');
-    if (!me || !me.domain) return res.json({ domain: '', performers: [] });
-    res.json({ domain: me.domain, performers: await TopPerformer.find({ category: me.domain }).sort({ _id: -1 }) });
-  } catch (e) { res.status(500).json({ message: e.message }); }
+  if (req.user.role !== 'trainer') return res.status(403).json({ message: 'Only trainers can manage top performers' });
+  const trainer = await User.findById(req.user.id);
+  if (!trainer.domain) return res.json({ domain: '', performers: [] });
+
+  const performers = await TopPerformer.find({ category: trainer.domain }).sort({ createdAt: -1 });
+  res.json({ domain: trainer.domain, performers });
+});
+
+// NEW: Search Students for Top Performers dropdown
+app.get('/api/trainer/search-students', verifyToken, async (req, res) => {
+  if (req.user.role !== 'trainer') return res.status(403).json({ message: 'Access denied' });
+  
+  const { q } = req.query;
+  if (!q) return res.json([]);
+
+  const students = await User.find({ 
+    role: 'student',
+    $or: [
+      { name: { $regex: q, $options: 'i' } },
+      { email: { $regex: q, $options: 'i' } }
+    ]
+  }).select('name email profilePic').limit(10);
+  
+  res.json(students);
+});
+
+app.post('/api/trainer/performers', verifyToken, async (req, res) => {
+  if (req.user.role !== 'trainer') return res.status(403).json({ message: 'Access denied' });
+  const trainer = await User.findById(req.user.id);
+  if (!trainer.domain) return res.status(400).json({ message: 'Your domain is not set' });
+
+  const { studentName, metric, imageUrl } = req.body;
+  const p = new TopPerformer({ category: trainer.domain, studentName, metric, imageUrl, addedBy: req.user.id });
+  await p.save();
+  res.json(p);
+});
+
+app.put('/api/trainer/performers/:id', verifyToken, async (req, res) => {
+  const p = await TopPerformer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(p);
+});
+
+app.delete('/api/trainer/performers/:id', verifyToken, async (req, res) => {
+  await TopPerformer.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Deleted' });
 });
 
 app.post('/api/trainer/performers', verifyToken, async (req, res) => {
