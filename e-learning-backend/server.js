@@ -3505,9 +3505,12 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const crypto = require('crypto');   
+const multer = require('multer');
 const app = express();
 const port = process.env.PORT || 5000;
 const axios = require('axios');
+
+
 
 // FIX: the JWT secret now comes from .env (falls back to the old value so logged-in users are not kicked out)
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
