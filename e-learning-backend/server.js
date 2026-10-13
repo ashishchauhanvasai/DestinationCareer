@@ -3171,27 +3171,88 @@ app.put('/api/users/profile-pic', verifyToken, async (req, res) => {
 // =========================================================
 // 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer)
 // =========================================================
+// =========================================================
+// 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer) - FIXED
+// =========================================================
 app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res) => {
   if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  
   try {
     const batchId = req.params.id;
-    // Get all sessions (dates) for this batch
-    const sessions = await ClassSession.find({ batch: batchId }).sort({ date: 1, startTime: 1 }).lean();
     
-    // Get all students in this batch
+    // 1. Get all students that belong to this batch
     const studentIds = await BatchMember.distinct('student', { batch: batchId });
-    const students = await User.find({ _id: { $in: studentIds } }).select('name email profilePic').sort({ name: 1 }).lean();
+    const students = await User.find({ _id: { $in: studentIds } })
+      .select('name email profilePic')
+      .sort({ name: 1 })
+      .lean();
     
-    // Get all attendance records for this batch
+    // 2. Get ALL attendance records for this batch (purani + nayi)
     const attendanceRecords = await Attendance.find({ batch: batchId }).lean();
     
-    // Create a map of "studentId_sessionId" : true
+    // 3. Extract unique dates from attendance to form our "Columns/Sessions"
+    // Since older records might just have 'date' string and not a formal 'session' reference
+    const uniqueDates = new Set();
+    attendanceRecords.forEach(a => {
+        if(a.date) uniqueDates.add(a.date);
+    });
+
+    // Create a structured list of sessions based on these dates
+    let sessions = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b)).map(dateStr => ({
+        _id: dateStr, // using date string as ID for the matrix
+        date: dateStr
+    }));
+
+    // If no attendance ever marked, maybe show at least today? Or leave empty.
+    if (sessions.length === 0) {
+        sessions = []; 
+    }
+    
+    // 4. Create the mapping: "studentId_dateString" : true
     const attMap = {};
     attendanceRecords.forEach(a => {
-      attMap[`${a.student}_${a.session}`] = true;
+      if(a.date && a.student) {
+          attMap[`${a.student}_${a.date}`] = true;
+      }
     });
 
     res.json({ sessions, students, attMap });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================
+// 3. TOGGLE ATTENDANCE MANUAL CHECKBOX (Admin/Trainer) - FIXED
+// =========================================================
+app.post('/api/staff/batches/:id/attendance/toggle', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  
+  try {
+    const batchId = req.params.id;
+    // Here sessionId is actually the date string (e.g. "2026-10-13")
+    const { sessionId: dateStr, studentId, isPresent } = req.body;
+
+    const batchData = await Batch.findById(batchId).lean();
+
+    if (isPresent) {
+      // Mark Present
+      await Attendance.updateOne(
+        { date: dateStr, student: studentId, batch: batchId },
+        { 
+            $setOnInsert: { 
+                markedAt: new Date(),
+                subject: batchData ? batchData.subject : "Unknown",
+                batchCode: batchData ? batchData.batchCode : "Unknown"
+            } 
+        },
+        { upsert: true }
+      );
+    } else {
+      // Mark Absent (Remove the record)
+      await Attendance.deleteOne({ date: dateStr, student: studentId, batch: batchId });
+    }
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
