@@ -244,7 +244,7 @@ const AdminUsers = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="text-left px-5 py-3 font-bold text-gray-600">Name</th>
+                <th className="text-left px-5 py-3 font-bold text-gray-600">User</th>
                 <th className="text-left px-5 py-3 font-bold text-gray-600">Email</th>
                 {tab === "student" && <th className="text-left px-5 py-3 font-bold text-gray-600">Profile</th>}
                 <th className="text-left px-5 py-3 font-bold text-gray-600">Status</th>
@@ -261,8 +261,17 @@ const AdminUsers = () => {
               ) : (
                 users.map((u) => (
                   <tr key={u._id} className="hover:bg-gray-50 transition-colors">
+                    
+                    {/* MODIFIED: Display Profile Pic with Name */}
                     <td className="px-5 py-4">
-                      <div className="font-semibold text-gray-800">{u.name}</div>
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={u.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
+                          alt="DP" 
+                          className="w-10 h-10 rounded-full object-cover border border-gray-200 shadow-sm bg-white"
+                        />
+                        <div className="font-semibold text-gray-800">{u.name}</div>
+                      </div>
                     </td>
 
                     <td className="px-5 py-4 text-gray-600">{u.email}</td>
@@ -315,7 +324,6 @@ const AdminUsers = () => {
                               <FiEdit />
                             </button>
 
-                            {/* FIXED: Checks exact schema fields for Desktop & Mobile */}
                             {(u.desktopChangeRequested || u.mobileChangeRequested) && (
                               <button
                                 onClick={() => handleApproveDevice(u._id)}
@@ -348,6 +356,8 @@ const AdminUsers = () => {
       {movingStudent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            
+            {/* MODIFIED: Added Profile Card in Move Batch Modal Header */}
             <div className="relative p-6 border-b">
               <button
                 onClick={() => setMovingStudent(null)}
@@ -356,7 +366,14 @@ const AdminUsers = () => {
                 <FiX />
               </button>
               <h2 className="text-xl font-bold text-gray-800">Change Student Batch</h2>
-              <p className="text-sm text-gray-500 mt-1">Move <span className="font-semibold text-gray-800">{movingStudent.name}</span> to a new batch.</p>
+              
+              <div className="flex items-center gap-3 mt-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <img src={movingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-12 h-12 rounded-full object-cover shadow-sm bg-white border border-gray-200" />
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Moving Student</p>
+                  <p className="font-bold text-gray-800">{movingStudent.name}</p>
+                </div>
+              </div>
             </div>
 
             <div className="p-6 space-y-5">
@@ -397,6 +414,8 @@ const AdminUsers = () => {
       {editingStudent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            
+            {/* MODIFIED: Added Profile Card in Edit Modal Header */}
             <div className="relative p-6 border-b">
               <button
                 onClick={() => setEditingStudent(null)}
@@ -405,7 +424,14 @@ const AdminUsers = () => {
                 <FiX />
               </button>
               <h2 className="text-xl font-bold text-gray-800">Edit Student Profile</h2>
-              <p className="text-sm text-gray-500 mt-1">Editing details for {editingStudent.name}</p>
+              
+              <div className="flex items-center gap-4 mt-4 mb-2 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                <img src={editingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-16 h-16 rounded-full object-cover shadow-sm bg-white border border-gray-200" />
+                <div>
+                  <h3 className="font-bold text-gray-800">{editingStudent.name}</h3>
+                  <p className="text-sm text-gray-500">{editingStudent.email}</p>
+                </div>
+              </div>
             </div>
 
             <form onSubmit={handleProfileSubmit} className="p-6 space-y-4">
