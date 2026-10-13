@@ -3174,6 +3174,9 @@ app.put('/api/users/profile-pic', verifyToken, async (req, res) => {
 // =========================================================
 // 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer) - FIXED
 // =========================================================
+// =========================================================
+// 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer) - FINAL FIX
+// =========================================================
 app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res) => {
   if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   
@@ -3191,27 +3194,27 @@ app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res
     const attendanceRecords = await Attendance.find({ batch: batchId }).lean();
     
     // 3. Extract unique dates from attendance to form our "Columns/Sessions"
-    // Since older records might just have 'date' string and not a formal 'session' reference
     const uniqueDates = new Set();
     attendanceRecords.forEach(a => {
-        if(a.date) uniqueDates.add(a.date);
+        if (a.date) uniqueDates.add(a.date);
     });
 
+    // 4. ENSURE "TODAY" IS ALWAYS A COLUMN (so you can always mark today's attendance)
+    // Format: YYYY-MM-DD to match the typical stored date format
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; 
+    uniqueDates.add(todayStr);
+
     // Create a structured list of sessions based on these dates
-    let sessions = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b)).map(dateStr => ({
-        _id: dateStr, // using date string as ID for the matrix
+    const sessions = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b)).map(dateStr => ({
+        _id: dateStr, 
         date: dateStr
     }));
-
-    // If no attendance ever marked, maybe show at least today? Or leave empty.
-    if (sessions.length === 0) {
-        sessions = []; 
-    }
     
-    // 4. Create the mapping: "studentId_dateString" : true
+    // 5. Create the mapping: "studentId_dateString" : true
     const attMap = {};
     attendanceRecords.forEach(a => {
-      if(a.date && a.student) {
+      if (a.date && a.student) {
           attMap[`${a.student}_${a.date}`] = true;
       }
     });
@@ -3221,7 +3224,6 @@ app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res
     res.status(500).json({ error: err.message });
   }
 });
-
 // =========================================================
 // 3. TOGGLE ATTENDANCE MANUAL CHECKBOX (Admin/Trainer) - FIXED
 // =========================================================
