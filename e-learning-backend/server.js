@@ -80,6 +80,7 @@ const transporter = nodemailer.createTransport({
 
 // 0. DATABASE SCHEMAS
 const userSchema = new mongoose.Schema({
+
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -98,6 +99,9 @@ const userSchema = new mongoose.Schema({
   
   // --- Flag to lock profile after first edit ---
   profileLocked: { type: Boolean, default: false },
+
+  // NEW: Profile Picture (Base64 string store karne ke liye)
+  profilePic: { type: String, default: '' },                       
 
 
   // --- STRICT 1 DESKTOP + 1 MOBILE BINDING ---
@@ -3148,6 +3152,75 @@ app.post('/api/assignments/:id/questions/:qid/answer', verifyToken, async (req, 
     );
     res.json(answerView(ans, q));
   } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+
+// =========================================================
+// 1. UPLOAD PROFILE PICTURE (Student)
+// =========================================================
+app.put('/api/users/profile-pic', verifyToken, async (req, res) => {
+  try {
+    const { base64Image } = req.body;
+    await User.findByIdAndUpdate(req.user.id, { profilePic: base64Image });
+    res.json({ message: 'Profile picture updated successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================
+// 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer)
+// =========================================================
+app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const batchId = req.params.id;
+    // Get all sessions (dates) for this batch
+    const sessions = await ClassSession.find({ batch: batchId }).sort({ date: 1, startTime: 1 }).lean();
+    
+    // Get all students in this batch
+    const studentIds = await BatchMember.distinct('student', { batch: batchId });
+    const students = await User.find({ _id: { $in: studentIds } }).select('name email profilePic').sort({ name: 1 }).lean();
+    
+    // Get all attendance records for this batch
+    const attendanceRecords = await Attendance.find({ batch: batchId }).lean();
+    
+    // Create a map of "studentId_sessionId" : true
+    const attMap = {};
+    attendanceRecords.forEach(a => {
+      attMap[`${a.student}_${a.session}`] = true;
+    });
+
+    res.json({ sessions, students, attMap });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================
+// 3. TOGGLE ATTENDANCE MANUAL CHECKBOX (Admin/Trainer)
+// =========================================================
+app.post('/api/staff/batches/:id/attendance/toggle', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const batchId = req.params.id;
+    const { sessionId, studentId, isPresent } = req.body;
+
+    if (isPresent) {
+      // Mark Present (Upsert to avoid duplicates)
+      await Attendance.updateOne(
+        { session: sessionId, student: studentId },
+        { $setOnInsert: { batch: batchId, markedAt: new Date() } },
+        { upsert: true }
+      );
+    } else {
+      // Mark Absent (Delete record)
+      await Attendance.deleteOne({ session: sessionId, student: studentId });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(port, () => {
