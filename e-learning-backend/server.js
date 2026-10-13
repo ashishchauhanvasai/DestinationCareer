@@ -3177,6 +3177,9 @@ app.put('/api/users/profile-pic', verifyToken, async (req, res) => {
 // =========================================================
 // 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer) - FINAL FIX
 // =========================================================
+// =========================================================
+// 2. GET ATTENDANCE CALENDAR MATRIX (Admin/Trainer) - EXACT SCHEMA MATCH
+// =========================================================
 app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res) => {
   if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   
@@ -3190,37 +3193,54 @@ app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res
       .sort({ name: 1 })
       .lean();
     
-    // 2. Get ALL attendance records for this batch (purani + nayi)
-    const attendanceRecords = await Attendance.find({ batch: batchId }).lean();
+    // 2. Get actual ClassSessions for this batch
+    const sessions = await ClassSession.find({ batch: batchId }).sort({ checkInTime: 1 }).lean();
     
-    // 3. Extract unique dates from attendance to form our "Columns/Sessions"
-    const uniqueDates = new Set();
-    attendanceRecords.forEach(a => {
-        if (a.date) uniqueDates.add(a.date);
-    });
-
-    // 4. ENSURE "TODAY" IS ALWAYS A COLUMN (so you can always mark today's attendance)
-    // Format: YYYY-MM-DD to match the typical stored date format
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; 
-    uniqueDates.add(todayStr);
-
-    // Create a structured list of sessions based on these dates
-    const sessions = Array.from(uniqueDates).sort((a, b) => new Date(a) - new Date(b)).map(dateStr => ({
-        _id: dateStr, 
-        date: dateStr
+    // 3. Format sessions for the frontend (using your dateKey field)
+    const formattedSessions = sessions.map(s => ({
+        _id: s._id,
+        date: s.dateKey || s.checkInTime 
     }));
     
-    // 5. Create the mapping: "studentId_dateString" : true
+    // 4. Get Attendance records for all these specific sessions
+    const sessionIds = sessions.map(s => s._id);
+    const attendanceRecords = await Attendance.find({ session: { $in: sessionIds } }).lean();
+    
+    // 5. Create mapping "studentId_sessionId" : true
     const attMap = {};
     attendanceRecords.forEach(a => {
-      if (a.date && a.student) {
-          attMap[`${a.student}_${a.date}`] = true;
-      }
+        attMap[`${a.student}_${a.session}`] = true;
     });
 
-    res.json({ sessions, students, attMap });
+    res.json({ sessions: formattedSessions, students, attMap });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================
+// 3. TOGGLE ATTENDANCE MANUAL CHECKBOX - EXACT SCHEMA MATCH
+// =========================================================
+app.post('/api/staff/batches/:id/attendance/toggle', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  
+  try {
+    const { sessionId, studentId, isPresent } = req.body;
+
+    if (isPresent) {
+      // Mark Present (Requires 'session' and 'student' ObjectIds as per your schema)
+      await Attendance.updateOne(
+        { session: sessionId, student: studentId },
+        { $setOnInsert: { markedAt: new Date() } },
+        { upsert: true }
+      );
+    } else {
+      // Mark Absent (Remove the record)
+      await Attendance.deleteOne({ session: sessionId, student: studentId });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Attendance Toggle Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
