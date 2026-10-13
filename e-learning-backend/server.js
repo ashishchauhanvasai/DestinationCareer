@@ -1656,7 +1656,9 @@ app.get('/api/users/stats', verifyToken, async (req, res) => {
 });
 
 app.get('/api/users', verifyToken, async (req, res) => {
-  if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Access denied' });
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
   const { role, search } = req.query;
   const filter = {};
   if (role) filter.role = role;
@@ -1668,7 +1670,6 @@ app.get('/api/users', verifyToken, async (req, res) => {
   }
   res.json(await User.find(filter).select('-password').sort({ createdAt: -1 }));
 });
-
 app.delete('/api/users/:id', verifyToken, async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Access denied' });
   if (req.params.id === req.user.id) return res.status(400).json({ message: 'You cannot delete your own account' });
