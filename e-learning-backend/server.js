@@ -2860,13 +2860,18 @@ const requireTrainerDomain = async (req, res) => {
 // =========================================================
 
 // Fetch performers
+// =========================================================
+// TOP PERFORMERS API (Trainer, Admin & Superadmin)
+// =========================================================
+
+// Fetch performers
 app.get('/api/trainer/performers', verifyToken, async (req, res) => {
-  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  // Added 'admin' to allowed roles
+  if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   
-  if (req.user.role === 'superadmin') {
-    // Superadmin sees ALL performers
+  if (req.user.role === 'superadmin' || req.user.role === 'admin') {
+    // Admin & Superadmin sees ALL performers
     const performers = await TopPerformer.find().sort({ createdAt: -1 });
-    // Domain returned as "All" for Superadmin UI handling
     return res.json({ domain: 'All', performers });
   } else {
     // Trainer sees only their domain
@@ -2879,11 +2884,12 @@ app.get('/api/trainer/performers', verifyToken, async (req, res) => {
 
 // Search Students for Top Performers dropdown
 app.get('/api/trainer/search-students', verifyToken, async (req, res) => {
-  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   
   const { q } = req.query;
   if (!q) return res.json([]);
 
+  // Allows searching by Name OR Email
   const students = await User.find({ 
     role: 'student',
     $or: [
@@ -2897,10 +2903,9 @@ app.get('/api/trainer/search-students', verifyToken, async (req, res) => {
 
 // Add new performer
 app.post('/api/trainer/performers', verifyToken, async (req, res) => {
-  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   
   const { studentName, metric, imageUrl, category } = req.body;
-  
   let finalCategory = category;
   
   if (req.user.role === 'trainer') {
@@ -2918,18 +2923,20 @@ app.post('/api/trainer/performers', verifyToken, async (req, res) => {
 
 // Update performer
 app.put('/api/trainer/performers/:id', verifyToken, async (req, res) => {
-  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
-  // Allowing superadmin or trainer to update. (Ideally restrict trainer to their own domain, but keeping simple for now)
+  if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   const p = await TopPerformer.findByIdAndUpdate(req.params.id, req.body, { new: true });
   res.json(p);
 });
 
 // Delete performer
 app.delete('/api/trainer/performers/:id', verifyToken, async (req, res) => {
-  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   await TopPerformer.findByIdAndDelete(req.params.id);
   res.json({ message: 'Deleted' });
 });
+
+
+
 // NEW: Search Students for Top Performers dropdown
 app.get('/api/trainer/search-students', verifyToken, async (req, res) => {
   if (req.user.role !== 'trainer') return res.status(403).json({ message: 'Access denied' });
