@@ -5,12 +5,15 @@ import { FiEdit, FiTrash2, FiSearch, FiX } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api/trainer`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-const emptyForm = { studentName: '', metric: '', imageUrl: '' };
+const emptyForm = { studentName: '', metric: '', imageUrl: '', category: '' };
 
 const inputStyles =
   'w-full p-3 border rounded-xl text-sm bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors';
 
 const TrainerPerformers = () => {
+  const role = localStorage.getItem('role');
+  const isSuperAdmin = role === 'superadmin' || role === 'admin';
+
   const [domain, setDomain] = useState(null); 
   const [performers, setPerformers] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -21,6 +24,9 @@ const TrainerPerformers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  // Filters for SuperAdmin
+  const [filterDomain, setFilterDomain] = useState('All');
 
   const load = useCallback(async () => {
     try {
@@ -53,7 +59,7 @@ const TrainerPerformers = () => {
       } finally {
         setIsSearching(false);
       }
-    }, 500); // 500ms debounce
+    }, 500); 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -73,6 +79,11 @@ const TrainerPerformers = () => {
       alert("Please select a student from the search.");
       return;
     }
+    if (isSuperAdmin && !form.category && !editingId) {
+      alert("Please select a domain/category for this student.");
+      return;
+    }
+
     setSaving(true);
     try {
       if (editingId) await axios.put(`${API}/performers/${editingId}`, form, cfg());
@@ -90,7 +101,7 @@ const TrainerPerformers = () => {
 
   const startEdit = (p) => {
     setEditingId(p._id);
-    setForm({ studentName: p.studentName, metric: p.metric, imageUrl: p.imageUrl || '' });
+    setForm({ studentName: p.studentName, metric: p.metric, imageUrl: p.imageUrl || '', category: p.category });
     setSearchQuery('');
     setSearchResults([]);
   };
@@ -111,7 +122,7 @@ const TrainerPerformers = () => {
 
   if (domain === null) return <p className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</p>;
 
-  if (!domain) {
+  if (!isSuperAdmin && !domain) {
     return (
       <div className="max-w-xl mx-auto bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-2xl p-8 text-center mt-10">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Top Performers</h1>
@@ -122,130 +133,172 @@ const TrainerPerformers = () => {
     );
   }
 
+  // Filter logic for SuperAdmin
+  const displayedPerformers = filterDomain === 'All' ? performers : performers.filter(p => p.category === filterDomain);
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6 mt-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Top Performers</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          You manage the <b className="text-blue-600">{domain}</b> category. Students see these on their dashboard.
-        </p>
+    <div className="max-w-6xl mx-auto space-y-6 mt-6 p-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Top Performers Management</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {isSuperAdmin 
+              ? "Manage top performers across all domains globally." 
+              : <>You manage the <b className="text-blue-600">{domain}</b> category. Students see these on their dashboard.</>}
+          </p>
+        </div>
+
+        {isSuperAdmin && (
+          <select 
+            value={filterDomain}
+            onChange={(e) => setFilterDomain(e.target.value)}
+            className="p-2 border rounded-xl text-sm bg-white border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="All">All Domains</option>
+            <option value="Java">Java</option>
+            <option value="Python">Python</option>
+            <option value="Data Analytics">Data Analytics</option>
+            <option value="Frontend">Frontend</option>
+          </select>
+        )}
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6">
         
         {/* ADD/EDIT FORM */}
-        <form
-          onSubmit={submit}
-          className={`bg-white dark:bg-slate-800 p-6 rounded-2xl border dark:border-slate-700 shadow-sm space-y-5 ${
-            editingId ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : ''
-          }`}
-        >
-          <div className="flex justify-between items-center">
-            <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-              {editingId ? 'Edit Performer' : 'Add Top Performer'}
-            </h3>
-            {editingId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm(emptyForm);
-                }}
-                className="text-gray-400 hover:text-gray-600 bg-gray-100 p-1.5 rounded-full"
-              >
-                <FiX size={18} />
-              </button>
+        <div className="lg:col-span-1">
+          <form
+            onSubmit={submit}
+            className={`bg-white dark:bg-slate-800 p-6 rounded-2xl border dark:border-slate-700 shadow-sm space-y-5 sticky top-24 ${
+              editingId ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900' : ''
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                {editingId ? 'Edit Performer' : 'Add Top Performer'}
+              </h3>
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setForm(emptyForm);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 bg-gray-100 p-1.5 rounded-full"
+                >
+                  <FiX size={18} />
+                </button>
+              )}
+            </div>
+
+            {!isSuperAdmin ? (
+              <div className="bg-blue-50 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-md inline-block">
+                Domain: {domain}
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Select Domain</label>
+                <select 
+                  required
+                  value={form.category}
+                  onChange={(e) => setForm({...form, category: e.target.value})}
+                  className={inputStyles}
+                >
+                  <option value="">-- Choose Domain --</option>
+                  <option value="Java">Java</option>
+                  <option value="Python">Python</option>
+                  <option value="Data Analytics">Data Analytics</option>
+                  <option value="Frontend">Frontend</option>
+                </select>
+              </div>
             )}
-          </div>
 
-          <div className="bg-blue-50 text-blue-800 text-xs font-bold px-3 py-1.5 rounded-md inline-block">
-            Domain: {domain}
-          </div>
-
-          {/* SEARCH STUDENT (Only show when not actively editing the name, or if they want to change it) */}
-          <div className="relative">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Search Student</label>
+            {/* SEARCH STUDENT */}
             <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Search Student</label>
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  placeholder="Type name or email..." 
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  className={`${inputStyles} pl-10`} 
+                />
+              </div>
+              
+              {searchQuery.length >= 2 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-3 text-sm text-gray-500 text-center">Searching...</div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="p-3 text-sm text-gray-500 text-center">No students found.</div>
+                  ) : (
+                    searchResults.map(s => (
+                      <button
+                        key={s._id}
+                        type="button"
+                        onClick={() => selectStudent(s)}
+                        className="w-full text-left p-2 hover:bg-blue-50 flex items-center gap-3 border-b border-gray-100 last:border-0 transition-colors"
+                      >
+                        <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="w-8 h-8 rounded-full object-cover border border-gray-200 bg-white" alt="" />
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-gray-800 truncate">{s.name}</div>
+                          <div className="text-[10px] text-gray-400 truncate">{s.email}</div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* SELECTED STUDENT PREVIEW */}
+            {form.studentName && (
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-3">
+                <img src={form.imageUrl} alt="Profile" className="w-12 h-12 rounded-full object-cover border border-gray-300 bg-white" />
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase font-bold">Selected Student</p>
+                  <p className="font-semibold text-gray-900">{form.studentName}</p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Achievement Detail</label>
               <input 
-                placeholder="Type name or email..." 
-                value={searchQuery} 
-                onChange={(e) => setSearchQuery(e.target.value)} 
-                className={`${inputStyles} pl-10`} 
+                required 
+                placeholder="e.g. 98% score in Mock, Placed at TCS" 
+                value={form.metric} 
+                onChange={(e) => setForm({ ...form, metric: e.target.value })} 
+                className={inputStyles} 
               />
             </div>
-            
-            {/* Search Dropdown */}
-            {searchQuery.length >= 2 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {isSearching ? (
-                  <div className="p-3 text-sm text-gray-500 text-center">Searching...</div>
-                ) : searchResults.length === 0 ? (
-                  <div className="p-3 text-sm text-gray-500 text-center">No students found.</div>
-                ) : (
-                  searchResults.map(s => (
-                    <button
-                      key={s._id}
-                      type="button"
-                      onClick={() => selectStudent(s)}
-                      className="w-full text-left p-2 hover:bg-blue-50 flex items-center gap-3 border-b border-gray-100 last:border-0 transition-colors"
-                    >
-                      <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="w-8 h-8 rounded-full object-cover border border-gray-200 bg-white" alt="" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold text-gray-800 truncate">{s.name}</div>
-                        <div className="text-[10px] text-gray-400 truncate">{s.email}</div>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
 
-          {/* SELECTED STUDENT PREVIEW */}
-          {form.studentName && (
-            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-3">
-              <img src={form.imageUrl} alt="Profile" className="w-12 h-12 rounded-full object-cover border border-gray-300 bg-white" />
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase font-bold">Selected Student</p>
-                <p className="font-semibold text-gray-900">{form.studentName}</p>
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Achievement</label>
-            <input 
-              required 
-              placeholder="e.g. 98% score in Mock, Placed at TCS" 
-              value={form.metric} 
-              onChange={(e) => setForm({ ...form, metric: e.target.value })} 
-              className={inputStyles} 
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={saving || !form.studentName} 
-            className={`w-full text-white p-3 rounded-xl font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${editingId ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-          >
-            {saving ? 'Saving...' : editingId ? 'Update Performer' : 'Publish to Dashboard'}
-          </button>
-        </form>
+            <button 
+              type="submit" 
+              disabled={saving || !form.studentName} 
+              className={`w-full text-white p-3 rounded-xl font-bold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${editingId ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+            >
+              {saving ? 'Saving...' : editingId ? 'Update Performer' : 'Publish to Dashboard'}
+            </button>
+          </form>
+        </div>
 
         {/* PERFORMERS LIST */}
-        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
-          {performers.length === 0 && (
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
+          {displayedPerformers.length === 0 && (
             <div className="sm:col-span-2 p-10 border-2 border-dashed border-gray-200 rounded-2xl text-center text-gray-500">
-              No <span className="font-bold">{domain}</span> top performers added yet.
+              No top performers found for {filterDomain === 'All' ? 'any domain' : filterDomain}.
             </div>
           )}
-          {performers.map((p) => (
+          {displayedPerformers.map((p) => (
             <div key={p._id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group">
               <div className="flex items-start gap-4 mb-3">
                 <img src={p.imageUrl} alt="" className="w-14 h-14 rounded-full object-cover border border-gray-200 bg-gray-50 shadow-sm shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-bold text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded uppercase tracking-wider mb-1">{p.category}</p>
+                  <p className="text-[10px] font-bold text-blue-600 bg-blue-50 inline-block px-2 py-0.5 rounded uppercase tracking-wider mb-1">
+                    {p.category}
+                  </p>
                   <p className="font-bold text-gray-900 dark:text-white truncate" title={p.studentName}>{p.studentName}</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-snug break-words">{p.metric}</p>
                 </div>

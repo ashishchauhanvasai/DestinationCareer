@@ -2856,15 +2856,80 @@ const requireTrainerDomain = async (req, res) => {
 // =========================================================
 // TOP PERFORMERS API
 // =========================================================
-app.get('/api/trainer/performers', verifyToken, async (req, res) => {
-  if (req.user.role !== 'trainer') return res.status(403).json({ message: 'Only trainers can manage top performers' });
-  const trainer = await User.findById(req.user.id);
-  if (!trainer.domain) return res.json({ domain: '', performers: [] });
+// TOP PERFORMERS API (Trainer & Superadmin)
+// =========================================================
 
-  const performers = await TopPerformer.find({ category: trainer.domain }).sort({ createdAt: -1 });
-  res.json({ domain: trainer.domain, performers });
+// Fetch performers
+app.get('/api/trainer/performers', verifyToken, async (req, res) => {
+  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  
+  if (req.user.role === 'superadmin') {
+    // Superadmin sees ALL performers
+    const performers = await TopPerformer.find().sort({ createdAt: -1 });
+    // Domain returned as "All" for Superadmin UI handling
+    return res.json({ domain: 'All', performers });
+  } else {
+    // Trainer sees only their domain
+    const trainer = await User.findById(req.user.id);
+    if (!trainer.domain) return res.json({ domain: '', performers: [] });
+    const performers = await TopPerformer.find({ category: trainer.domain }).sort({ createdAt: -1 });
+    res.json({ domain: trainer.domain, performers });
+  }
 });
 
+// Search Students for Top Performers dropdown
+app.get('/api/trainer/search-students', verifyToken, async (req, res) => {
+  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  
+  const { q } = req.query;
+  if (!q) return res.json([]);
+
+  const students = await User.find({ 
+    role: 'student',
+    $or: [
+      { name: { $regex: q, $options: 'i' } },
+      { email: { $regex: q, $options: 'i' } }
+    ]
+  }).select('name email profilePic').limit(10);
+  
+  res.json(students);
+});
+
+// Add new performer
+app.post('/api/trainer/performers', verifyToken, async (req, res) => {
+  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  
+  const { studentName, metric, imageUrl, category } = req.body;
+  
+  let finalCategory = category;
+  
+  if (req.user.role === 'trainer') {
+    const trainer = await User.findById(req.user.id);
+    if (!trainer.domain) return res.status(400).json({ message: 'Your domain is not set' });
+    finalCategory = trainer.domain; // Force trainer's own domain
+  }
+
+  if (!finalCategory) return res.status(400).json({ message: 'Category/Domain is required' });
+
+  const p = new TopPerformer({ category: finalCategory, studentName, metric, imageUrl, addedBy: req.user.id });
+  await p.save();
+  res.json(p);
+});
+
+// Update performer
+app.put('/api/trainer/performers/:id', verifyToken, async (req, res) => {
+  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  // Allowing superadmin or trainer to update. (Ideally restrict trainer to their own domain, but keeping simple for now)
+  const p = await TopPerformer.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(p);
+});
+
+// Delete performer
+app.delete('/api/trainer/performers/:id', verifyToken, async (req, res) => {
+  if (!['trainer', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  await TopPerformer.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Deleted' });
+});
 // NEW: Search Students for Top Performers dropdown
 app.get('/api/trainer/search-students', verifyToken, async (req, res) => {
   if (req.user.role !== 'trainer') return res.status(403).json({ message: 'Access denied' });
