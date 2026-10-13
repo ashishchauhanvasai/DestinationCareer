@@ -3505,10 +3505,19 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const crypto = require('crypto');   
-const multer = require('multer');
 const app = express();
 const port = process.env.PORT || 5000;
 const axios = require('axios');
+
+// 👇 PASTE IT RIGHT HERE
+const multer = require('multer');
+const PHOTO_MAX = 1 * 1024 * 1024;  // 1 MB
+const RESUME_MAX = 2 * 1024 * 1024; // 2 MB
+const looksLikeJpgOrPng = (b) => b.length > 8 && ((b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) || (b[0] === 0x89 && b.slice(1, 4).toString() === 'PNG'));
+const looksLikePdf = (b) => b.length > 5 && b.slice(0, 5).toString() === '%PDF-';
+const emailOk = (v) => /^\S+@\S+\.\S+$/.test(v || '');
+const phoneOk = (v) => /^\d{10}$/.test(v || '');
+const urlOn = (value, domain) => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && (u.hostname === domain || u.hostname.endsWith('.' + domain)); } catch { return false; } };
 
 
 
