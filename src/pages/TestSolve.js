@@ -225,7 +225,30 @@ const TestSolve = () => {
             </div>
           </div>
 
-          <div className="flex-1 min-h-[220px] border rounded-xl overflow-hidden">
+          {/* <div className="flex-1 min-h-[220px] border rounded-xl overflow-hidden">
+            <Editor
+              height="100%"
+              language={lang.monaco}
+              value={codes[lang.id]}
+              onChange={onCodeChange}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize,
+                mouseWheelZoom: true,
+                automaticLayout: true,
+                scrollBeyondLastLine: false
+              }}
+            />
+          </div> */}
+
+          <div 
+            className="flex-1 min-h-[220px] border rounded-xl overflow-hidden"
+            onCopy={(e) => { e.preventDefault(); alert("Copying is disabled during the test!"); }}
+            onPaste={(e) => { e.preventDefault(); alert("Pasting is disabled during the test!"); }}
+            onCut={(e) => { e.preventDefault(); alert("Cutting is disabled!"); }}
+            onContextMenu={(e) => { e.preventDefault(); alert("Right-click is disabled!"); }}
+          >
             <Editor
               height="100%"
               language={lang.monaco}

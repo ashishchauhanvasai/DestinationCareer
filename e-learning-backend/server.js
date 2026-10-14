@@ -1694,12 +1694,60 @@ app.post('/api/problems/upload', verifyToken, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-app.get('/api/problems/admin/submissions', verifyToken, async (req, res) => {
-  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
-  const subs = await Submission.find().populate('user', 'name email').populate('problem', 'title points').sort({ createdAt: -1 }).limit(500);
-  res.json(subs);
-});
+// app.get('/api/problems/admin/submissions', verifyToken, async (req, res) => {
+//   if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+//   const subs = await Submission.find().populate('user', 'name email').populate('problem', 'title points').sort({ createdAt: -1 }).limit(500);
+//   res.json(subs);
+// });
 
+app.get('/api/problems/admin/submissions', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
+  
+  try {
+    // 1. Get all submissions sorted by oldest first (to calculate attempt order)
+    const subs = await Submission.find()
+      .populate('user', 'name email profilePic')
+      .populate('problem', 'title points')
+      .sort({ createdAt: 1 }) 
+      .lean();
+
+    // 2. Find batches for these students
+    const studentIds = [...new Set(subs.map(s => String(s.user?._id)).filter(id => id !== 'undefined'))];
+    const memberships = await BatchMember.find({ student: { $in: studentIds } })
+      .populate('batch', 'batchCode subject')
+      .lean();
+
+    const batchMap = {};
+    memberships.forEach(m => {
+      if (m.batch) {
+        const sId = String(m.student);
+        if (!batchMap[sId]) batchMap[sId] = [];
+        batchMap[sId].push(`${m.batch.subject} (${m.batch.batchCode})`);
+      }
+    });
+
+    // 3. Attach attempt counts & batches
+    const userProblemCount = {};
+    const enrichedSubs = subs.map(s => {
+      const sId = String(s.user?._id);
+      const pId = String(s.problem?._id);
+      const key = `${sId}_${pId}`;
+      
+      userProblemCount[key] = (userProblemCount[key] || 0) + 1;
+      
+      return {
+        ...s,
+        attemptNumber: userProblemCount[key],
+        studentBatches: batchMap[sId] || []
+      };
+    });
+
+    // 4. Return newest first for the Admin UI
+    res.json(enrichedSubs.reverse());
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 app.get('/api/problems/admin/:id', verifyToken, async (req, res) => {
   if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
   const p = await Problem.findById(req.params.id);
