@@ -21,7 +21,7 @@ const Tests = () => {
   return (
     <div className="max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-6">Coding Tests</h1>
-      <div className="bg-white rounded-2xl shadow-sm border p-6 mb-6 grid grid-cols-3 divide-x">
+      <div className="bg-white rounded-2xl   shadow-sm border p-6 mb-6 grid grid-cols-3 divide-x">
         <div className="px-4"><p className="text-xs text-gray-500 font-semibold uppercase">Marks earned</p><p className="text-2xl font-bold">{earned} / {available}</p></div>
         <div className="px-4"><p className="text-xs text-gray-500 font-semibold uppercase">Fully solved</p><p className="text-2xl font-bold">{solved} / {problems.length}</p></div>
         <div className="px-4"><p className="text-xs text-gray-500 font-semibold uppercase">Attempted</p><p className="text-2xl font-bold">{problems.filter((p) => p.attempts > 0).length}</p></div>

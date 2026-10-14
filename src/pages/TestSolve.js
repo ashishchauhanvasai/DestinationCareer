@@ -58,8 +58,9 @@ const TestSolve = () => {
   });
   const [expanded, setExpanded] = useState(false); // true = editor takes the whole width
   const [resultH, setResultH] = useState(224); // height of the Result box in pixels
+  
   const dragRef = useRef(null);
-  const editorWrapperRef = useRef(null); // NAYA: Editor wrap karne ke liye ref
+  const editorWrapperRef = useRef(null); // Ref for our double layer security
 
   const changeFont = (delta) => {
     setFontSize((s) => {
@@ -69,7 +70,6 @@ const TestSolve = () => {
     });
   };
 
-  // Drag the bar between the editor and the Result box: drag DOWN = bigger editor, UP = bigger result
   const startDrag = (e) => {
     e.preventDefault();
     dragRef.current = { startY: e.clientY, startH: resultH };
@@ -100,7 +100,6 @@ const TestSolve = () => {
       const sc = r.data.starterCode || {};
       let saved = {};
       try { saved = JSON.parse(localStorage.getItem(draftKey(r.data)) || '{}'); } catch (e) { saved = {}; }
-      // student's unfinished draft wins, then the question's starter code, then the generic default
       setCodes(LANGS.reduce((acc, l) => {
         acc[l.id] = saved[l.id] ?? (sc[l.id] || STARTER[l.id]);
         return acc;
@@ -110,31 +109,47 @@ const TestSolve = () => {
   }, [slug]);
 
   // ==========================================
-  // NAYA: COPY-PASTE BLOCKER (STRICT CAPTURE PHASE)
+  // LAYER 1: STRICT DOCUMENT LEVEL CAPTURE
   // ==========================================
   useEffect(() => {
-    const el = editorWrapperRef.current;
-    if (!el) return;
-
     const blockEvent = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      alert(`${e.type} is disabled during the test!`);
+      const el = editorWrapperRef.current;
+      // Agar event hamare editor ke andar trigger hua hai
+      if (el && el.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
     };
 
-    // Capture phase (true) runs BEFORE Monaco gets the event
-    el.addEventListener('paste', blockEvent, true);
-    el.addEventListener('copy', blockEvent, true);
-    el.addEventListener('cut', blockEvent, true);
-    el.addEventListener('contextmenu', blockEvent, true);
+    // 'true' ensures we catch the event before it reaches Monaco's textareas
+    document.addEventListener('paste', blockEvent, true);
+    document.addEventListener('copy', blockEvent, true);
+    document.addEventListener('cut', blockEvent, true);
+    document.addEventListener('drop', blockEvent, true); // Blocks dragging text into editor
+    document.addEventListener('contextmenu', blockEvent, true); // Blocks right-click fully
 
     return () => {
-      el.removeEventListener('paste', blockEvent, true);
-      el.removeEventListener('copy', blockEvent, true);
-      el.removeEventListener('cut', blockEvent, true);
-      el.removeEventListener('contextmenu', blockEvent, true);
+      document.removeEventListener('paste', blockEvent, true);
+      document.removeEventListener('copy', blockEvent, true);
+      document.removeEventListener('cut', blockEvent, true);
+      document.removeEventListener('drop', blockEvent, true);
+      document.removeEventListener('contextmenu', blockEvent, true);
     };
   }, []);
+
+  // ==========================================
+  // LAYER 2: MONACO INTERNAL KEYBOARD BLOCKER
+  // ==========================================
+  const handleEditorMount = (editor, monaco) => {
+    editor.onKeyDown((e) => {
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      if (isCtrlOrCmd && (e.keyCode === monaco.KeyCode.KeyC || e.keyCode === monaco.KeyCode.KeyV || e.keyCode === monaco.KeyCode.KeyX)) {
+        e.preventDefault();
+        e.stopPropagation();
+        alert("Copy, Paste, and Cut are strictly disabled during tests!");
+      }
+    });
+  };
 
   const onCodeChange = (v) => {
     const next = { ...codes, [lang.id]: v || '' };
@@ -168,12 +183,10 @@ const TestSolve = () => {
 
   const samples = problem.testCases || [];
   const isFn = problem.mode === 'function';
-  // the first test case the student failed (hidden ones only come with a status, never with data)
   const firstFail = submitResult && submitResult.cases ? submitResult.cases.find((c) => !c.accepted) : null;
 
   return (
     <div>
-      {/* Top bar: back + question navigation */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <Link to="/tests" className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-600 text-sm whitespace-nowrap"><FiArrowLeft /> Back to questions</Link>
 
@@ -192,7 +205,6 @@ const TestSolve = () => {
       </div>
 
       <div className={`grid gap-4 lg:h-[calc(100vh-9rem)] ${expanded ? 'grid-cols-1' : 'lg:grid-cols-2'}`}>
-        {/* LEFT: problem (hidden while the editor is expanded) */}
         {!expanded && (
           <div className="bg-white rounded-2xl border p-6 overflow-y-auto max-h-[75vh] lg:max-h-none lg:h-full">
             <h1 className="text-2xl font-bold mb-2">{problem.title}</h1>
@@ -227,7 +239,6 @@ const TestSolve = () => {
           </div>
         )}
 
-        {/* RIGHT: editor + results */}
         <div className="flex flex-col gap-3 min-h-0 h-[85vh] lg:h-full">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <select value={lang.id} onChange={(e) => setLang(LANGS.find((l) => l.id === e.target.value))} className="p-2 border rounded-lg w-44 bg-white text-sm">
@@ -235,14 +246,12 @@ const TestSolve = () => {
             </select>
 
             <div className="flex items-center gap-2">
-              {/* font size */}
               <div className="flex items-center border rounded-lg bg-white overflow-hidden" title="Text size (you can also hold Ctrl and scroll inside the editor)">
                 <button type="button" onClick={() => changeFont(-1)} disabled={fontSize <= MIN_FONT} className="px-2.5 py-1 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40">A-</button>
                 <span className="px-1 text-xs text-gray-500 w-8 text-center">{fontSize}</span>
                 <button type="button" onClick={() => changeFont(1)} disabled={fontSize >= MAX_FONT} className="px-2.5 py-1 text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-40">A+</button>
               </div>
 
-              {/* expand / shrink the editor */}
               <button type="button" onClick={() => setExpanded((v) => !v)} title={expanded ? 'Show the question again' : 'Make the editor wider'} className="text-xs font-semibold text-gray-600 hover:text-gray-900 border rounded-lg bg-white px-2.5 py-1.5 flex items-center gap-1">
                 {expanded ? <><FiMinimize2 /> Show question</> : <><FiMaximize2 /> Expand editor</>}
               </button>
@@ -251,7 +260,7 @@ const TestSolve = () => {
             </div>
           </div>
 
-          {/* NAYA: Editor div with wrapper ref */}
+          {/* EDITOR WRAPPER WITH REF FOR COPY-PASTE BLOCKING */}
           <div 
             ref={editorWrapperRef}
             className="flex-1 min-h-[220px] border rounded-xl overflow-hidden flex flex-col h-full"
@@ -262,13 +271,14 @@ const TestSolve = () => {
               value={codes[lang.id]}
               onChange={onCodeChange}
               theme="vs-dark"
+              onMount={handleEditorMount} /* LAYER 2 BLOCKER */
               options={{
                 minimap: { enabled: false },
                 fontSize,
                 mouseWheelZoom: true,
                 automaticLayout: true,
                 scrollBeyondLastLine: false,
-                contextmenu: false /* NAYA: Right-click menu disable karega */
+                contextmenu: false /* Disables right-click menu */
               }}
             />
           </div>
@@ -281,7 +291,6 @@ const TestSolve = () => {
               : lang.id === 'java' && <p className="text-xs text-gray-500">Keep the class name <b>Main</b> for Java.</p>}
           </div>
 
-          {/* drag this bar up or down to resize the editor and the Result box */}
           <div
             onPointerDown={startDrag}
             title="Drag up or down to resize the editor"
