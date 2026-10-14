@@ -370,7 +370,7 @@ const Layout = ({ children }) => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const adminMenu = [
+const adminMenu = [
     { tab: 'Courses', text: 'Manage Courses', icon: FiBook },
     { tab: 'Testimonials', text: 'Testimonials', icon: FiStar },
     { tab: 'Performers', text: 'Top Performers', icon: FiAward },
@@ -387,10 +387,9 @@ const Layout = ({ children }) => {
           { tab: 'Batches', text: 'Batches & QR', icon: FiGrid }
         ]
       : []),
-    { tab: 'Attendance Reports', text: 'Attendance Reports', icon: FiCheckSquare },
-    { tab: 'Students by Batch', text: 'Students by Batch', icon: FiUsers },
+    // "Attendance Reports" delete kar diya aur "Students by Batch" ko combine kar diya:
+    { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
   ];
-
   // ==========================================
   // UPDATED LOGOUT FUNCTION
   // ==========================================

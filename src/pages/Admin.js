@@ -1587,7 +1587,7 @@ import AdminCompanies from "../components/AdminCompanies";
 import AdminAssignments from "../components/AdminAssignments";
 import AdminTests from "../components/AdminTests";
 import AdminBatches from "../components/AdminBatches";
-import AdminAttendance from "../components/AdminAttendance";
+// import AdminAttendance from "../components/AdminAttendance";
 import AdminApplications from "../components/AdminApplications";
 import StaffBatchTracker from "../components/StaffBatchTracker";
 import AdminUsers from "../components/AdminUsers";
@@ -2931,13 +2931,12 @@ const Admin = () => {
 
         {activeTab === "Batches" && <AdminBatches />}
 
-        {activeTab === "Attendance Reports" && <AdminAttendance />}
 
         {activeTab === "Manage Users" && <AdminUsers />}
 
         {activeTab === "Applications" && <AdminApplications />}
 
-        {activeTab === "Students by Batch" && <StaffBatchTracker />}
+        {activeTab === "Students by Batch & Attendance Reports" && <StaffBatchTracker />}
 
         {activeTab === "Coding Tests" && <AdminTests />}
       </div>

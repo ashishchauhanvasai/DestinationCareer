@@ -3562,6 +3562,7 @@ const testimonialSchema = new mongoose.Schema({
 // MAKE SURE THIS LINE EXISTS:
 const Testimonial = mongoose.model('Testimonial', testimonialSchema);
 
+
 // --- Top Performer Schema ---
 const topPerformerSchema = new mongoose.Schema({
   category: { type: String, enum: ['Java', 'Python', 'Data Analytics', 'Frontend'], required: true },
@@ -3569,7 +3570,8 @@ const topPerformerSchema = new mongoose.Schema({
   imageUrl: { type: String, default: 'https://via.placeholder.com/150' },
   metric: { type: String, default: 'Top Scorer' },
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
-});
+}, { timestamps: true }); // ✅ FIX: Added timestamps here so sorting works perfectly
+
 const TopPerformer = mongoose.model('TopPerformer', topPerformerSchema);
 
 
@@ -4164,7 +4166,7 @@ app.get('/api/users/profile', verifyToken, async (req, res) => {
   }
 });
 
-// Update Profile (Student - One Time Only)
+// --- Update Profile (Student - One Time Only) ---
 app.put('/api/users/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -4192,6 +4194,19 @@ app.put('/api/users/profile', verifyToken, async (req, res) => {
     res.json(updatedUser);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// =========================================================
+// UPLOAD PROFILE PICTURE (Student)
+// =========================================================
+app.put('/api/users/profile-pic', verifyToken, async (req, res) => {
+  try {
+    const { base64Image } = req.body;
+    await User.findByIdAndUpdate(req.user.id, { profilePic: base64Image });
+    res.json({ message: 'Profile picture updated successfully!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -5604,6 +5619,7 @@ app.delete('/api/trainer/performers/:id', verifyToken, async (req, res) => {
   res.json({ message: 'Deleted' });
 });
 
+
 // =========================================================
 // ATTENDANCE CALENDAR MATRIX (Admin/Trainer)
 // =========================================================
@@ -5618,7 +5634,8 @@ app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res
       .sort({ name: 1 })
       .lean();
     
-    const sessions = await ClassSession.find({ batch: batchId }).sort({ checkInTime: 1 }).lean();
+    // FIX HERE: sort({ checkInTime: -1 }) makes the newest dates appear first (on the left)
+    const sessions = await ClassSession.find({ batch: batchId }).sort({ checkInTime: -1 }).lean();
     
     const formattedSessions = sessions.map(s => ({
         _id: s._id,
@@ -5638,7 +5655,6 @@ app.get('/api/staff/batches/:id/attendance-matrix', verifyToken, async (req, res
     res.status(500).json({ error: err.message });
   }
 });
-
 // =========================================================
 // TOGGLE ATTENDANCE MANUAL CHECKBOX
 // =========================================================
