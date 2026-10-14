@@ -11,6 +11,7 @@ import {
   FiLock,
   FiUnlock,
   FiX,
+  FiCheckSquare
 } from "react-icons/fi";
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
@@ -39,12 +40,15 @@ const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState([]);
   
+  // BULK SELECTION STATE
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+
   // Batches for the dropdown
   const [batches, setBatches] = useState([]);
 
   // Modals State
   const [editingStudent, setEditingStudent] = useState(null);
-  const [movingStudent, setMovingStudent] = useState(null);
+  const [movingStudent, setMovingStudent] = useState(null); // Used for both Single & Bulk move
 
   const [profileForm, setProfileForm] = useState({
     highestQualification: "",
@@ -57,7 +61,6 @@ const AdminUsers = () => {
     profileLocked: false,
   });
 
-  // Load statistics
   const loadStats = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/users/stats`, cfg());
@@ -67,7 +70,6 @@ const AdminUsers = () => {
     }
   }, []);
 
-  // Load available batches for the dropdown
   const loadBatches = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/batches`, cfg());
@@ -82,7 +84,6 @@ const AdminUsers = () => {
     loadBatches();
   }, [loadStats, loadBatches]);
 
-  // Load users
   const loadUsers = useCallback(async () => {
     try {
       const r = await axios.get(`${API}/users`, {
@@ -93,6 +94,8 @@ const AdminUsers = () => {
         },
       });
       setUsers(r.data);
+      // Clear selections when tab/search changes
+      setSelectedUserIds([]);
     } catch (e) {
       console.error("Failed to load users:", e);
     }
@@ -105,7 +108,6 @@ const AdminUsers = () => {
     return () => clearTimeout(t);
   }, [loadUsers]);
 
-  // Delete user
   const del = async (u) => {
     if (!window.confirm(`Remove ${u.name} (${u.email})? This cannot be undone.`)) {
       return;
@@ -119,7 +121,6 @@ const AdminUsers = () => {
     }
   };
 
-  // Open Edit Profile Modal
   const openEditModal = (user) => {
     setEditingStudent(user);
     setProfileForm({
@@ -134,7 +135,6 @@ const AdminUsers = () => {
     });
   };
 
-  // Save Student Profile
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -147,9 +147,7 @@ const AdminUsers = () => {
     }
   };
 
-  // =========================================================
-  // FIXED: Approve Device Handler (Supports Desktop & Mobile)
-  // =========================================================
+  // SINGLE DEVICE APPROVAL
   const handleApproveDevice = async (userId) => {
     if (!window.confirm("Approve this new device? The student's old device will be logged out instantly.")) {
       return;
@@ -159,12 +157,40 @@ const AdminUsers = () => {
       alert("Device approved successfully!");
       await loadUsers();
     } catch (err) {
-      console.error("Device approval error:", err);
       alert(err.response?.data?.message || "Failed to approve device");
     }
   };
 
-  // Confirm Move Student Batch
+  // =========================================================
+  // BULK ACTIONS LOGIC
+  // =========================================================
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedUserIds(users.map((u) => u._id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  };
+
+  const handleSelectUser = (id) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((userId) => userId !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkApproveDevices = async () => {
+    if (!window.confirm(`Approve new devices for ${selectedUserIds.length} students?`)) return;
+    try {
+      await axios.put(`${API}/users/bulk-approve-device`, { userIds: selectedUserIds }, cfg());
+      alert("Devices approved successfully!");
+      setSelectedUserIds([]);
+      await loadUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to approve devices in bulk");
+    }
+  };
+
+  // SINGLE & BULK BATCH MOVE
   const confirmMoveBatch = async () => {
     const newBatchId = document.getElementById('new-batch-select').value;
     if (!newBatchId) {
@@ -173,20 +199,35 @@ const AdminUsers = () => {
     }
 
     try {
-      const hist = await axios.get(`${API}/staff/students/${movingStudent._id}/history`, cfg());
-      const currentBatches = hist.data.batches || [];
-      const oldBatchId = currentBatches.length > 0 ? currentBatches[0]._id : "000000000000000000000000";
+      // Determine if it's a single move or bulk move based on movingStudent state
+      if (movingStudent === "BULK") {
+        // We assume all selected students are moving from whatever batch they are in to the NEW batch.
+        // The backend bulk API handles finding and deleting their old memberships automatically.
+        await axios.put(`${API}/staff/batches/bulk-change-student`, {
+          studentIds: selectedUserIds,
+          oldBatchId: "IGNORE", // Backend uses bulk logic to delete old
+          newBatchId
+        }, cfg());
+        alert(`${selectedUserIds.length} students have been successfully moved!`);
+        setSelectedUserIds([]);
+      } else {
+        // SINGLE MOVE
+        const hist = await axios.get(`${API}/staff/students/${movingStudent._id}/history`, cfg());
+        const currentBatches = hist.data.batches || [];
+        const oldBatchId = currentBatches.length > 0 ? currentBatches[0]._id : "000000000000000000000000";
 
-      await axios.put(`${API}/staff/batches/change-student`, {
-        studentId: movingStudent._id,
-        oldBatchId,
-        newBatchId
-      }, cfg());
+        await axios.put(`${API}/staff/batches/change-student`, {
+          studentId: movingStudent._id,
+          oldBatchId,
+          newBatchId
+        }, cfg());
+        alert(`${movingStudent.name} has been successfully moved to the new batch!`);
+      }
 
-      alert(`${movingStudent.name} has been successfully moved to the new batch!`);
       setMovingStudent(null);
+      await loadUsers();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to move student");
+      alert(error.response?.data?.message || "Failed to move student(s)");
     }
   };
 
@@ -238,12 +279,46 @@ const AdminUsers = () => {
         </div>
       </div>
 
+      {/* BULK ACTIONS BAR */}
+      {tab === "student" && selectedUserIds.length > 0 && (
+        <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between shadow-sm animate-pulse">
+          <span className="text-blue-800 font-bold text-sm">
+            {selectedUserIds.length} student(s) selected
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMovingStudent("BULK")}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
+            >
+              Move Selected to Batch
+            </button>
+            <button
+              onClick={handleBulkApproveDevices}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
+            >
+              Approve Devices
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Users Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
+                {/* BULK SELECT HEADER */}
+                {tab === "student" && (
+                  <th className="px-5 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                      checked={users.length > 0 && selectedUserIds.length === users.length}
+                      onChange={handleSelectAll}
+                    />
+                  </th>
+                )}
                 <th className="text-left px-5 py-3 font-bold text-gray-600">User</th>
                 <th className="text-left px-5 py-3 font-bold text-gray-600">Email</th>
                 {tab === "student" && <th className="text-left px-5 py-3 font-bold text-gray-600">Profile</th>}
@@ -254,7 +329,7 @@ const AdminUsers = () => {
             <tbody className="divide-y">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={tab === "student" ? 5 : 4} className="text-center py-10 text-gray-500">
+                  <td colSpan={tab === "student" ? 6 : 4} className="text-center py-10 text-gray-500">
                     No {tab}s found.
                   </td>
                 </tr>
@@ -262,7 +337,18 @@ const AdminUsers = () => {
                 users.map((u) => (
                   <tr key={u._id} className="hover:bg-gray-50 transition-colors">
                     
-                    {/* MODIFIED: Display Profile Pic with Name */}
+                    {/* BULK SELECT ROW */}
+                    {tab === "student" && (
+                      <td className="px-5 py-4">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                          checked={selectedUserIds.includes(u._id)}
+                          onChange={() => handleSelectUser(u._id)}
+                        />
+                      </td>
+                    )}
+
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <img 
@@ -327,7 +413,7 @@ const AdminUsers = () => {
                             {(u.desktopChangeRequested || u.mobileChangeRequested) && (
                               <button
                                 onClick={() => handleApproveDevice(u._id)}
-                                className="text-white bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-xs font-bold rounded animate-pulse shadow-sm"
+                                className="text-white bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-xs font-bold rounded shadow-sm"
                                 title="Approve New Device Login"
                               >
                                 Approve {u.desktopChangeRequested && u.mobileChangeRequested ? "Devices" : u.desktopChangeRequested ? "Desktop" : "Mobile"}
@@ -352,12 +438,11 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {/* MOVE BATCH MODAL */}
+      {/* MOVE BATCH MODAL (Handles Single & Bulk) */}
       {movingStudent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
             
-            {/* MODIFIED: Added Profile Card in Move Batch Modal Header */}
             <div className="relative p-6 border-b">
               <button
                 onClick={() => setMovingStudent(null)}
@@ -365,13 +450,23 @@ const AdminUsers = () => {
               >
                 <FiX />
               </button>
-              <h2 className="text-xl font-bold text-gray-800">Change Student Batch</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                {movingStudent === "BULK" ? "Bulk Move Students" : "Change Student Batch"}
+              </h2>
               
               <div className="flex items-center gap-3 mt-4 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <img src={movingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-12 h-12 rounded-full object-cover shadow-sm bg-white border border-gray-200" />
+                {movingStudent === "BULK" ? (
+                  <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full">
+                    <FiUsers size={24} />
+                  </div>
+                ) : (
+                  <img src={movingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-12 h-12 rounded-full object-cover shadow-sm bg-white border border-gray-200" />
+                )}
                 <div>
-                  <p className="text-xs text-gray-500 font-semibold uppercase">Moving Student</p>
-                  <p className="font-bold text-gray-800">{movingStudent.name}</p>
+                  <p className="text-xs text-gray-500 font-semibold uppercase">Moving</p>
+                  <p className="font-bold text-gray-800">
+                    {movingStudent === "BULK" ? `${selectedUserIds.length} Selected Students` : movingStudent.name}
+                  </p>
                 </div>
               </div>
             </div>
@@ -415,7 +510,6 @@ const AdminUsers = () => {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             
-            {/* MODIFIED: Added Profile Card in Edit Modal Header */}
             <div className="relative p-6 border-b">
               <button
                 onClick={() => setEditingStudent(null)}
@@ -459,6 +553,7 @@ const AdminUsers = () => {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Percentage / CGPA</label>
                 <input
                   type="number"
+                  step="0.01"
                   value={profileForm.percentage}
                   onChange={(e) => setProfileForm({ ...profileForm, percentage: e.target.value })}
                   className="w-full p-2 border rounded bg-gray-50"
@@ -490,7 +585,7 @@ const AdminUsers = () => {
                   type="checkbox"
                   checked={profileForm.readyForRelocation}
                   onChange={(e) => setProfileForm({ ...profileForm, readyForRelocation: e.target.checked })}
-                  className="w-4 h-4"
+                  className="w-4 h-4 cursor-pointer"
                 />
                 <label className="text-sm font-semibold text-gray-700">Ready for Relocation</label>
               </div>
@@ -516,7 +611,7 @@ const AdminUsers = () => {
                     type="checkbox"
                     checked={profileForm.profileLocked}
                     onChange={(e) => setProfileForm({ ...profileForm, profileLocked: e.target.checked })}
-                    className="w-5 h-5"
+                    className="w-5 h-5 cursor-pointer"
                   />
                 </div>
               </div>
