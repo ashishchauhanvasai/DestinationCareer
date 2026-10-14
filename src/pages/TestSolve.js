@@ -1,5 +1,3 @@
-
-
 // Save as: src/pages/TestSolve.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
@@ -132,6 +130,24 @@ const TestSolve = () => {
     setBusy(false);
   };
 
+  // NAYA: Editor Mount par events block karne ke liye
+  const handleEditorMount = (editor, monaco) => {
+    const editorNode = editor.getContainerDOMNode();
+    
+    // Capture phase (true) ensures hum event ko Monaco se pehle rok lein
+    editorNode.addEventListener('paste', (e) => {
+      e.preventDefault(); e.stopPropagation(); alert("Pasting is disabled!");
+    }, true);
+    
+    editorNode.addEventListener('copy', (e) => {
+      e.preventDefault(); e.stopPropagation(); alert("Copying is disabled!");
+    }, true);
+    
+    editorNode.addEventListener('cut', (e) => {
+      e.preventDefault(); e.stopPropagation(); alert("Cutting is disabled!");
+    }, true);
+  };
+
   const idx = problems.findIndex((p) => p.slug === slug);
   const prev = idx > 0 ? problems[idx - 1] : null;
   const next = idx >= 0 && idx < problems.length - 1 ? problems[idx + 1] : null;
@@ -225,23 +241,7 @@ const TestSolve = () => {
             </div>
           </div>
 
-          {/* <div className="flex-1 min-h-[220px] border rounded-xl overflow-hidden">
-            <Editor
-              height="100%"
-              language={lang.monaco}
-              value={codes[lang.id]}
-              onChange={onCodeChange}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize,
-                mouseWheelZoom: true,
-                automaticLayout: true,
-                scrollBeyondLastLine: false
-              }}
-            />
-          </div> */}
-
+          {/* COPY-PASTE BLOCKER DIV */}
           <div 
             className="flex-1 min-h-[220px] border rounded-xl overflow-hidden"
             onCopy={(e) => { e.preventDefault(); alert("Copying is disabled during the test!"); }}
@@ -249,20 +249,24 @@ const TestSolve = () => {
             onCut={(e) => { e.preventDefault(); alert("Cutting is disabled!"); }}
             onContextMenu={(e) => { e.preventDefault(); alert("Right-click is disabled!"); }}
           >
+            <div className="flex-1 min-h-[220px] border rounded-xl overflow-hidden h-full">
             <Editor
               height="100%"
               language={lang.monaco}
               value={codes[lang.id]}
               onChange={onCodeChange}
               theme="vs-dark"
+              onMount={handleEditorMount} /* <--- NAYA: Mount hote hi events block karega */
               options={{
                 minimap: { enabled: false },
                 fontSize,
                 mouseWheelZoom: true,
                 automaticLayout: true,
-                scrollBeyondLastLine: false
+                scrollBeyondLastLine: false,
+                contextmenu: false /* <--- NAYA: Right-click menu bilkul band kar dega */
               }}
             />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
