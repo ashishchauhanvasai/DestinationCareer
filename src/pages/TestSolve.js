@@ -59,6 +59,7 @@ const TestSolve = () => {
   const [expanded, setExpanded] = useState(false); // true = editor takes the whole width
   const [resultH, setResultH] = useState(224); // height of the Result box in pixels
   const dragRef = useRef(null);
+  const editorWrapperRef = useRef(null); // NAYA: Editor wrap karne ke liye ref
 
   const changeFont = (delta) => {
     setFontSize((s) => {
@@ -108,6 +109,33 @@ const TestSolve = () => {
     }).catch(() => alert('Could not load question'));
   }, [slug]);
 
+  // ==========================================
+  // NAYA: COPY-PASTE BLOCKER (STRICT CAPTURE PHASE)
+  // ==========================================
+  useEffect(() => {
+    const el = editorWrapperRef.current;
+    if (!el) return;
+
+    const blockEvent = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      alert(`${e.type} is disabled during the test!`);
+    };
+
+    // Capture phase (true) runs BEFORE Monaco gets the event
+    el.addEventListener('paste', blockEvent, true);
+    el.addEventListener('copy', blockEvent, true);
+    el.addEventListener('cut', blockEvent, true);
+    el.addEventListener('contextmenu', blockEvent, true);
+
+    return () => {
+      el.removeEventListener('paste', blockEvent, true);
+      el.removeEventListener('copy', blockEvent, true);
+      el.removeEventListener('cut', blockEvent, true);
+      el.removeEventListener('contextmenu', blockEvent, true);
+    };
+  }, []);
+
   const onCodeChange = (v) => {
     const next = { ...codes, [lang.id]: v || '' };
     setCodes(next);
@@ -128,24 +156,6 @@ const TestSolve = () => {
       else { setSubmitResult(r.data); loadList(); } // refresh best score / attempts
     } catch (err) { alert(err.response?.data?.message || 'Something went wrong'); }
     setBusy(false);
-  };
-
-  // NAYA: Editor Mount par events block karne ke liye
-  const handleEditorMount = (editor, monaco) => {
-    const editorNode = editor.getContainerDOMNode();
-    
-    // Capture phase (true) ensures hum event ko Monaco se pehle rok lein
-    editorNode.addEventListener('paste', (e) => {
-      e.preventDefault(); e.stopPropagation(); alert("Pasting is disabled!");
-    }, true);
-    
-    editorNode.addEventListener('copy', (e) => {
-      e.preventDefault(); e.stopPropagation(); alert("Copying is disabled!");
-    }, true);
-    
-    editorNode.addEventListener('cut', (e) => {
-      e.preventDefault(); e.stopPropagation(); alert("Cutting is disabled!");
-    }, true);
   };
 
   const idx = problems.findIndex((p) => p.slug === slug);
@@ -241,32 +251,26 @@ const TestSolve = () => {
             </div>
           </div>
 
-          {/* COPY-PASTE BLOCKER DIV */}
+          {/* NAYA: Editor div with wrapper ref */}
           <div 
-            className="flex-1 min-h-[220px] border rounded-xl overflow-hidden"
-            onCopy={(e) => { e.preventDefault(); alert("Copying is disabled during the test!"); }}
-            onPaste={(e) => { e.preventDefault(); alert("Pasting is disabled during the test!"); }}
-            onCut={(e) => { e.preventDefault(); alert("Cutting is disabled!"); }}
-            onContextMenu={(e) => { e.preventDefault(); alert("Right-click is disabled!"); }}
+            ref={editorWrapperRef}
+            className="flex-1 min-h-[220px] border rounded-xl overflow-hidden flex flex-col h-full"
           >
-            <div className="flex-1 min-h-[220px] border rounded-xl overflow-hidden h-full">
             <Editor
               height="100%"
               language={lang.monaco}
               value={codes[lang.id]}
               onChange={onCodeChange}
               theme="vs-dark"
-              onMount={handleEditorMount} /* <--- NAYA: Mount hote hi events block karega */
               options={{
                 minimap: { enabled: false },
                 fontSize,
                 mouseWheelZoom: true,
                 automaticLayout: true,
                 scrollBeyondLastLine: false,
-                contextmenu: false /* <--- NAYA: Right-click menu bilkul band kar dega */
+                contextmenu: false /* NAYA: Right-click menu disable karega */
               }}
             />
-            </div>
           </div>
 
           <div className="flex items-center gap-3">
