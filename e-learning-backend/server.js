@@ -3711,6 +3711,60 @@ const jobSchema = new mongoose.Schema({
   reqSkills: { type: String, default: '' } // Comma separated
 });
 const Job = mongoose.model('Job', jobSchema);
+// ============================================================================
+// MISSING JOB APPLICATIONS SCHEMA & GRIDFS SETUP
+// ============================================================================
+const APP_STATUSES = ['Applied', 'Shortlisted', 'Interview Scheduled', 'Next Round', 'Selected', 'Rejected'];
+
+const applicationSchema = new mongoose.Schema({
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  job: { type: mongoose.Schema.Types.ObjectId, ref: 'Job', required: true },
+  email: { type: String, required: true, trim: true },
+  phone: { type: String, required: true },
+  parentPhone: { type: String, required: true },
+  linkedin: { type: String, required: true },
+  github: { type: String, required: true },
+  photoFileId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  resumeFileId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  status: { type: String, enum: APP_STATUSES, default: 'Applied' },
+  roundNo: { type: Number, default: 1 },
+  interviewDate: { type: String, default: '' },
+  remarks: { type: String, default: '' },
+  history: [{
+    status: String,
+    roundNo: Number,
+    interviewDate: String,
+    message: { type: String, default: '' },
+    changedBy: { type: String, default: '' },
+    changedAt: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+applicationSchema.index({ student: 1, job: 1 }, { unique: true });
+const Application = mongoose.model('Application', applicationSchema);
+
+let filesBucket;
+const getBucket = () => {
+  if (!filesBucket) {
+    filesBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'applicationFiles' });
+  }
+  return filesBucket;
+};
+
+const saveToGridFS = (file, kind) => new Promise((resolve, reject) => {
+  const stream = getBucket().openUploadStream(file.originalname, {
+    contentType: file.mimetype,
+    metadata: { kind }
+  });
+  stream.on('error', reject);
+  stream.on('finish', () => resolve(stream.id));
+  stream.end(file.buffer);
+});
+
+const deleteGridFile = async (id) => {
+  try { await getBucket().delete(new mongoose.Types.ObjectId(String(id))); }
+  catch (e) { /* file already gone */ }
+};
+// ============================================================================
 
 // Auto-create Super Admin
 const createSuperAdmin = async () => {
