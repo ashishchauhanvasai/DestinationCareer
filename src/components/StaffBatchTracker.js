@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FiArrowLeft, FiUsers, FiClock, FiStar, FiChevronDown, FiChevronUp, FiCheckSquare } from 'react-icons/fi';
+import {
+  FiArrowLeft,
+  FiUsers,
+  FiClock,
+  FiStar,
+  FiChevronDown,
+  FiChevronUp,
+  FiCheckSquare,
+  FiTrash2,
+  FiX
+} from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
@@ -40,13 +50,18 @@ const StaffBatchTracker = ({ title }) => {
   const [students, setStudents] = useState(null);
   const [mocks, setMocks] = useState(null);
   
-  // =========================================
   // CALENDAR (MATRIX) STATE
-  // =========================================
   const [matrixData, setMatrixData] = useState(null);
   
   const [openRound, setOpenRound] = useState(null);
   const [studentView, setStudentView] = useState(null);
+
+  // =========================================
+  // NEW: ASSIGN / MOVE BATCH & BULK SELECTION STATE
+  // =========================================
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [movingStudent, setMovingStudent] = useState(null); // student object or "BULK"
+  const [targetBatchId, setTargetBatchId] = useState('');
 
   const fetchBatchList = () => {
     axios.get(`${API}/staff/batches`, cfg())
@@ -64,11 +79,26 @@ const StaffBatchTracker = ({ title }) => {
     setMocks(null);
     setMatrixData(null);
     setOpenRound(null);
+    setSelectedStudentIds([]);
     try {
       const r = await axios.get(`${API}/staff/batches/${b._id}/students`, cfg());
       setStudents(r.data);
     } catch (err) {
       alert(err.response?.data?.message || 'Could not load the students');
+    }
+  };
+
+  // Reload current batch students + batch counts
+  const refreshCurrentBatch = async () => {
+    fetchBatchList();
+    if (batch) {
+      try {
+        const r = await axios.get(`${API}/staff/batches/${batch._id}/students`, cfg());
+        setStudents(r.data);
+        setSelectedStudentIds([]);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -80,9 +110,7 @@ const StaffBatchTracker = ({ title }) => {
     } catch (err) { alert('Could not load the mock history'); }
   };
 
-  // =========================================
   // FETCH ATTENDANCE MATRIX
-  // =========================================
   const showMatrix = async () => {
     setTab('matrix');
     if (matrixData) return;
@@ -94,13 +122,10 @@ const StaffBatchTracker = ({ title }) => {
     }
   };
 
-  // =========================================
   // TOGGLE MANUAL ATTENDANCE CHECKBOX
-  // =========================================
   const toggleAttendance = async (sessionId, studentId, isCurrentlyPresent) => {
-    const isPresent = !isCurrentlyPresent; // Flip status
+    const isPresent = !isCurrentlyPresent;
     
-    // Instant UI update (taaki admin ko wait na karna pade)
     setMatrixData(prev => {
       const newMap = { ...prev.attMap };
       if (isPresent) newMap[`${studentId}_${sessionId}`] = true;
@@ -127,6 +152,76 @@ const StaffBatchTracker = ({ title }) => {
     }
   };
 
+  // =========================================
+  // NEW: DELETE STUDENT HANDLER
+  // =========================================
+  const handleDeleteStudent = async (s) => {
+    if (!window.confirm(`Remove ${s.name} (${s.email}) permanently? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/users/${s._id}`, cfg());
+      alert(`${s.name} has been deleted.`);
+      await refreshCurrentBatch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete student');
+    }
+  };
+
+  // =========================================
+  // NEW: SELECT CHECKBOX HANDLERS
+  // =========================================
+  const handleSelectAll = (e) => {
+    if (!students?.students) return;
+    if (e.target.checked) {
+      setSelectedStudentIds(students.students.map((s) => s._id));
+    } else {
+      setSelectedStudentIds([]);
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // =========================================
+  // NEW: CONFIRM ASSIGN / MOVE TO ONGOING BATCH
+  // =========================================
+  const confirmMoveBatch = async () => {
+    if (!targetBatchId) {
+      alert('Please select an ongoing batch from the dropdown.');
+      return;
+    }
+
+    const oldBatchId = (!batch || batch._id === 'unassigned')
+      ? '000000000000000000000000'
+      : batch._id;
+
+    try {
+      if (movingStudent === 'BULK') {
+        await axios.put(`${API}/staff/batches/bulk-change-student`, {
+          studentIds: selectedStudentIds,
+          oldBatchId,
+          newBatchId: targetBatchId
+        }, cfg());
+        alert(`Successfully assigned ${selectedStudentIds.length} student(s) to the batch!`);
+      } else {
+        await axios.put(`${API}/staff/batches/change-student`, {
+          studentId: movingStudent._id,
+          oldBatchId,
+          newBatchId: targetBatchId
+        }, cfg());
+        alert(`${movingStudent.name} has been added to the batch!`);
+      }
+
+      setMovingStudent(null);
+      setTargetBatchId('');
+      await refreshCurrentBatch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to assign student(s) to batch');
+    }
+  };
+
   const heading = title ? <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">{title}</h1> : null;
 
   // ------------------------------------------------------------------ STUDENT PAGE
@@ -142,21 +237,41 @@ const StaffBatchTracker = ({ title }) => {
         <BackButton onClick={() => setStudentView(null)}>Back to {batch ? batch.subject : 'batches'}</BackButton>
 
         {/* Student Profile Card (with Profile Pic) */}
-        <div className={`${card} p-6 flex items-center gap-5`}>
-          <img 
-            src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
-            alt="DP" 
-            className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow-sm bg-white"
-          />
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{s.name}</h2>
-            <p className={`text-sm ${muted}`}>{s.email}</p>
-            <p className={`text-xs mt-2 ${muted}`}>
-              {s.highestQualification || '-'} ({s.passingYear || '-'}), {s.percentage ?? '-'}%, backlogs {s.backlogs ?? 0}, gap {s.educationGap ?? 0} yrs
-            </p>
-            {s.skillsAcquired && <p className={`text-xs ${muted}`}>Skills: {s.skillsAcquired}</p>}
-            {!isAdmin && <p className={`text-xs mt-2 ${muted}`}>Attendance and mock details below are for your batches only.</p>}
+        <div className={`${card} p-6 flex items-center justify-between gap-5 flex-wrap`}>
+          <div className="flex items-center gap-5">
+            <img 
+              src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
+              alt="DP" 
+              className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow-sm bg-white"
+            />
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{s.name}</h2>
+              <p className={`text-sm ${muted}`}>{s.email}</p>
+              <p className={`text-xs mt-2 ${muted}`}>
+                {s.highestQualification || '-'} ({s.passingYear || '-'}), {s.percentage ?? '-'}%, backlogs {s.backlogs ?? 0}, gap {s.educationGap ?? 0} yrs
+              </p>
+              {s.skillsAcquired && <p className={`text-xs ${muted}`}>Skills: {s.skillsAcquired}</p>}
+              {!isAdmin && <p className={`text-xs mt-2 ${muted}`}>Attendance and mock details below are for your batches only.</p>}
+            </div>
           </div>
+
+          {isAdmin && (
+            <button
+              onClick={async () => {
+                if (!window.confirm(`Delete ${s.name} permanently?`)) return;
+                try {
+                  await axios.delete(`${API}/users/${s._id}`, cfg());
+                  setStudentView(null);
+                  await refreshCurrentBatch();
+                } catch (e) {
+                  alert(e.response?.data?.message || 'Failed to delete student');
+                }
+              }}
+              className="bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5"
+            >
+              <FiTrash2 /> Delete Student
+            </button>
+          )}
         </div>
 
         {/* Stats Grid */}
@@ -239,7 +354,6 @@ const StaffBatchTracker = ({ title }) => {
                 Students List
               </button>
               
-              {/* NEW CALENDAR TAB BUTTON */}
               <button
                 onClick={showMatrix}
                 className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 ${tab === 'matrix' ? 'bg-green-600 text-white shadow-md' : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'}`}
@@ -257,24 +371,64 @@ const StaffBatchTracker = ({ title }) => {
           )}
         </div>
 
+        {/* BULK ACTION BAR FOR ADMIN */}
+        {isAdmin && tab === 'students' && selectedStudentIds.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl flex items-center justify-between shadow-sm">
+            <span className="text-blue-800 font-bold text-sm">
+              {selectedStudentIds.length} student(s) selected
+            </span>
+            <button
+              onClick={() => {
+                setTargetBatchId('');
+                setMovingStudent('BULK');
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition"
+            >
+              {isUnassigned ? 'Assign Selected to Batch' : 'Move Selected to Another Batch'}
+            </button>
+          </div>
+        )}
+
         {/* 1. STUDENTS TAB */}
         {tab === 'students' && (
           <div className={`${card} overflow-x-auto`}>
             {!students ? (
               <p className={`p-8 text-center ${muted}`}>Loading students...</p>
+            ) : students.students.length === 0 ? (
+              <p className={`p-8 text-center ${muted}`}>No students in this list.</p>
             ) : (
               <table className="w-full text-left text-sm">
                 <thead className={`${muted} border-b dark:border-slate-700`}>
                   <tr>
+                    {isAdmin && (
+                      <th className="p-3 w-10">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                          checked={students.students.length > 0 && selectedStudentIds.length === students.students.length}
+                          onChange={handleSelectAll}
+                        />
+                      </th>
+                    )}
                     <th className="p-3">Student</th>
                     {!isUnassigned && <th className="p-3">Attendance</th>}
                     <th className="p-3">Assignments</th>
-                    <th className="p-3" />
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-slate-700">
                   {students.students.map((s) => (
                     <tr key={s._id} className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                      {isAdmin && (
+                        <td className="p-3">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                            checked={selectedStudentIds.includes(s._id)}
+                            onChange={() => handleSelectOne(s._id)}
+                          />
+                        </td>
+                      )}
                       <td className="p-3 flex items-center gap-3">
                         <img 
                           src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
@@ -282,17 +436,43 @@ const StaffBatchTracker = ({ title }) => {
                           className="w-10 h-10 rounded-full object-cover border border-gray-300 bg-white"
                         />
                         <div>
-                          <div className="font-semibold">{s.name}</div>
+                          <div className="font-semibold text-gray-900 dark:text-white">{s.name}</div>
                           <div className="text-xs text-gray-400">{s.email}</div>
                         </div>
                       </td>
-                      {!isUnassigned && <td className="p-3 font-bold">{s.attended} / {students.totalClasses}</td>}
-                      <td className="p-3">
+                      {!isUnassigned && <td className="p-3 font-bold text-gray-800 dark:text-gray-200">{s.attended} / {students.totalClasses}</td>}
+                      <td className="p-3 text-gray-800 dark:text-gray-200">
                         {s.assignmentsAnswered} answered
                         {s.assignmentsPending > 0 && <span className="text-orange-500 text-xs ml-1">({s.assignmentsPending} pending)</span>}
                       </td>
-                      <td className="p-3 text-right">
-                        <button onClick={() => openStudent(s._id)} className="text-blue-600 font-bold hover:underline">Full history</button>
+                      <td className="p-3">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => openStudent(s._id)} className="text-blue-600 font-bold hover:underline text-xs px-2 py-1">
+                            Full history
+                          </button>
+
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setTargetBatchId('');
+                                  setMovingStudent(s);
+                                }}
+                                className="bg-orange-50 text-orange-600 hover:bg-orange-100 border border-orange-200 px-3 py-1.5 rounded-lg text-xs font-bold transition"
+                              >
+                                {isUnassigned ? 'Assign Batch' : 'Change Batch'}
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteStudent(s)}
+                                className="text-red-500 hover:text-red-700 p-2 rounded hover:bg-red-50 transition"
+                                title="Delete Student"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -326,7 +506,6 @@ const StaffBatchTracker = ({ title }) => {
                   </thead>
                   <tbody className="divide-y">
                     {matrixData.students.map(s => {
-                      // Calculate this student's totals
                       const totalSess = matrixData.sessions.length;
                       let presentCount = 0;
                       matrixData.sessions.forEach(sess => {
@@ -336,8 +515,6 @@ const StaffBatchTracker = ({ title }) => {
 
                       return (
                         <tr key={s._id} className="hover:bg-gray-50 transition-colors">
-                          
-                          {/* Student Info (Sticky Column) */}
                           <td className="p-3 sticky left-0 bg-white border-r flex items-center gap-2 w-56 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                             <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="w-8 h-8 rounded-full object-cover border border-gray-200" alt="dp" />
                             <div className="truncate">
@@ -346,7 +523,6 @@ const StaffBatchTracker = ({ title }) => {
                             </div>
                           </td>
                           
-                          {/* Total Percentage */}
                           <td className="p-3 text-center font-bold bg-blue-50/30 border-r">
                             <span className={percentage >= 75 ? 'text-green-600' : percentage >= 50 ? 'text-yellow-600' : 'text-red-600'}>
                               {percentage}%
@@ -354,7 +530,6 @@ const StaffBatchTracker = ({ title }) => {
                             <div className="text-[10px] text-gray-500">{presentCount}/{totalSess}</div>
                           </td>
 
-                          {/* Checkboxes for each session */}
                           {matrixData.sessions.map(sess => {
                             const isPresent = !!matrixData.attMap[`${s._id}_${sess._id}`];
                             return (
@@ -420,6 +595,82 @@ const StaffBatchTracker = ({ title }) => {
             )}
           </div>
         )}
+
+        {/* ASSIGN / MOVE BATCH MODAL */}
+        {movingStudent && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md">
+              <div className="relative p-6 border-b dark:border-slate-700">
+                <button
+                  onClick={() => setMovingStudent(null)}
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2"
+                >
+                  <FiX />
+                </button>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+                  {isUnassigned ? 'Assign to Ongoing Batch' : 'Move Student Batch'}
+                </h2>
+
+                <div className="flex items-center gap-3 mt-4 p-3 bg-gray-50 dark:bg-slate-900 rounded-xl border border-gray-100 dark:border-slate-700">
+                  {movingStudent === 'BULK' ? (
+                    <div className="flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-full">
+                      <FiUsers size={24} />
+                    </div>
+                  ) : (
+                    <img
+                      src={movingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
+                      alt="dp"
+                      className="w-12 h-12 rounded-full object-cover shadow-sm bg-white border border-gray-200"
+                    />
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 font-semibold uppercase">Selected</p>
+                    <p className="font-bold text-gray-800 dark:text-white">
+                      {movingStudent === 'BULK' ? `${selectedStudentIds.length} Students` : movingStudent.name}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Select Ongoing Batch
+                  </label>
+                  <select
+                    value={targetBatchId}
+                    onChange={(e) => setTargetBatchId(e.target.value)}
+                    className="w-full p-3 border dark:border-slate-700 rounded-lg bg-gray-50 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Choose a Batch --</option>
+                    {list.batches
+                      .filter((b) => b._id !== batch._id)
+                      .map((b) => (
+                        <option key={b._id} value={b._id}>
+                          {b.subject} ({b.batchCode})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={confirmMoveBatch}
+                    className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                  >
+                    Confirm
+                  </button>
+                  <button
+                    onClick={() => setMovingStudent(null)}
+                    className="flex-1 bg-gray-200 text-gray-800 py-2.5 rounded-lg font-bold hover:bg-gray-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -432,7 +683,7 @@ const StaffBatchTracker = ({ title }) => {
       {heading}
       <p className={`text-sm ${muted}`}>
         {isAdmin
-          ? 'All batches. Students appear in a batch after they scan attendance for it.'
+          ? 'All batches. Students appear in a batch after they scan attendance or when you assign them manually.'
           : 'Your batches. Open one to see its students and mock history.'}
       </p>
 
@@ -444,7 +695,7 @@ const StaffBatchTracker = ({ title }) => {
             className="text-left rounded-2xl border-2 border-dashed border-gray-300 dark:border-slate-600 p-5 hover:bg-gray-50 dark:hover:bg-slate-800"
           >
             <p className="font-bold text-gray-900 dark:text-white">Not in any batch yet</p>
-            <p className={`text-xs ${muted} mt-1`}>These students have not scanned attendance yet.</p>
+            <p className={`text-xs ${muted} mt-1`}>Click to assign these students to ongoing batches or remove them.</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-3">{list.unassignedCount}</p>
           </button>
         )}
