@@ -57,7 +57,7 @@ const StaffBatchTracker = ({ title }) => {
   const [studentView, setStudentView] = useState(null);
 
   // =========================================
-  // NEW: ASSIGN / MOVE BATCH & BULK SELECTION STATE
+  // ASSIGN / MOVE BATCH & BULK SELECTION STATE
   // =========================================
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [movingStudent, setMovingStudent] = useState(null); // student object or "BULK"
@@ -153,7 +153,7 @@ const StaffBatchTracker = ({ title }) => {
   };
 
   // =========================================
-  // NEW: DELETE STUDENT HANDLER
+  // SINGLE DELETE STUDENT HANDLER
   // =========================================
   const handleDeleteStudent = async (s) => {
     if (!window.confirm(`Remove ${s.name} (${s.email}) permanently? This cannot be undone.`)) return;
@@ -167,7 +167,26 @@ const StaffBatchTracker = ({ title }) => {
   };
 
   // =========================================
-  // NEW: SELECT CHECKBOX HANDLERS
+  // NEW: BULK DELETE STUDENTS HANDLER
+  // =========================================
+  const handleBulkDeleteStudents = async () => {
+    if (!window.confirm(`Are you sure you want to permanently delete ${selectedStudentIds.length} selected student(s)? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await Promise.all(
+        selectedStudentIds.map((id) => axios.delete(`${API}/users/${id}`, cfg()))
+      );
+      alert(`Successfully deleted ${selectedStudentIds.length} student(s)!`);
+      await refreshCurrentBatch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete some students');
+      await refreshCurrentBatch();
+    }
+  };
+
+  // =========================================
+  // SELECT CHECKBOX HANDLERS
   // =========================================
   const handleSelectAll = (e) => {
     if (!students?.students) return;
@@ -185,7 +204,7 @@ const StaffBatchTracker = ({ title }) => {
   };
 
   // =========================================
-  // NEW: CONFIRM ASSIGN / MOVE TO ONGOING BATCH
+  // CONFIRM ASSIGN / MOVE TO ONGOING BATCH
   // =========================================
   const confirmMoveBatch = async () => {
     if (!targetBatchId) {
@@ -371,21 +390,30 @@ const StaffBatchTracker = ({ title }) => {
           )}
         </div>
 
-        {/* BULK ACTION BAR FOR ADMIN */}
+        {/* BULK ACTION BAR FOR ADMIN (ASSIGN BATCH + DELETE SELECTED) */}
         {isAdmin && tab === 'students' && selectedStudentIds.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl flex items-center justify-between shadow-sm">
+          <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
             <span className="text-blue-800 font-bold text-sm">
               {selectedStudentIds.length} student(s) selected
             </span>
-            <button
-              onClick={() => {
-                setTargetBatchId('');
-                setMovingStudent('BULK');
-              }}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition"
-            >
-              {isUnassigned ? 'Assign Selected to Batch' : 'Move Selected to Another Batch'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setTargetBatchId('');
+                  setMovingStudent('BULK');
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition"
+              >
+                {isUnassigned ? 'Assign Selected to Batch' : 'Move Selected to Batch'}
+              </button>
+
+              <button
+                onClick={handleBulkDeleteStudents}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+              >
+                <FiTrash2 size={14} /> Delete Selected ({selectedStudentIds.length})
+              </button>
+            </div>
           </div>
         )}
 
