@@ -3,10 +3,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { FiMapPin, FiCalendar, FiChevronDown, FiChevronUp } from 'react-icons/fi';
-
 const API = process.env.REACT_APP_API_URL;
 const STATUSES = ['Applied', 'Shortlisted', 'Interview Scheduled', 'Next Round', 'Selected', 'Rejected'];
-
 const STATUS_STYLE = {
   Applied: 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-gray-200',
   Shortlisted: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
@@ -15,13 +13,11 @@ const STATUS_STYLE = {
   Selected: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
   Rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
 };
-
 const MyApplications = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
   const [openId, setOpenId] = useState(null);
-
   useEffect(() => {
     const token = localStorage.getItem('token');
     axios
@@ -30,12 +26,9 @@ const MyApplications = () => {
       .catch((err) => console.error('Failed to load applications', err))
       .finally(() => setLoading(false));
   }, []);
-
   if (loading) return <p className="p-8 text-center text-gray-500 dark:text-gray-400">Loading your applications...</p>;
   if (!data) return <p className="p-8 text-center text-red-600">Could not load your applications. Try again later.</p>;
-
   const visible = filter === 'All' ? data.applications : data.applications.filter((a) => a.status === filter);
-
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
@@ -44,7 +37,6 @@ const MyApplications = () => {
           Every job you applied for and where it stands. Select a box to filter the list.
         </p>
       </div>
-
       {/* Counts */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         <button
@@ -53,13 +45,12 @@ const MyApplications = () => {
           className={`rounded-xl border p-4 text-left bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 ${
             filter === 'All' ? 'ring-2 ring-blue-500' : ''
           }`}
-        >
+          >
           <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.total}</p>
           <span className="inline-block mt-1 text-xs font-bold px-2 py-0.5 rounded bg-gray-800 text-white dark:bg-white dark:text-gray-900">
             Total
           </span>
         </button>
-
         {STATUSES.map((s) => (
           <button
             key={s}
@@ -74,7 +65,6 @@ const MyApplications = () => {
           </button>
         ))}
       </div>
-
       {/* List */}
       {data.total === 0 ? (
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700">
@@ -103,14 +93,12 @@ const MyApplications = () => {
                   </div>
                   <span className={`text-sm font-bold px-3 py-1 rounded ${STATUS_STYLE[a.status]}`}>{a.status}</span>
                 </div>
-
                 {(a.status === 'Interview Scheduled' || a.status === 'Next Round') && (
                   <div className="mt-4 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 p-3 text-sm text-purple-800 dark:text-purple-200">
                     Round {a.roundNo}
                     {a.interviewDate ? `, ${a.interviewDate}` : ', date will be shared soon'}
                   </div>
                 )}
-
                 <div className="mt-4 flex items-center justify-between">
                   <button
                     type="button"
@@ -123,7 +111,6 @@ const MyApplications = () => {
                     View job
                   </Link>
                 </div>
-
                 {open && (
                   <ol className="mt-4 border-l-2 border-gray-200 dark:border-slate-600 ml-2 space-y-4">
                     {history.map((h, i) => (
@@ -152,5 +139,4 @@ const MyApplications = () => {
     </div>
   );
 };
-
 export default MyApplications;

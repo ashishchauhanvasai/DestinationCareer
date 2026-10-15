@@ -3,7 +3,7 @@ import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import {
   FiTrash2, FiEdit, FiPlus, FiX, FiUploadCloud, FiDownload,
-  FiCheckCircle, FiAlertTriangle, FiSearch,
+  FiCheckCircle, FiAlertTriangle, FiSearch, FiArrowLeft, FiUser, FiAward, FiCheckSquare
 } from 'react-icons/fi';
 import { parseProblemMd, downloadSampleMd } from '../utils/parseProblemMd';
 
@@ -29,19 +29,14 @@ const labelCls = 'block text-xs font-semibold text-gray-500 mb-1';
 const MD_CLASS =
   'text-sm text-gray-800 leading-relaxed [&_p]:mb-3 [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:font-bold [&_h3]:mt-3 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_code]:bg-gray-100 [&_code]:px-1 [&_code]:rounded [&_pre]:bg-gray-50 [&_pre]:border [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0';
 
-// isSample = true  -> VISIBLE example shown to students      isSample = false -> HIDDEN test case (scoring only)
 const emptyTestCase = (isSample = true) => ({ input: '', expectedOutput: '', isSample });
 
-// ---- function-style questions (student writes only the method, like LeetCode) ----
-// the types a function can use (same names as the backend)
 const TYPES = ['int', 'long', 'double', 'boolean', 'String', 'int[]', 'long[]', 'double[]', 'boolean[]', 'String[]', 'int[][]'];
 const emptyParam = () => ({ name: '', type: 'int' });
 const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
-// "int[] twoSum(int[] nums, int target)"  -> shown as a live preview
-const signatureText = (f) => `${f.returnType} ${f.functionName || 'functionName'}(${(f.params || []).map((p) => `${p.type}${p.name || 'param'}`).join(', ')})`;
-// starter code that is missing/empty falls back to the default template
+const signatureText = (f) => `${f.returnType} ${f.functionName || 'functionName'}(${(f.params || []).map((p) => `${p.type} ${p.name || 'param'}`).join(', ')})`;
 const mergeStarter = (sc) => LANGS.reduce((acc, l) => { acc[l.id] = (sc && sc[l.id]) || DEFAULT_STARTER[l.id]; return acc; }, {});
-// returns an error message, or null when the signature is fine
+
 const checkSignature = (f) => {
   if (!NAME_RE.test(f.functionName.trim())) return 'Enter a valid function name (letters, digits and _ only), for example twoSum.';
   const seen = new Set();
@@ -60,7 +55,6 @@ const emptyForm = () => ({
   mode: 'function', functionName: '', returnType: 'int[]', params: [emptyParam()],
 });
 
-// parsed .md -> the same shape the builder form / POST /api/problems uses
 const toPayload = (p) => ({
   title: p.title,
   difficulty: p.difficulty,
@@ -81,7 +75,8 @@ const AdminTests = () => {
   const [subs, setSubs] = useState([]);
   const [search, setSearch] = useState('');   // submissions search
   const [qSearch, setQSearch] = useState(''); // questions search
-  const [batchFilter, setBatchFilter] = useState('All'); // NEW: batch filter for submissions
+  const [batchFilter, setBatchFilter] = useState('All'); // batch filter for submissions
+  const [selectedStudent, setSelectedStudent] = useState(null); // NEW: selected student card inside a batch
   const [viewingCode, setViewingCode] = useState(null);
 
   const [editingId, setEditingId] = useState(null);
@@ -192,15 +187,67 @@ const AdminTests = () => {
 
   const shownProblems = problems.filter((p) => p.title.toLowerCase().includes(qSearch.toLowerCase()));
   
-  // NEW: Get unique batches for the dropdown
-  const allBatches = ["All", ...new Set(subs.flatMap(s => s.studentBatches || []))];
+  // Total questions & total possible marks across all problems
+  const totalQuestionsCount = problems.length;
+  const totalAvailablePoints = problems.reduce((acc, p) => acc + (Number(p.points) || 0), 0);
 
-  // NEW: Filter submissions by both Search Text AND Selected Batch
+  // Get unique batches for the dropdown
+  const allBatches = ["All", ...new Set(subs.flatMap(s => (s.studentBatches && s.studentBatches.length > 0) ? s.studentBatches : ["Unassigned"]))];
+
+  // Filter submissions by both Search Text AND Selected Batch
   const shownSubs = subs.filter((s) => {
-    const matchesSearch = `${s.user?.name} ${s.user?.email} ${s.problem?.title}`.toLowerCase().includes(search.toLowerCase());
-    const matchesBatch = batchFilter === "All" || (s.studentBatches && s.studentBatches.includes(batchFilter));
-    return matchesSearch && matchesBatch;
+    const studentBatchList = (s.studentBatches && s.studentBatches.length > 0) ? s.studentBatches : ["Unassigned"];
+    const matchesBatch = batchFilter === "All" || studentBatchList.includes(batchFilter);
+    const matchesSearch = `${s.user?.name || ''} ${s.user?.email || ''} ${s.problem?.title || ''}`.toLowerCase().includes(search.toLowerCase());
+    return matchesBatch && matchesSearch;
   });
+
+  // Group submissions by student when a specific batch is selected
+  const studentCardsData = React.useMemo(() => {
+    if (batchFilter === 'All') return [];
+    const map = {};
+
+    subs.forEach((s) => {
+      const studentBatchList = (s.studentBatches && s.studentBatches.length > 0) ? s.studentBatches : ["Unassigned"];
+      if (!studentBatchList.includes(batchFilter)) return;
+
+      const uId = s.user?._id || s.user?.email || 'unknown';
+      if (!map[uId]) {
+        map[uId] = {
+          userId: uId,
+          user: s.user || { name: 'Unknown Student', email: '' },
+          batches: studentBatchList,
+          submissions: [],
+          bestScoresByProblem: {}, // problemId -> bestScore
+        };
+      }
+      map[uId].submissions.push(s);
+
+      if (s.problem?._id) {
+        const pId = s.problem._id;
+        const prevBest = map[uId].bestScoresByProblem[pId] ?? 0;
+        if ((s.score || 0) > prevBest) {
+          map[uId].bestScoresByProblem[pId] = s.score || 0;
+        } else if (map[uId].bestScoresByProblem[pId] === undefined) {
+          map[uId].bestScoresByProblem[pId] = s.score || 0;
+        }
+      }
+    });
+
+    return Object.values(map)
+      .map((item) => {
+        const attendedCount = Object.keys(item.bestScoresByProblem).length;
+        const earnedMarks = Object.values(item.bestScoresByProblem).reduce((a, b) => a + b, 0);
+        return {
+          ...item,
+          attendedCount,
+          earnedMarks,
+        };
+      })
+      .filter((item) =>
+        `${item.user?.name || ''} ${item.user?.email || ''}`.toLowerCase().includes(search.toLowerCase())
+      );
+  }, [subs, batchFilter, search]);
 
   // ---------------- BUILDER VIEW ----------------
   if (view === 'builder') {
@@ -554,56 +601,223 @@ const AdminTests = () => {
         </div>
       )}
 
+      {/* ---------------- SUBMISSIONS VIEW ---------------- */}
       {view === 'submissions' && (
-        <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
-          <div className="p-4 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-4">
-            <span className="font-bold">Student Submissions ({shownSubs.length})</span>
+        <div className="space-y-4">
+          {/* Top Bar: Filter & Search */}
+          <div className="bg-white rounded-2xl shadow-sm border p-4 flex flex-wrap justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              {selectedStudent ? (
+                <button
+                  onClick={() => setSelectedStudent(null)}
+                  className="flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:underline"
+                >
+                  <FiArrowLeft /> Back to {batchFilter} Students
+                </button>
+              ) : (
+                <span className="font-bold text-gray-800">
+                  {batchFilter === 'All'
+                    ? `All Student Submissions (${shownSubs.length})`
+                    : `${batchFilter} — Students (${studentCardsData.length})`}
+                </span>
+              )}
+            </div>
+
             <div className="flex gap-2 w-full md:w-auto">
               <select
                 value={batchFilter}
-                onChange={(e) => setBatchFilter(e.target.value)}
-                className="p-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+                onChange={(e) => {
+                  setBatchFilter(e.target.value);
+                  setSelectedStudent(null); // Reset student view when switching batch
+                }}
+                className="p-2 border rounded-lg text-sm bg-white font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
-                {allBatches.map(b => <option key={b} value={b}>{b}</option>)}
+                {allBatches.map(b => <option key={b} value={b}>{b === 'All' ? 'All Batches (Table View)' : b}</option>)}
               </select>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search student or question" className="flex-1 md:w-64 p-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={batchFilter !== 'All' && !selectedStudent ? "Search student..." : "Search student or question..."}
+                className="flex-1 md:w-64 p-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
             </div>
           </div>
-          <table className="w-full text-left text-sm">
-            <thead className="text-gray-500 border-b">
-              <tr>
-                <th className="p-3 font-semibold">Student</th>
-                <th className="p-3 font-semibold text-blue-600">Batch</th>
-                <th className="p-3 font-semibold">Question</th>
-                <th className="p-3 font-semibold">Lang</th>
-                <th className="p-3 font-semibold">Attempt</th>
-                <th className="p-3 font-semibold">Verdict</th>
-                <th className="p-3 font-semibold">Passed</th>
-                <th className="p-3 font-semibold">Marks</th>
-                <th className="p-3 font-semibold">Date</th>
-                <th className="p-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {shownSubs.map((s) => (
-                <tr key={s._id} className="hover:bg-gray-50">
-                  <td className="p-3">{s.user?.name}<br /><span className="text-xs text-gray-400">{s.user?.email}</span></td>
-                  <td className="p-3 font-bold text-blue-600 text-xs">
-                    {s.studentBatches && s.studentBatches.length > 0 ? s.studentBatches.join(", ") : "Unassigned"}
-                  </td>
-                  <td className="p-3">{s.problem?.title}</td>
-                  <td className="p-3">{s.language}</td>
-                  <td className="p-3 font-bold text-gray-700">#{s.attemptNumber || 1}</td>
-                  <td className={`p-3 font-bold ${s.verdict === 'Accepted' ? 'text-green-600' : 'text-red-500'}`}>{s.verdict}</td>
-                  <td className="p-3">{s.passed}/{s.total}</td>
-                  <td className="p-3">{s.score}/{s.problem?.points}</td>
-                  <td className="p-3 text-gray-500 text-xs">{new Date(s.createdAt).toLocaleString()}</td>
-                  <td className="p-3 text-right"><button onClick={() => setViewingCode(s)} className="text-blue-600 font-bold hover:underline">View code</button></td>
-                </tr>
-              ))}
-              {shownSubs.length === 0 && <tr><td colSpan="10" className="p-8 text-center text-gray-500">No submissions yet.</td></tr>}
-            </tbody>
-          </table>
+
+          {/* CASE 1: Specific Batch Selected & No Student Clicked Yet -> SHOW STUDENT CARDS */}
+          {batchFilter !== 'All' && !selectedStudent && (
+            <div>
+              {studentCardsData.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-sm border p-10 text-center text-gray-500">
+                  No students found with submissions in <b>{batchFilter}</b>.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {studentCardsData.map((st) => (
+                    <div
+                      key={st.userId}
+                      onClick={() => setSelectedStudent(st)}
+                      className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 cursor-pointer hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <img
+                          src={st.user?.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
+                          alt="DP"
+                          className="w-12 h-12 rounded-full object-cover border border-gray-300 bg-gray-50"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-gray-900 truncate">{st.user?.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{st.user?.email}</p>
+                          <span className="inline-block mt-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                            {batchFilter}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mt-5 pt-4 border-t border-gray-100 text-center">
+                        <div className="bg-gray-50 rounded-xl p-2.5">
+                          <p className="text-[11px] uppercase font-semibold text-gray-400 flex items-center justify-center gap-1">
+                            <FiCheckSquare className="text-blue-500" /> Attended
+                          </p>
+                          <p className="text-lg font-bold text-gray-800 mt-0.5">
+                            {st.attendedCount} <span className="text-xs font-normal text-gray-400">/ {totalQuestionsCount}</span>
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-2.5">
+                          <p className="text-[11px] uppercase font-semibold text-gray-400 flex items-center justify-center gap-1">
+                            <FiAward className="text-amber-500" /> Total Marks
+                          </p>
+                          <p className="text-lg font-bold text-green-600 mt-0.5">
+                            {st.earnedMarks} <span className="text-xs font-normal text-gray-400">/ {totalAvailablePoints}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between text-xs font-bold text-blue-600">
+                        <span>Total Submissions: {st.submissions.length}</span>
+                        <span className="hover:underline">View Submissions →</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CASE 2: Student Card Clicked -> SHOW THAT STUDENT'S SUBMISSIONS & CODE */}
+          {batchFilter !== 'All' && selectedStudent && (
+            <div className="space-y-4">
+              {/* Student Summary Banner */}
+              <div className="bg-white rounded-2xl shadow-sm border p-5 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={selectedStudent.user?.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}
+                    alt="DP"
+                    className="w-14 h-14 rounded-full object-cover border-2 border-blue-500 bg-gray-50"
+                  />
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{selectedStudent.user?.name}</h3>
+                    <p className="text-xs text-gray-500">{selectedStudent.user?.email}</p>
+                    <p className="text-xs font-bold text-blue-600 mt-1">{selectedStudent.batches.join(', ')}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-6 text-center">
+                  <div>
+                    <p className="text-xs uppercase font-semibold text-gray-400">Questions Attended</p>
+                    <p className="text-xl font-bold text-gray-800">{selectedStudent.attendedCount} / {totalQuestionsCount}</p>
+                  </div>
+                  <div className="border-l pl-6">
+                    <p className="text-xs uppercase font-semibold text-gray-400">Marks Earned</p>
+                    <p className="text-xl font-bold text-green-600">{selectedStudent.earnedMarks} / {totalAvailablePoints}</p>
+                  </div>
+                  <div className="border-l pl-6">
+                    <p className="text-xs uppercase font-semibold text-gray-400">Total Attempts</p>
+                    <p className="text-xl font-bold text-blue-600">{selectedStudent.submissions.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student's Detailed Submissions Table */}
+              <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="text-gray-500 border-b bg-gray-50">
+                    <tr>
+                      <th className="p-3 font-semibold">Question</th>
+                      <th className="p-3 font-semibold">Lang</th>
+                      <th className="p-3 font-semibold">Attempt</th>
+                      <th className="p-3 font-semibold">Verdict</th>
+                      <th className="p-3 font-semibold">Passed</th>
+                      <th className="p-3 font-semibold">Marks</th>
+                      <th className="p-3 font-semibold">Date & Time</th>
+                      <th className="p-3 text-right font-semibold">Code</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {selectedStudent.submissions
+                      .filter((s) => (s.problem?.title || '').toLowerCase().includes(search.toLowerCase()))
+                      .map((s) => (
+                        <tr key={s._id} className="hover:bg-gray-50">
+                          <td className="p-3 font-semibold text-gray-800">{s.problem?.title || 'Deleted Question'}</td>
+                          <td className="p-3">{s.language}</td>
+                          <td className="p-3 font-bold text-gray-700">#{s.attemptNumber || 1}</td>
+                          <td className={`p-3 font-bold ${s.verdict === 'Accepted' ? 'text-green-600' : 'text-red-500'}`}>{s.verdict}</td>
+                          <td className="p-3">{s.passed}/{s.total}</td>
+                          <td className="p-3 font-semibold">{s.score}/{s.problem?.points}</td>
+                          <td className="p-3 text-gray-500 text-xs">{new Date(s.createdAt).toLocaleString()}</td>
+                          <td className="p-3 text-right">
+                            <button onClick={() => setViewingCode(s)} className="text-blue-600 font-bold hover:underline">
+                              View code
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* CASE 3: 'All' Batches Selected -> SHOW DEFAULT TABLE */}
+          {batchFilter === 'All' && (
+            <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-gray-500 border-b">
+                  <tr>
+                    <th className="p-3 font-semibold">Student</th>
+                    <th className="p-3 font-semibold text-blue-600">Batch</th>
+                    <th className="p-3 font-semibold">Question</th>
+                    <th className="p-3 font-semibold">Lang</th>
+                    <th className="p-3 font-semibold">Attempt</th>
+                    <th className="p-3 font-semibold">Verdict</th>
+                    <th className="p-3 font-semibold">Passed</th>
+                    <th className="p-3 font-semibold">Marks</th>
+                    <th className="p-3 font-semibold">Date</th>
+                    <th className="p-3"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {shownSubs.map((s) => (
+                    <tr key={s._id} className="hover:bg-gray-50">
+                      <td className="p-3">{s.user?.name}<br /><span className="text-xs text-gray-400">{s.user?.email}</span></td>
+                      <td className="p-3 font-bold text-blue-600 text-xs">
+                        {s.studentBatches && s.studentBatches.length > 0 ? s.studentBatches.join(", ") : "Unassigned"}
+                      </td>
+                      <td className="p-3">{s.problem?.title}</td>
+                      <td className="p-3">{s.language}</td>
+                      <td className="p-3 font-bold text-gray-700">#{s.attemptNumber || 1}</td>
+                      <td className={`p-3 font-bold ${s.verdict === 'Accepted' ? 'text-green-600' : 'text-red-500'}`}>{s.verdict}</td>
+                      <td className="p-3">{s.passed}/{s.total}</td>
+                      <td className="p-3">{s.score}/{s.problem?.points}</td>
+                      <td className="p-3 text-gray-500 text-xs">{new Date(s.createdAt).toLocaleString()}</td>
+                      <td className="p-3 text-right"><button onClick={() => setViewingCode(s)} className="text-blue-600 font-bold hover:underline">View code</button></td>
+                    </tr>
+                  ))}
+                  {shownSubs.length === 0 && <tr><td colSpan="10" className="p-8 text-center text-gray-500">No submissions yet.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
