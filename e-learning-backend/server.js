@@ -942,76 +942,76 @@ app.delete('/api/companies/:id/questions/:qid', verifyToken, async (req, res) =>
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// ================= ASSIGNMENTS =================
-const assignmentImageSchema = new mongoose.Schema({
-  data: Buffer,
-  contentType: String
-}, { timestamps: true });
-const AssignmentImage = mongoose.model('AssignmentImage', assignmentImageSchema);
+  // ================= ASSIGNMENTS =================
+  const assignmentImageSchema = new mongoose.Schema({
+    data: Buffer,
+    contentType: String
+  }, { timestamps: true });
+  const AssignmentImage = mongoose.model('AssignmentImage', assignmentImageSchema);
 
-const assignmentSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], default: 'Beginner' },
-  description: { type: String, default: '' },
-  topics: [{
-    topicName: { type: String, required: true },
-    questions: [{
-      qType: { type: String, enum: ['MCQ', 'Descriptive'], default: 'Descriptive' },
-      text: { type: String, required: true },
-      images: [String],                       // ids from AssignmentImage
-      options: [String],                      // MCQ only
-      correctIndex: { type: Number, default: 0 },
-      explanation: { type: String, default: '' },
-      marks: { type: Number, default: 1 }
-    }]
-  }],
-  audience: { type: String, enum: ['everyone', 'batches'], default: 'everyone' },
-  batches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }],
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  createdByName: { type: String, default: '' }
-}, { timestamps: true });
-const Assignment = mongoose.model('Assignment', assignmentSchema);
+  const assignmentSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], default: 'Beginner' },
+    description: { type: String, default: '' },
+    topics: [{
+      topicName: { type: String, required: true },
+      questions: [{
+        qType: { type: String, enum: ['MCQ', 'Descriptive'], default: 'Descriptive' },
+        text: { type: String, required: true },
+        images: [String],                       // ids from AssignmentImage
+        options: [String],                      // MCQ only
+        correctIndex: { type: Number, default: 0 },
+        explanation: { type: String, default: '' },
+        marks: { type: Number, default: 1 }
+      }]
+    }],
+    audience: { type: String, enum: ['everyone', 'batches'], default: 'everyone' },
+    batches: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Batch' }],
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdByName: { type: String, default: '' }
+  }, { timestamps: true });
+  const Assignment = mongoose.model('Assignment', assignmentSchema);
 
-const answerSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  assignment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment', required: true },
-  questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  selectedIndex: Number,
-  text: { type: String, default: '' },
-  isCorrect: Boolean,
-  marks: { type: Number, default: 0 },
-  graded: { type: Boolean, default: false },
-  feedback: { type: String, default: '' }
-}, { timestamps: true });
-answerSchema.index({ user: 1, questionId: 1 }, { unique: true });
-const AssignmentAnswer = mongoose.model('AssignmentAnswer', answerSchema);
+  const answerSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    assignment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment', required: true },
+    questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    selectedIndex: Number,
+    text: { type: String, default: '' },
+    isCorrect: Boolean,
+    marks: { type: Number, default: 0 },
+    graded: { type: Boolean, default: false },
+    feedback: { type: String, default: '' }
+  }, { timestamps: true });
+  answerSchema.index({ user: 1, questionId: 1 }, { unique: true });
+  const AssignmentAnswer = mongoose.model('AssignmentAnswer', answerSchema);
 
-const adminOnly = (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && req.user.role !== 'trainer') {
-    res.status(403).json({ message: 'Access denied' });
-    return false;
+  const adminOnly = (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && req.user.role !== 'trainer') {
+      res.status(403).json({ message: 'Access denied' });
+      return false;
+    }
+    return true;
+  };
+
+  const findQuestion = (assignment, qid) => {
+    for (const t of assignment.topics) {
+      const q = t.questions.find((x) => String(x._id) === String(qid));
+      if (q) return q;
+    }
+    return null;
   }
-  return true;
-};
 
-const findQuestion = (assignment, qid) => {
-  for (const t of assignment.topics) {
-    const q = t.questions.find((x) => String(x._id) === String(qid));
-    if (q) return q;
-  }
-  return null;
-}
-
-const answerView = (ans, q) => ({
-  questionId: String(ans.questionId),
-  selectedIndex: ans.selectedIndex,
-  text: ans.text,
-  isCorrect: ans.isCorrect,
-  marks: ans.marks,
-  graded: ans.graded,
-  feedback: ans.feedback,
-  ...(q && q.qType === 'MCQ' ? { correctIndex: q.correctIndex, explanation: q.explanation } : {})
-});
+  const answerView = (ans, q) => ({
+    questionId: String(ans.questionId),
+    selectedIndex: ans.selectedIndex,
+    text: ans.text,
+    isCorrect: ans.isCorrect,
+    marks: ans.marks,
+    graded: ans.graded,
+    feedback: ans.feedback,
+    ...(q && q.qType === 'MCQ' ? { correctIndex: q.correctIndex, explanation: q.explanation } : {})
+  });
 
 // ---- Images ----
 app.post('/api/assignment-images', verifyToken, async (req, res) => {
@@ -2808,6 +2808,172 @@ app.put('/api/staff/batches/bulk-change-student', verifyToken, async (req, res) 
     }
 
     res.json({ message: `Successfully moved ${studentIds.length} students to the new batch` });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+
+// =========================================================
+// CAMPUS DRIVE / CSR MODULE SCHEMAS
+// =========================================================
+
+// 1. College Drive Schema (Created by Promotional Team)
+const collegeDriveSchema = new mongoose.Schema({
+  collegeName: { type: String, required: true },
+  driveCode: { type: String, required: true, unique: true }, // e.g. "VIT-2026-CSR"
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  selectedAssignmentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
+  durationMinutes: { type: Number, default: 60 },
+  cutoffPercentage: { type: Number, default: 70 }, // e.g. 70% to pass
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
+const CollegeDrive = mongoose.model('CollegeDrive', collegeDriveSchema);
+
+// 2. Drive Submission / Test Result Schema
+const driveSubmissionSchema = new mongoose.Schema({
+  drive: { type: mongoose.Schema.Types.ObjectId, ref: 'CollegeDrive', required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  answers: [{
+    questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    selectedIndex: Number,
+    isCorrect: Boolean,
+    marks: Number
+  }],
+  totalScore: { type: Number, default: 0 },
+  maxScore: { type: Number, default: 0 },
+  percentage: { type: Number, default: 0 },
+  status: { type: String, enum: ['Selected', 'Rejected'], default: 'Rejected' },
+  warningsCount: { type: Number, default: 0 }, // For 3-strike anti-cheat
+  submittedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const DriveSubmission = mongoose.model('DriveSubmission', driveSubmissionSchema);
+
+// =========================================================
+// CAMPUS DRIVE APIS
+// =========================================================
+
+// 1. Create a New College Drive (Promotional Team / Admin)
+app.post('/api/drives', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    const { collegeName, driveCode, selectedAssignmentIds, durationMinutes, cutoffPercentage } = req.body;
+    const drive = new CollegeDrive({
+      collegeName,
+      driveCode,
+      createdBy: req.user.id,
+      selectedAssignmentIds,
+      durationMinutes,
+      cutoffPercentage
+    });
+    await drive.save();
+    res.json({ message: 'College Drive created successfully!', drive });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 2. Get All Drives (For Promo Dashboard)
+app.get('/api/drives', verifyToken, async (req, res) => {
+  try {
+    const drives = await CollegeDrive.find().populate('selectedAssignmentIds', 'title').sort({ createdAt: -1 }).lean();
+    res.json(drives);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 3. Get Drive Details by Code (For Student Test Link)
+app.get('/api/drives/:code', async (req, res) => {
+  try {
+    const drive = await CollegeDrive.findOne({ driveCode: req.params.code, isActive: true })
+      .populate('selectedAssignmentIds')
+      .lean();
+    if (!drive) return res.status(404).json({ message: 'Drive not found or inactive' });
+
+    // Extract only MCQ questions from selected assignments
+    let mcqQuestions = [];
+    drive.selectedAssignmentIds.forEach(assignment => {
+      assignment.topics.forEach(topic => {
+        topic.questions.forEach(q => {
+          if (q.qType === 'MCQ') {
+            mcqQuestions.push({
+              _id: q._id,
+              text: q.text,
+              images: q.images,
+              options: q.options,
+              marks: q.marks
+            });
+          }
+        });
+      });
+    });
+
+    res.json({
+      driveId: drive._id,
+      collegeName: drive.collegeName,
+      driveCode: drive.driveCode,
+      durationMinutes: drive.durationMinutes,
+      cutoffPercentage: drive.cutoffPercentage,
+      questions: mcqQuestions
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 4. Submit Drive Test (Auto-graded MCQ & Cutoff check)
+app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
+  try {
+    const { answers } = req.body; // [{ questionId, selectedIndex }]
+    const drive = await CollegeDrive.findById(req.params.id).populate('selectedAssignmentIds');
+    if (!drive) return res.status(404).json({ message: 'Drive not found' });
+
+    // Check if already submitted
+    const existing = await DriveSubmission.findOne({ drive: drive._id, student: req.user.id });
+    if (existing) return res.status(400).json({ message: 'You have already submitted this test.' });
+
+    // Map questions and grade answers
+    let totalScore = 0;
+    let maxScore = 0;
+    const gradedAnswers = [];
+
+    drive.selectedAssignmentIds.forEach(assignment => {
+      assignment.topics.forEach(topic => {
+        topic.questions.forEach(q => {
+          if (q.qType === 'MCQ') {
+            maxScore += (q.marks || 1);
+            const studentAns = answers.find(a => String(a.questionId) === String(q._id));
+            const selectedIndex = studentAns ? studentAns.selectedIndex : null;
+            const isCorrect = selectedIndex === q.correctIndex;
+            const marks = isCorrect ? (q.marks || 1) : 0;
+
+            if (isCorrect) totalScore += marks;
+            gradedAnswers.push({ questionId: q._id, selectedIndex, isCorrect, marks });
+          }
+        });
+      });
+    });
+
+    const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
+    const status = percentage >= drive.cutoffPercentage ? 'Selected' : 'Rejected';
+
+    const submission = new DriveSubmission({
+      drive: drive._id,
+      student: req.user.id,
+      answers: gradedAnswers,
+      totalScore,
+      maxScore,
+      percentage,
+      status
+    });
+
+    await submission.save();
+    res.json({ message: 'Test submitted successfully', percentage, status });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

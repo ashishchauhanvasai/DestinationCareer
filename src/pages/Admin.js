@@ -1579,20 +1579,19 @@
 
 // export default Admin;
 
-
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { Link, useSearchParams } from "react-router-dom";
-import AdminCompanies from "../components/AdminCompanies";
-import AdminAssignments from "../components/AdminAssignments";
-import AdminTests from "../components/AdminTests";
-import AdminBatches from "../components/AdminBatches";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Link, useSearchParams } from 'react-router-dom';
+import AdminCompanies from '../components/AdminCompanies';
+import AdminAssignments from '../components/AdminAssignments';
+import AdminTests from '../components/AdminTests';
+import AdminBatches from '../components/AdminBatches';
 // import AdminAttendance from "../components/AdminAttendance";
-import AdminApplications from "../components/AdminApplications";
-import StaffBatchTracker from "../components/StaffBatchTracker";
-import AdminUsers from "../components/AdminUsers";
+import AdminApplications from '../components/AdminApplications';
+import StaffBatchTracker from '../components/StaffBatchTracker';
+import AdminUsers from '../components/AdminUsers';
 // IMPORTING THE NEW TOP PERFORMERS COMPONENT
-import TrainerPerformers from "./TrainerPerformers"; 
+import TrainerPerformers from './TrainerPerformers';
 
 import {
   FiTrash2,
@@ -1602,11 +1601,11 @@ import {
   FiUploadCloud,
   FiLock,
   FiUnlock,
-} from "react-icons/fi";
+} from 'react-icons/fi';
 
 const Admin = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "Courses";
+  const activeTab = searchParams.get('tab') || 'Courses';
 
   const [courses, setCourses] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
@@ -1617,51 +1616,51 @@ const Admin = () => {
   const [editingStudentId, setEditingStudentId] = useState(null);
 
   const [studentProfileForm, setStudentProfileForm] = useState({
-    highestQualification: "",
-    passingYear: "",
+    highestQualification: '',
+    passingYear: '',
     percentage: 0,
     backlogs: 0,
     educationGap: 0,
     readyForRelocation: false,
-    skillsAcquired: "",
+    skillsAcquired: '',
     profileLocked: false,
   });
 
   const [testForm, setTestForm] = useState({
-    studentName: "",
-    company: "",
-    message: "",
-    imageUrl: "",
-    education: "",
-    passoutYear: "",
-    collegeName: "",
-    role: "",
-    salaryPackage: "",
+    studentName: '',
+    company: '',
+    message: '',
+    imageUrl: '',
+    education: '',
+    passoutYear: '',
+    collegeName: '',
+    role: '',
+    salaryPackage: '',
   });
 
   const [jobForm, setJobForm] = useState({
-    jobId: "",
-    title: "",
-    companyAbout: "",
-    description: "",
-    location: "",
-    salary: "",
-    hiringProcess: "Online",
-    interviewDate: "",
-    interviewLocation: "",
-    lastDateToApply: "",
+    jobId: '',
+    title: '',
+    companyAbout: '',
+    description: '',
+    location: '',
+    salary: '',
+    hiringProcess: 'Online',
+    interviewDate: '',
+    interviewLocation: '',
+    lastDateToApply: '',
     reqEmployabilityScore: 0,
-    reqQualification: "",
-    reqPassingYear: "",
+    reqQualification: '',
+    reqPassingYear: '',
     reqMinPercentage: 0,
     reqMaxBacklogs: 0,
     reqMaxEducationGap: 0,
-    reqSkills: "",
+    reqSkills: '',
   });
 
   const [editingTestId, setEditingTestId] = useState(null);
 
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem('token');
 
   const config = {
     headers: {
@@ -1696,7 +1695,7 @@ const Admin = () => {
           axios
             .get(
               `${process.env.REACT_APP_API_URL}/api/users?role=student`,
-              config,
+              config
             )
             .catch(() => ({ data: [] })),
         ]);
@@ -1707,16 +1706,16 @@ const Admin = () => {
       setJobs(jobsRes.data);
       setStudents(studentsRes.data);
     } catch (error) {
-      console.error("Failed to fetch data", error);
+      console.error('Failed to fetch data', error);
     }
   };
 
   const handleDelete = async (type, id) => {
-    if (!window.confirm("Are you sure you want to delete this?")) return;
+    if (!window.confirm('Are you sure you want to delete this?')) return;
 
     await axios.delete(
       `${process.env.REACT_APP_API_URL}/api/${type}/${id}`,
-      config,
+      config
     );
 
     fetchData();
@@ -1729,7 +1728,7 @@ const Admin = () => {
       const reader = new FileReader();
 
       reader.onloadend = () => {
-        if (formType === "test") {
+        if (formType === 'test') {
           setTestForm({
             ...testForm,
             imageUrl: reader.result,
@@ -1748,26 +1747,26 @@ const Admin = () => {
       await axios.put(
         `${process.env.REACT_APP_API_URL}/api/testimonials/${editingTestId}`,
         testForm,
-        config,
+        config
       );
     } else {
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/testimonials`,
         testForm,
-        config,
+        config
       );
     }
 
     setTestForm({
-      studentName: "",
-      company: "",
-      message: "",
-      imageUrl: "",
-      education: "",
-      passoutYear: "",
-      collegeName: "",
-      role: "",
-      salaryPackage: "",
+      studentName: '',
+      company: '',
+      message: '',
+      imageUrl: '',
+      education: '',
+      passoutYear: '',
+      collegeName: '',
+      role: '',
+      salaryPackage: '',
     });
 
     setEditingTestId(null);
@@ -1780,11 +1779,11 @@ const Admin = () => {
       company: t.company,
       message: t.message,
       imageUrl: t.imageUrl,
-      education: t.education || "",
-      passoutYear: t.passoutYear || "",
-      collegeName: t.collegeName || "",
-      role: t.role || "",
-      salaryPackage: t.salaryPackage || "",
+      education: t.education || '',
+      passoutYear: t.passoutYear || '',
+      collegeName: t.collegeName || '',
+      role: t.role || '',
+      salaryPackage: t.salaryPackage || '',
     });
 
     setEditingTestId(t._id);
@@ -1797,33 +1796,33 @@ const Admin = () => {
       await axios.post(
         `${process.env.REACT_APP_API_URL}/api/jobs`,
         jobForm,
-        config,
+        config
       );
 
       setJobForm({
-        jobId: "",
-        title: "",
-        companyAbout: "",
-        description: "",
-        location: "",
-        salary: "",
-        hiringProcess: "Online",
-        interviewDate: "",
-        interviewLocation: "",
-        lastDateToApply: "",
+        jobId: '',
+        title: '',
+        companyAbout: '',
+        description: '',
+        location: '',
+        salary: '',
+        hiringProcess: 'Online',
+        interviewDate: '',
+        interviewLocation: '',
+        lastDateToApply: '',
         reqEmployabilityScore: 0,
-        reqQualification: "",
-        reqPassingYear: "",
+        reqQualification: '',
+        reqPassingYear: '',
         reqMinPercentage: 0,
         reqMaxBacklogs: 0,
         reqMaxEducationGap: 0,
-        reqSkills: "",
+        reqSkills: '',
       });
 
       fetchData();
-      alert("Job Posted Successfully!");
+      alert('Job Posted Successfully!');
     } catch (err) {
-      alert("Error posting job. Ensure Job ID is unique.");
+      alert('Error posting job. Ensure Job ID is unique.');
     }
   };
 
@@ -1834,20 +1833,20 @@ const Admin = () => {
       await axios.put(
         `${process.env.REACT_APP_API_URL}/api/users/${editingStudentId}/admin-edit-profile`,
         studentProfileForm,
-        config,
+        config
       );
 
-      alert("Student profile updated successfully!");
+      alert('Student profile updated successfully!');
 
       setEditingStudentId(null);
       fetchData();
     } catch (err) {
-      alert("Failed to update student profile.");
+      alert('Failed to update student profile.');
     }
   };
 
   const inputStyles =
-    "w-full p-2 border rounded text-sm bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors";
+    'w-full p-2 border rounded text-sm bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-4 md:p-6 transition-colors">
@@ -1864,7 +1863,7 @@ const Admin = () => {
         </div>
 
         {/* Courses */}
-        {activeTab === "Courses" && (
+        {activeTab === 'Courses' && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800 dark:text-white">
@@ -1900,7 +1899,7 @@ const Admin = () => {
                       const totalVideos =
                         c.topics?.reduce(
                           (acc, t) => acc + (t.videos?.length || 0),
-                          0,
+                          0
                         ) || 0;
 
                       return (
@@ -1915,7 +1914,7 @@ const Admin = () => {
                           </td>
 
                           <td className="p-4 text-sm text-gray-500 dark:text-gray-400">
-                            {c.topics?.length || 0} topics • {totalVideos}{" "}
+                            {c.topics?.length || 0} topics • {totalVideos}{' '}
                             videos
                           </td>
 
@@ -1930,7 +1929,7 @@ const Admin = () => {
                               </Link>
 
                               <button
-                                onClick={() => handleDelete("courses", c._id)}
+                                onClick={() => handleDelete('courses', c._id)}
                                 className="text-red-500 hover:text-red-400 p-2"
                                 title="Delete Course"
                               >
@@ -1949,19 +1948,19 @@ const Admin = () => {
         )}
 
         {/* Testimonials */}
-        {activeTab === "Testimonials" && (
+        {activeTab === 'Testimonials' && (
           <div className="grid lg:grid-cols-3 gap-6">
             <form
               onSubmit={handleTestSubmit}
               className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border dark:border-slate-700 space-y-4 transition-colors ${
                 editingTestId
-                  ? "border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900"
-                  : ""
+                  ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900'
+                  : ''
               }`}
             >
               <div className="flex justify-between items-center">
                 <h3 className="font-bold text-lg text-gray-800 dark:text-white">
-                  {editingTestId ? "Edit Testimonial" : "Add Testimonial"}
+                  {editingTestId ? 'Edit Testimonial' : 'Add Testimonial'}
                 </h3>
 
                 {editingTestId && (
@@ -1970,15 +1969,15 @@ const Admin = () => {
                     onClick={() => {
                       setEditingTestId(null);
                       setTestForm({
-                        studentName: "",
-                        company: "",
-                        message: "",
-                        imageUrl: "",
-                        education: "",
-                        passoutYear: "",
-                        collegeName: "",
-                        role: "",
-                        salaryPackage: "",
+                        studentName: '',
+                        company: '',
+                        message: '',
+                        imageUrl: '',
+                        education: '',
+                        passoutYear: '',
+                        collegeName: '',
+                        role: '',
+                        salaryPackage: '',
                       });
                     }}
                     className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -2090,7 +2089,7 @@ const Admin = () => {
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => handleImageUpload(e, "test")}
+                    onChange={(e) => handleImageUpload(e, 'test')}
                     className="hidden"
                   />
                 </label>
@@ -2121,11 +2120,11 @@ const Admin = () => {
                 type="submit"
                 className={`w-full text-white p-2 rounded font-bold transition-colors ${
                   editingTestId
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
                 }`}
               >
-                {editingTestId ? "Update Data" : "Save to Database"}
+                {editingTestId ? 'Update Data' : 'Save to Database'}
               </button>
             </form>
 
@@ -2136,7 +2135,7 @@ const Admin = () => {
                   className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 flex gap-4 transition-colors"
                 >
                   <img
-                    src={t.imageUrl || "https://via.placeholder.com/50"}
+                    src={t.imageUrl || 'https://via.placeholder.com/50'}
                     alt=""
                     className="w-12 h-12 rounded-full object-cover border border-gray-200 dark:border-slate-600 bg-gray-100 dark:bg-slate-700"
                   />
@@ -2147,7 +2146,7 @@ const Admin = () => {
                     </h4>
 
                     <p className="text-xs text-blue-600 dark:text-blue-400 font-bold">
-                      {t.role ? `${t.role} @ ` : ""}
+                      {t.role ? `${t.role} @ ` : ''}
                       {t.company}
                     </p>
 
@@ -2171,7 +2170,7 @@ const Admin = () => {
                     </button>
 
                     <button
-                      onClick={() => handleDelete("testimonials", t._id)}
+                      onClick={() => handleDelete('testimonials', t._id)}
                       className="text-red-500 hover:text-red-400 p-1"
                     >
                       <FiTrash2 size={18} />
@@ -2186,10 +2185,10 @@ const Admin = () => {
         {/* 
             FIX: REPLACED OLD PERFORMERS TAB WITH THE NEW COMPONENT 
         */}
-        {activeTab === "Performers" && <TrainerPerformers />}
+        {activeTab === 'Performers' && <TrainerPerformers />}
 
         {/* Banner */}
-        {activeTab === "Banner" && (
+        {activeTab === 'Banner' && (
           <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border dark:border-slate-700 max-w-2xl mx-auto mt-4 transition-colors">
             <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">
               Update Dashboard Banner
@@ -2222,12 +2221,12 @@ const Admin = () => {
                           await axios.post(
                             `${process.env.REACT_APP_API_URL}/api/banner`,
                             { imageUrl: reader.result },
-                            config,
+                            config
                           );
 
-                          alert("Banner updated successfully!");
+                          alert('Banner updated successfully!');
                         } catch (err) {
-                          alert("Failed to upload banner.");
+                          alert('Failed to upload banner.');
                         }
                       };
 
@@ -2241,7 +2240,7 @@ const Admin = () => {
         )}
 
         {/* Approvals */}
-        {activeTab === "Approvals" && (
+        {activeTab === 'Approvals' && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 overflow-hidden mt-4 transition-colors">
             <div className="p-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50">
               <h2 className="font-bold text-gray-800 dark:text-white">
@@ -2291,8 +2290,8 @@ const Admin = () => {
                               onClick={async () => {
                                 await axios.put(
                                   `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
-                                  { status: "approved" },
-                                  config,
+                                  { status: 'approved' },
+                                  config
                                 );
 
                                 fetchData();
@@ -2306,8 +2305,8 @@ const Admin = () => {
                               onClick={async () => {
                                 await axios.put(
                                   `${process.env.REACT_APP_API_URL}/api/users/${user._id}/status`,
-                                  { status: "rejected" },
-                                  config,
+                                  { status: 'rejected' },
+                                  config
                                 );
 
                                 fetchData();
@@ -2328,7 +2327,7 @@ const Admin = () => {
         )}
 
         {/* Jobs */}
-        {activeTab === "Jobs" && (
+        {activeTab === 'Jobs' && (
           <div className="grid lg:grid-cols-3 gap-6">
             <form
               onSubmit={handleJobSubmit}
@@ -2642,7 +2641,7 @@ const Admin = () => {
                   Active Jobs
                 </h3>
                 <button
-                  onClick={() => setSearchParams({ tab: "Applications" })}
+                  onClick={() => setSearchParams({ tab: 'Applications' })}
                   className="bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/40 dark:hover:bg-blue-900/60 dark:text-blue-400 text-xs font-bold py-1.5 px-3 rounded transition-colors"
                 >
                   View Applications →
@@ -2661,7 +2660,7 @@ const Admin = () => {
                   className="bg-white dark:bg-slate-800 p-4 rounded-xl border dark:border-slate-700 relative shadow-sm hover:shadow-md transition-all flex flex-col"
                 >
                   <button
-                    onClick={() => handleDelete("jobs", j._id)}
+                    onClick={() => handleDelete('jobs', j._id)}
                     className="absolute top-3 right-3 text-red-500 hover:text-red-400 bg-red-50 dark:bg-red-900/20 p-1.5 rounded"
                   >
                     <FiTrash2 size={16} />
@@ -2681,13 +2680,13 @@ const Admin = () => {
 
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700 text-[10px] text-gray-500 dark:text-gray-400 space-y-1">
                     <p>
-                      🎓 <span className="font-bold">Req:</span>{" "}
+                      🎓 <span className="font-bold">Req:</span>{' '}
                       {j.reqQualification} ({j.reqPassingYear})
                     </p>
 
                     <p>
-                      📊 <span className="font-bold">Score:</span>{" "}
-                      {j.reqEmployabilityScore} |{" "}
+                      📊 <span className="font-bold">Score:</span>{' '}
+                      {j.reqEmployabilityScore} |{' '}
                       <span className="font-bold">%</span>: {j.reqMinPercentage}
                     </p>
                   </div>
@@ -2698,7 +2697,7 @@ const Admin = () => {
         )}
 
         {/* Student Profiles Edit Tab */}
-        {activeTab === "Student Profiles" && (
+        {activeTab === 'Student Profiles' && (
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border dark:border-slate-700 p-6 transition-colors">
             <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-6">
               Manage Student Profiles
@@ -2925,20 +2924,21 @@ const Admin = () => {
         )}
 
         {/* Existing Components */}
-        {activeTab === "Company Questions" && <AdminCompanies />}
+        {activeTab === 'Company Questions' && <AdminCompanies />}
 
-        {activeTab === "Assignments" && <AdminAssignments />}
+        {activeTab === 'Assignments' && <AdminAssignments />}
 
-        {activeTab === "Batches" && <AdminBatches />}
+        {activeTab === 'Batches' && <AdminBatches />}
 
+        {activeTab === 'Manage Users' && <AdminUsers />}
 
-        {activeTab === "Manage Users" && <AdminUsers />}
+        {activeTab === 'Applications' && <AdminApplications />}
 
-        {activeTab === "Applications" && <AdminApplications />}
+        {activeTab === 'Students by Batch & Attendance Reports' && (
+          <StaffBatchTracker />
+        )}
 
-        {activeTab === "Students by Batch & Attendance Reports" && <StaffBatchTracker />}
-
-        {activeTab === "Coding Tests" && <AdminTests />}
+        {activeTab === 'Coding Tests' && <AdminTests />}
       </div>
     </div>
   );
