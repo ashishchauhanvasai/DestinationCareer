@@ -1,3 +1,4 @@
+// Save as: src/components/AdminBatches.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
@@ -12,7 +13,7 @@ const emptyBatch = { batchCode: '', subject: '', trainerId: '', venue: '', locat
 
 const AdminBatches = () => {
   const [trainers, setTrainers] = useState([]);
-  const [promoUsers, setPromoUsers] = useState([]); // NAYA: Promo Team ki list ke liye
+  const [promoUsers, setPromoUsers] = useState([]);
   const [batches, setBatches] = useState([]);
   const [tForm, setTForm] = useState(emptyStaff);
   const [bForm, setBForm] = useState(emptyBatch);
@@ -21,17 +22,18 @@ const AdminBatches = () => {
   const load = async () => {
     try {
       const [t, b, p] = await Promise.all([
-        axios.get(`${API}/trainers/overview`, cfg()), 
-        axios.get(`${API}/batches`, cfg()),
-        // NAYA: Fetch Promo Team members
-        axios.get(`${API}/users?role=promotional`, cfg())
+        axios.get(`${API}/trainers/overview`, cfg()).catch(() => ({ data: [] })),
+        axios.get(`${API}/batches`, cfg()).catch(() => ({ data: [] })),
+        axios.get(`${API}/users?role=promotional`, cfg()).catch(() => ({ data: [] }))
       ]);
-      setTrainers(t.data); 
-      setBatches(b.data);
-      setPromoUsers(p.data); 
-    } catch (e) { console.error(e); }
+      setTrainers(t.data || []);
+      setBatches(b.data || []);
+      setPromoUsers(p.data || []);
+    } catch (e) {
+      console.error(e);
+    }
   };
-  
+
   useEffect(() => { load(); }, []);
 
   const addStaff = async (e) => {
@@ -49,11 +51,11 @@ const AdminBatches = () => {
           role: tForm.role
         }, cfg());
       }
-      setTForm({ ...emptyStaff, role: tForm.role }); // Preserve selected role tab after saving
+      setTForm({ ...emptyStaff, role: tForm.role });
       load();
       alert(`${tForm.role === 'trainer' ? 'Trainer' : 'Promotional'} account created successfully. Share these login details with them.`);
-    } catch (err) { 
-      alert(err.response?.data?.message || 'Failed to add staff member'); 
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add staff member');
     }
   };
 
@@ -61,7 +63,9 @@ const AdminBatches = () => {
     try {
       await axios.put(`${API}/trainers/${trainerId}/domain`, { domain }, cfg());
       load();
-    } catch (err) { alert(err.response?.data?.message || 'Could not change the domain'); }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Could not change the domain');
+    }
   };
 
   const addBatch = async (e) => {
@@ -70,7 +74,9 @@ const AdminBatches = () => {
       await axios.post(`${API}/batches`, bForm, cfg());
       setBForm(emptyBatch);
       load();
-    } catch (err) { alert(err.response?.data?.message || 'Failed to add batch'); }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add batch');
+    }
   };
 
   const delBatch = async (id) => {
@@ -80,28 +86,30 @@ const AdminBatches = () => {
   };
 
   const viewQr = async (batch) => {
-    try { setQrBatch({ batch, qrValue: (await axios.get(`${API}/batches/${batch._id}/qr`, cfg())).data.qrValue }); }
-    catch { alert('Could not load QR'); }
+    try {
+      setQrBatch({ batch, qrValue: (await axios.get(`${API}/batches/${batch._id}/qr`, cfg())).data.qrValue });
+    } catch {
+      alert('Could not load QR');
+    }
   };
 
   return (
     <div className="space-y-8">
       <div className="grid md:grid-cols-2 gap-6">
-        
         <form onSubmit={addStaff} className="bg-white p-6 rounded-2xl shadow-sm border space-y-3 h-fit">
           <h3 className="font-bold text-lg border-b pb-2">Add Staff Account</h3>
-          
+
           <div className="grid grid-cols-2 gap-3 mb-2">
-            <button 
-              type="button" 
-              onClick={() => setTForm({...tForm, role: 'trainer'})}
+            <button
+              type="button"
+              onClick={() => setTForm({ ...tForm, role: 'trainer' })}
               className={`p-2 rounded-lg font-bold text-sm border-2 transition ${tForm.role === 'trainer' ? 'border-blue-600 bg-blue-50 text-blue-800' : 'border-gray-200 text-gray-500'}`}
             >
               Trainer
             </button>
-            <button 
-              type="button" 
-              onClick={() => setTForm({...tForm, role: 'promotional'})}
+            <button
+              type="button"
+              onClick={() => setTForm({ ...tForm, role: 'promotional' })}
               className={`p-2 rounded-lg font-bold text-sm border-2 transition ${tForm.role === 'promotional' ? 'border-teal-600 bg-teal-50 text-teal-800' : 'border-gray-200 text-gray-500'}`}
             >
               Promo Team
@@ -111,21 +119,20 @@ const AdminBatches = () => {
           <input required placeholder="Full name" value={tForm.name} onChange={(e) => setTForm({ ...tForm, name: e.target.value })} className="w-full p-2 border rounded" />
           <input required type="email" placeholder="Email ID" value={tForm.email} onChange={(e) => setTForm({ ...tForm, email: e.target.value })} className="w-full p-2 border rounded" />
           <input required type="text" placeholder="Set Password" value={tForm.password} onChange={(e) => setTForm({ ...tForm, password: e.target.value })} className="w-full p-2 border rounded" />
-          
+
           {tForm.role === 'trainer' && (
             <select value={tForm.domain} onChange={(e) => setTForm({ ...tForm, domain: e.target.value })} className="w-full p-2 border rounded text-sm">
               <option value="">Domain (decides which top performers they manage)</option>
               {DOMAINS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           )}
-          
+
           <button className={`w-full text-white p-2.5 rounded font-bold flex items-center justify-center gap-2 mt-2 ${tForm.role === 'trainer' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-teal-600 hover:bg-teal-700'}`}>
             <FiPlus /> Create {tForm.role === 'trainer' ? 'Trainer' : 'Promo'} Account
           </button>
         </form>
 
         <div className="bg-white rounded-2xl shadow-sm border divide-y max-h-[350px] overflow-y-auto">
-          {/* NAYA: Right side panel dynamically changes based on role */}
           {tForm.role === 'trainer' ? (
             <>
               <div className="p-4 bg-gray-50 font-bold rounded-t-2xl">Trainers ({trainers.length})</div>
@@ -161,7 +168,6 @@ const AdminBatches = () => {
         </div>
       </div>
 
-      {/* NAYA: Batches form and table will only show if Trainer is selected */}
       {tForm.role === 'trainer' && (
         <>
           <form onSubmit={addBatch} className="bg-white p-6 rounded-2xl shadow-sm border space-y-4">
@@ -229,7 +235,9 @@ const AdminBatches = () => {
           <div className="bg-white rounded-2xl p-6 max-w-xs w-full text-center shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-end"><button onClick={() => setQrBatch(null)} className="p-1 hover:bg-gray-100 rounded-full"><FiX size={20} className="text-gray-400" /></button></div>
             <h3 className="font-bold text-lg text-gray-800 mb-1">{qrBatch.batch.subject}</h3>
-            <p className="text-xs font-semibold text-blue-600 bg-blue-50 inline-block px-2 py-1 rounded mb-4">{qrBatch.batch.batchCode} • {qrBatch.batch.venue}</p>
+            <p className="text-xs font-semibold text-blue-600 bg-blue-50 inline-block px-2 py-1 rounded mb-4">
+              {qrBatch.batch.batchCode} • {qrBatch.batch.venue}
+            </p>
             <div className="flex justify-center mb-5 bg-white p-2 rounded-xl border border-gray-100"><QRCodeSVG value={qrBatch.qrValue} size={200} /></div>
             <button onClick={() => window.print()} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition"><FiPrinter /> Print QR Code</button>
             <p className="text-xs text-gray-400 mt-4 leading-relaxed">Stick this at the venue. The trainer scans it via their app to check in and out.</p>
