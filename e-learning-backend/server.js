@@ -91,31 +91,6 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Delete a College Drive
-app.delete('/api/drives/:id', verifyToken, async (req, res) => {
-  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
-  try {
-    await CollegeDrive.findByIdAndDelete(req.params.id);
-    await DriveSubmission.deleteMany({ drive: req.params.id }); // Delete all tests related to this drive
-    res.json({ message: 'Drive deleted successfully' });
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
-
-// Mark Drive as Completed / Ongoing
-app.put('/api/drives/:id/status', verifyToken, async (req, res) => {
-  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
-  try {
-    const drive = await CollegeDrive.findById(req.params.id);
-    drive.isActive = !drive.isActive;
-    await drive.save();
-    res.json({ message: 'Status updated' });
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
-
 
 // 6. Student Registration directly from Drive Link
 // 6. Student Registration directly from Drive Link
@@ -366,6 +341,32 @@ const verifyToken = async (req, res, next) => {
     res.status(400).json({ message: 'Invalid token' });
   }
 };
+
+
+// Delete a College Drive
+app.delete('/api/drives/:id', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    await CollegeDrive.findByIdAndDelete(req.params.id);
+    await DriveSubmission.deleteMany({ drive: req.params.id }); // Delete all tests related to this drive
+    res.json({ message: 'Drive deleted successfully' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Mark Drive as Completed / Ongoing
+app.put('/api/drives/:id/status', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const drive = await CollegeDrive.findById(req.params.id);
+    drive.isActive = !drive.isActive;
+    await drive.save();
+    res.json({ message: 'Status updated' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 
 // --- Auth Routes ---
