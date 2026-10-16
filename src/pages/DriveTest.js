@@ -6,7 +6,6 @@ import { FiClock, FiAlertTriangle, FiCheckCircle, FiUploadCloud, FiXCircle } fro
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
 
-// Full-screen helper
 const enterFullScreen = () => {
   const elem = document.documentElement;
   if (elem.requestFullscreen) elem.requestFullscreen().catch(() => {});
@@ -19,14 +18,14 @@ const DriveTest = () => {
   const { driveCode } = useParams();
   const navigate = useNavigate();
   
-  // Auth state
   const [token, setToken] = useState(localStorage.getItem('token'));
   
-  // Registration Form State
-  const [regForm, setRegForm] = useState({ name: '', email: '', password: '', highestQualification: '', passingYear: '', percentage: '', profilePic: '' });
+  const [regForm, setRegForm] = useState({ 
+    name: '', email: '', password: '', highestQualification: '', passingYear: '', percentage: '', profilePic: '',
+    contactNumber: '', aadharNumber: '', address: '' 
+  });
   const [registering, setRegistering] = useState(false);
 
-  // Test State
   const [loading, setLoading] = useState(true);
   const [driveData, setDriveData] = useState(null);
   const [testStarted, setTestStarted] = useState(false);
@@ -50,7 +49,6 @@ const DriveTest = () => {
   useEffect(() => { warningsRef.current = warnings; }, [warnings]);
   useEffect(() => { driveDataRef.current = driveData; }, [driveData]);
 
-  // Load Drive Info (Public API call so students can see basic details before registering)
   useEffect(() => {
     const fetchDrive = async () => {
       try {
@@ -60,14 +58,13 @@ const DriveTest = () => {
         setTimeLeft(res.data.durationMinutes * 60);
       } catch (err) {
         alert('Invalid or closed Drive Link');
-        navigate('/');
+        navigate('/login');
       }
       setLoading(false);
     };
     fetchDrive();
   }, [driveCode, navigate]);
 
-  // Timer
   useEffect(() => {
     let timer;
     if (testStarted && !testCompleted && timeLeft > 0) {
@@ -95,9 +92,7 @@ const DriveTest = () => {
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('role', 'student');
       setToken(res.data.token);
-    } catch (err) {
-      alert(err.response?.data?.message || 'Registration failed');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Registration failed'); }
     setRegistering(false);
   };
 
@@ -108,19 +103,19 @@ const DriveTest = () => {
     exitFullScreen();
 
     const formattedAnswers = Object.keys(answersRef.current).map(qId => ({
-      questionId: qId,
-      selectedIndex: answersRef.current[qId]
+      questionId: qId, selectedIndex: answersRef.current[qId]
     }));
 
     try {
       const res = await axios.post(`${API}/drives/${driveDataRef.current.driveId}/submit`, { answers: formattedAnswers }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }});
       setResult({ ...res.data, reason });
+      // Remove token to force login next time
+      localStorage.removeItem('token'); 
     } catch (err) {
       setResult({ error: true, message: err.response?.data?.message || 'Failed to submit test' });
     }
   }, []);
 
-  // Anti-cheat
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!testStartedRef.current || testCompletedRef.current) return;
@@ -144,9 +139,6 @@ const DriveTest = () => {
     };
   }, [submitTest]);
 
-  // ==========================================
-  // NAYA: Format Time Function added here
-  // ==========================================
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
     const s = (seconds % 60).toString().padStart(2, '0');
@@ -155,48 +147,59 @@ const DriveTest = () => {
 
   if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading...</div>;
 
-  // 1. INTAKE FORM (If not logged in)
   if (!token) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <form onSubmit={handleRegister} className="bg-white p-8 rounded-2xl shadow-lg max-w-lg w-full">
+      <div className="min-h-screen bg-gray-50 py-10 px-4">
+        <form onSubmit={handleRegister} className="bg-white p-8 rounded-2xl shadow-lg max-w-2xl mx-auto border">
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-1">{driveData.collegeName}</h2>
-          <p className="text-center text-gray-500 mb-6 text-sm">Campus Drive Registration Form</p>
+          <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Official Intake Form</p>
           
-          <div className="flex justify-center mb-6">
-            <label className="cursor-pointer flex flex-col items-center">
-              {regForm.profilePic ? (
-                <img src={regForm.profilePic} alt="DP" className="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow-sm" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
-                  <FiUploadCloud size={24} />
-                  <span className="text-[10px] mt-1 font-bold">Photo</span>
-                </div>
-              )}
-              <input type="file" accept="image/*" required className="hidden" onChange={handleImageUpload} />
-            </label>
-          </div>
-
-          <div className="space-y-4">
-            <input required type="text" placeholder="Full Name" value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full p-3 border rounded-xl bg-gray-50" />
-            <input required type="email" placeholder="Email Address" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full p-3 border rounded-xl bg-gray-50" />
-            <input required type="password" placeholder="Create a Password" value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-3 border rounded-xl bg-gray-50" />
-            <div className="grid grid-cols-2 gap-4">
-              <input required type="text" placeholder="Degree (e.g. B.Tech CSE)" value={regForm.highestQualification} onChange={e => setRegForm({...regForm, highestQualification: e.target.value})} className="w-full p-3 border rounded-xl bg-gray-50" />
-              <input required type="number" placeholder="Passing Year (e.g. 2026)" value={regForm.passingYear} onChange={e => setRegForm({...regForm, passingYear: e.target.value})} className="w-full p-3 border rounded-xl bg-gray-50" />
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Left side: Photo & Credentials */}
+            <div className="flex flex-col items-center space-y-4 w-full md:w-1/3 border-r pr-0 md:pr-4">
+              <label className="cursor-pointer flex flex-col items-center">
+                {regForm.profilePic ? (
+                  <img src={regForm.profilePic} alt="DP" className="w-24 h-24 rounded-full object-cover border-4 border-blue-100 shadow-sm" />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-blue-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-blue-500 hover:bg-blue-100 transition">
+                    <FiUploadCloud size={28} />
+                    <span className="text-[10px] mt-1 font-bold">Upload Photo</span>
+                  </div>
+                )}
+                <input type="file" accept="image/*" required className="hidden" onChange={handleImageUpload} />
+              </label>
+              
+              <input required type="text" placeholder="Full Name" value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              <input required type="email" placeholder="Email ID" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              <input required type="password" placeholder="Set Password" value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
             </div>
-            <input required type="number" step="0.1" placeholder="Percentage / CGPA" value={regForm.percentage} onChange={e => setRegForm({...regForm, percentage: e.target.value})} className="w-full p-3 border rounded-xl bg-gray-50" />
+
+            {/* Right side: Academic & Personal Info */}
+            <div className="w-full md:w-2/3 space-y-4">
+              <h3 className="font-bold text-gray-700 text-sm border-b pb-1">Personal Details</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <input required type="text" placeholder="Contact Number" value={regForm.contactNumber} onChange={e => setRegForm({...regForm, contactNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="text" placeholder="Aadhar Number" value={regForm.aadharNumber} onChange={e => setRegForm({...regForm, aadharNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              </div>
+              <textarea required placeholder="Full Residential Address" value={regForm.address} onChange={e => setRegForm({...regForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" rows="2" />
+
+              <h3 className="font-bold text-gray-700 text-sm border-b pb-1 mt-4">Academic Details</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <input required type="text" placeholder="Degree (e.g. B.Tech)" value={regForm.highestQualification} onChange={e => setRegForm({...regForm, highestQualification: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="number" placeholder="Passing Year" value={regForm.passingYear} onChange={e => setRegForm({...regForm, passingYear: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              </div>
+              <input required type="number" step="0.1" placeholder="Overall Percentage / CGPA" value={regForm.percentage} onChange={e => setRegForm({...regForm, percentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+            </div>
           </div>
 
-          <button type="submit" disabled={registering} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl mt-6 hover:bg-blue-700">
-            {registering ? 'Registering...' : 'Register & Proceed to Test'}
+          <button type="submit" disabled={registering} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl mt-8 hover:bg-blue-700 shadow-md">
+            {registering ? 'Creating Profile...' : 'Submit Profile & Go To Test'}
           </button>
         </form>
       </div>
     );
   }
 
-  // 2. DETAILED RESULTS (After Submission)
   if (testCompleted && result) {
     const isSelected = result.status === 'Selected';
     return (
@@ -217,7 +220,6 @@ const DriveTest = () => {
               </div>
             </div>
           </div>
-
           <h3 className="font-bold text-lg mb-4 text-gray-800">Detailed Review</h3>
           <div className="space-y-6">
             {result.detailedResults?.map((q, idx) => (
@@ -238,14 +240,12 @@ const DriveTest = () => {
               </div>
             ))}
           </div>
-
-          <button onClick={() => navigate('/')} className="mt-8 w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800">Go to Main Dashboard</button>
+          <button onClick={() => navigate('/login')} className="mt-8 w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800">Return to Home Screen</button>
         </div>
       </div>
     );
   }
 
-  // 3. INSTRUCTIONS SCREEN
   if (!testStarted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -270,7 +270,6 @@ const DriveTest = () => {
     );
   }
 
-  // 4. TEST INTERFACE
   const currentQ = questions[currentIdx];
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col select-none">

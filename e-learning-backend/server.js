@@ -12,7 +12,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const axios = require('axios');
 
-// 👇 PASTE IT RIGHT HERE
+
 const multer = require('multer');
 const PHOTO_MAX = 1 * 1024 * 1024;  // 1 MB
 const RESUME_MAX = 2 * 1024 * 1024; // 2 MB
@@ -91,22 +91,48 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+// Delete a College Drive
+app.delete('/api/drives/:id', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    await CollegeDrive.findByIdAndDelete(req.params.id);
+    await DriveSubmission.deleteMany({ drive: req.params.id }); // Delete all tests related to this drive
+    res.json({ message: 'Drive deleted successfully' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
+// Mark Drive as Completed / Ongoing
+app.put('/api/drives/:id/status', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const drive = await CollegeDrive.findById(req.params.id);
+    drive.isActive = !drive.isActive;
+    await drive.save();
+    res.json({ message: 'Status updated' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+
+// 6. Student Registration directly from Drive Link
 // 6. Student Registration directly from Drive Link
 app.post('/api/drives/:code/register', async (req, res) => {
   try {
-    const { name, email, password, profilePic, highestQualification, passingYear, percentage } = req.body;
+    const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, aadharNumber, address } = req.body;
     
     let user = await User.findOne({ email });
     if (!user) {
       user = new User({
-        name, email, password, role: 'student', status: 'approved', // Auto-approve for the drive
-        profilePic, highestQualification, passingYear, percentage
+        name, email, password, role: 'student', status: 'approved',
+        profilePic, highestQualification, passingYear, percentage, contactNumber, aadharNumber, address
       });
       await user.save();
     }
     
-    // Generate Token
+    const jwt = require('jsonwebtoken');
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
     res.json({ token, user, message: "Registered successfully for the drive!" });
   } catch (e) {
@@ -130,6 +156,9 @@ const userSchema = new mongoose.Schema({
   backlogs: { type: Number, default: 0 },
   educationGap: { type: Number, default: 0 },
   readyForRelocation: { type: Boolean, default: false },
+  contactNumber: { type: String, default: '' },
+  aadharNumber: { type: String, default: '' },
+  address: { type: String, default: '' },
   skillsAcquired: { type: String, default: '' }, // Stored as comma-separated string
   
   // --- Flag to lock profile after first edit ---
@@ -2904,12 +2933,18 @@ app.post('/api/drives', verifyToken, async (req, res) => {
 app.get('/api/drives', verifyToken, async (req, res) => {
   try {
     const drives = await CollegeDrive.find().populate('selectedAssignmentIds', 'title').sort({ createdAt: -1 }).lean();
+    // Count Selected & Rejected students for each drive
+    for (let drive of drives) {
+      const subs = await DriveSubmission.find({ drive: drive._id }).lean();
+      drive.totalAppeared = subs.length;
+      drive.totalSelected = subs.filter(s => s.status === 'Selected').length;
+      drive.totalRejected = subs.filter(s => s.status === 'Rejected').length;
+    }
     res.json(drives);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
-
 // 3. Get Drive Details by Code (For Student Test Link)
 app.get('/api/drives/:code', async (req, res) => {
   try {
