@@ -2993,6 +2993,37 @@ app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
+// =========================================================
+// ADMIN CREATE USER API (For Promotional / Trainer accounts)
+// =========================================================
+const bcrypt = require('bcryptjs'); // Make sure bcryptjs is imported at the top
+
+app.post('/api/users/admin-create', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  
+  try {
+    const { name, email, password, role } = req.body;
+    
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: 'Email already exists!' });
+
+    const newUser = new User({
+      name,
+      email,
+      password, // userSchema ka 'pre-save' hook isko automatically hash kar dega
+      role: role || 'promotional',
+      status: 'approved' // Automatically approved!
+    });
+
+    await newUser.save();
+    res.json({ message: `${role} account created successfully!`, user: newUser });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);

@@ -11,7 +11,7 @@ import {
   FiLock,
   FiUnlock,
   FiX,
-  FiCheckSquare
+  FiUserPlus
 } from "react-icons/fi";
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
@@ -59,6 +59,17 @@ const AdminUsers = () => {
     readyForRelocation: false,
     skillsAcquired: "",
     profileLocked: false,
+  });
+
+  // =========================================================
+  // NAYA: CREATE STAFF ACCOUNT STATE
+  // =========================================================
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'promotional' // Default to Promotional
   });
 
   const loadStats = useCallback(async () => {
@@ -118,6 +129,34 @@ const AdminUsers = () => {
       await loadStats();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to remove user");
+    }
+  };
+
+  // =========================================================
+  // NAYA: CHANGE ROLE & CREATE STAFF API CALLS
+  // =========================================================
+  const handleRoleChange = async (id, newRole) => {
+    if (!window.confirm(`Change this user's role to ${newRole.toUpperCase()}?`)) return;
+    try {
+      await axios.put(`${API}/users/${id}/role`, { role: newRole }, cfg());
+      loadUsers();
+      alert("Role updated successfully!");
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update role');
+    }
+  };
+
+  const handleCreateStaff = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/users/admin-create`, createForm, cfg());
+      alert(`${createForm.role.toUpperCase()} account created successfully! They can login now.`);
+      setCreateForm({ name: '', email: '', password: '', role: 'promotional' });
+      setShowCreateForm(false);
+      loadUsers();
+      loadStats();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to create account. Email might already exist.');
     }
   };
 
@@ -201,8 +240,6 @@ const AdminUsers = () => {
     try {
       // Determine if it's a single move or bulk move based on movingStudent state
       if (movingStudent === "BULK") {
-        // We assume all selected students are moving from whatever batch they are in to the NEW batch.
-        // The backend bulk API handles finding and deleting their old memberships automatically.
         await axios.put(`${API}/staff/batches/bulk-change-student`, {
           studentIds: selectedUserIds,
           oldBatchId: "IGNORE", // Backend uses bulk logic to delete old
@@ -233,6 +270,56 @@ const AdminUsers = () => {
 
   return (
     <div className="space-y-6">
+      
+      {/* NAYA: TITLE & CREATE ACCOUNT BUTTON */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Manage Users</h2>
+          <p className="text-sm text-gray-500 mt-1">View, delete, or change roles of registered users.</p>
+        </div>
+        
+        <button 
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition"
+        >
+          <FiUserPlus size={18} /> Create Staff Account
+        </button>
+      </div>
+
+      {/* NAYA: CREATE STAFF ACCOUNT FORM */}
+      {showCreateForm && (
+        <form onSubmit={handleCreateStaff} className="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
+          <h3 className="text-lg font-bold text-gray-800 border-b pb-2">Create Direct Account</h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
+              <input required type="text" value={createForm.name} onChange={e => setCreateForm({...createForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-200" placeholder="John Doe" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email ID</label>
+              <input required type="email" value={createForm.email} onChange={e => setCreateForm({...createForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-200" placeholder="john@example.com" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label>
+              <input required type="text" value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-200" placeholder="Set a password" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Assign Role</label>
+              <select value={createForm.role} onChange={e => setCreateForm({...createForm, role: e.target.value})} className="w-full p-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-200 bg-white font-bold text-blue-700">
+                <option value="promotional">Promo Team</option>
+                <option value="trainer">Trainer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end pt-2">
+            <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow-sm">
+              Create & Approve Account
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* Statistics */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -246,7 +333,7 @@ const AdminUsers = () => {
       {/* Tabs + Search */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {[
               { v: "student", l: "Students" },
               { v: "trainer", l: "Trainers" },
@@ -279,6 +366,7 @@ const AdminUsers = () => {
           </div>
         </div>
       </div>
+
       {/* BULK ACTIONS BAR */}
       {tab === "student" && selectedUserIds.length > 0 && (
         <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between shadow-sm animate-pulse">
@@ -305,7 +393,7 @@ const AdminUsers = () => {
       {/* Users Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-gray-50 border-b">
               <tr>
                 {/* BULK SELECT HEADER */}
@@ -323,13 +411,14 @@ const AdminUsers = () => {
                 <th className="text-left px-5 py-3 font-bold text-gray-600">Email</th>
                 {tab === "student" && <th className="text-left px-5 py-3 font-bold text-gray-600">Profile</th>}
                 <th className="text-left px-5 py-3 font-bold text-gray-600">Status</th>
+                <th className="text-center px-5 py-3 font-bold text-gray-600">Role</th> {/* <--- NAYA COLUMN */}
                 <th className="text-right px-5 py-3 font-bold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={tab === "student" ? 6 : 4} className="text-center py-10 text-gray-500">
+                  <td colSpan={tab === "student" ? 7 : 5} className="text-center py-10 text-gray-500">
                     No {tab}s found.
                   </td>
                 </tr>
@@ -388,6 +477,29 @@ const AdminUsers = () => {
                       >
                         {u.status || "N/A"}
                       </span>
+                    </td>
+
+                    {/* NAYA: ROLE DROPDOWN (Admin can change role directly) */}
+                    <td className="px-5 py-4 text-center">
+                      {u.role === 'superadmin' ? (
+                        <span className="font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded text-xs">Super Admin</span>
+                      ) : (
+                        <select
+                          value={u.role}
+                          onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                          className={`p-1 border rounded-lg text-xs font-bold outline-none cursor-pointer ${
+                            u.role === 'admin' ? 'bg-red-50 text-red-700 border-red-200' :
+                            u.role === 'promotional' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            u.role === 'trainer' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                            'bg-gray-50 text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          <option value="student">Student</option>
+                          <option value="trainer">Trainer</option>
+                          <option value="promotional">Promo Team</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                      )}
                     </td>
 
                     <td className="px-5 py-4">
