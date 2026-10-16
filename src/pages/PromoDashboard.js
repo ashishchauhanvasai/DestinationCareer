@@ -218,11 +218,17 @@ const PromoDashboard = () => {
               <div key={d._id} className="bg-white rounded-2xl shadow-sm border p-5 hover:shadow-md transition flex flex-col justify-between">
                 <div>
                   <h3 className="font-bold text-lg text-gray-900 leading-tight mb-2">{d.collegeName}</h3>
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="font-mono text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">{d.driveCode}</span>
-                    <button onClick={() => copyLink(d.driveCode)} className="text-gray-400 hover:text-blue-600 p-1" title="Copy Student Link"><FiCopy /></button>
-                  </div>
-                  
+                <div className="flex items-center gap-2 mb-4">
+  <span className="font-mono text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">{d.driveCode}</span>
+  <button onClick={() => copyLink(d.driveCode)} className="text-gray-400 hover:text-blue-600 p-1.5 bg-gray-50 rounded" title="Copy Link"><FiCopy /></button>
+  {/* NAYA: Email Share Button */}
+  <a 
+    href={`mailto:?subject=Campus Drive Link for ${d.collegeName}&body=Hello,%0A%0AHere is the official registration and test link for your campus drive:%0A${window.location.origin}/drive/${d.driveCode}%0A%0ABest Regards,%0ADestination Career Team`}
+    className="text-gray-400 hover:text-blue-600 p-1.5 bg-gray-50 rounded text-xs font-bold flex items-center gap-1 ml-1"
+  >
+    Share via Mail
+  </a>
+</div>
                   <div className="flex flex-wrap gap-2 mb-4">
                     <span className="text-[10px] bg-gray-100 px-2 py-1 rounded font-bold text-gray-600">{d.durationMinutes} Mins</span>
                     <span className="text-[10px] bg-green-50 px-2 py-1 rounded font-bold text-green-700">Cutoff {d.cutoffPercentage}%</span>

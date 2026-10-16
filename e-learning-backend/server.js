@@ -92,6 +92,28 @@ const transporter = nodemailer.createTransport({
 });
 
 
+// 6. Student Registration directly from Drive Link
+app.post('/api/drives/:code/register', async (req, res) => {
+  try {
+    const { name, email, password, profilePic, highestQualification, passingYear, percentage } = req.body;
+    
+    let user = await User.findOne({ email });
+    if (!user) {
+      user = new User({
+        name, email, password, role: 'student', status: 'approved', // Auto-approve for the drive
+        profilePic, highestQualification, passingYear, percentage
+      });
+      await user.save();
+    }
+    
+    // Generate Token
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
+    res.json({ token, user, message: "Registered successfully for the drive!" });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // 0. DATABASE SCHEMAS
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -2934,11 +2956,9 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
     const drive = await CollegeDrive.findById(req.params.id).populate('selectedAssignmentIds');
     if (!drive) return res.status(404).json({ message: 'Drive not found' });
 
-    // Check if already submitted
     const existing = await DriveSubmission.findOne({ drive: drive._id, student: req.user.id });
     if (existing) return res.status(400).json({ message: 'You have already submitted this test.' });
 
-    // Map questions and grade answers
     let totalScore = 0;
     let maxScore = 0;
     const gradedAnswers = [];
@@ -2954,7 +2974,16 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
             const marks = isCorrect ? (q.marks || 1) : 0;
 
             if (isCorrect) totalScore += marks;
-            gradedAnswers.push({ questionId: q._id, selectedIndex, isCorrect, marks });
+            // Detailed result frontend bhejenge
+            gradedAnswers.push({ 
+              questionId: q._id, 
+              questionText: q.text,
+              options: q.options,
+              correctIndex: q.correctIndex,
+              selectedIndex, 
+              isCorrect, 
+              marks 
+            });
           }
         });
       });
@@ -2974,7 +3003,7 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
     });
 
     await submission.save();
-    res.json({ message: 'Test submitted successfully', percentage, status });
+    res.json({ message: 'Test submitted successfully', percentage, status, totalScore, maxScore, detailedResults: gradedAnswers });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
