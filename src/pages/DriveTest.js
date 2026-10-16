@@ -144,6 +144,15 @@ const DriveTest = () => {
     };
   }, [submitTest]);
 
+  // ==========================================
+  // NAYA: Format Time Function added here
+  // ==========================================
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading...</div>;
 
   // 1. INTAKE FORM (If not logged in)
@@ -241,7 +250,7 @@ const DriveTest = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-xl w-full">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{driveData.collegeName} - Test</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{driveData.collegeName} Test</h1>
           <p className="text-gray-500 mb-6 text-sm">Please read the instructions carefully before starting.</p>
           <div className="bg-blue-50 border rounded-xl p-5 mb-6 space-y-3 font-bold text-blue-900 text-sm">
             <p><FiClock className="inline mr-2" /> Duration: {driveData.durationMinutes} Minutes</p>
