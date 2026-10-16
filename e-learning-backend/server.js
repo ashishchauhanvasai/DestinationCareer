@@ -2996,8 +2996,6 @@ app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
 // =========================================================
 // ADMIN CREATE USER API (For Promotional / Trainer accounts)
 // =========================================================
-const bcrypt = require('bcryptjs'); // Make sure bcryptjs is imported at the top
-
 app.post('/api/users/admin-create', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ message: 'Access denied' });
