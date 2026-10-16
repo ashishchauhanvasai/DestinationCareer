@@ -131,8 +131,6 @@ app.post('/api/drives/:code/register', async (req, res) => {
       });
       await user.save();
     }
-    
-    const jwt = require('jsonwebtoken');
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
     res.json({ token, user, message: "Registered successfully for the drive!" });
   } catch (e) {
