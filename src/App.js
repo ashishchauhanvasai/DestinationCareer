@@ -13,6 +13,9 @@ import TrainerPerformers from "./pages/TrainerPerformers";
 import AdminAssignments from "./components/AdminAssignments";
 import AdminCompanies from "./components/AdminCompanies";
 
+import PromoDashboard from "./pages/PromoDashboard";
+import DriveTest from "./pages/DriveTest";
+
 // Public Pages
 import Login from "./pages/Login";
 import MockRatings from "./pages/MockRatings";
@@ -47,15 +50,19 @@ import CompanyQuestionDetail from "./pages/CompanyQuestionDetail";
 import StaffBatchTracker from "./components/StaffBatchTracker";
 
 // SMART ROUTER: Decides which dashboard to show based on Role
+// SMART ROUTER: Decides which dashboard to show based on Role
 const HomeRoute = () => {
   const role = localStorage.getItem("role");
 
   if (role === "admin" || role === "superadmin") {
     return <Navigate to="/admin" replace />;
   }
-
   if (role === "trainer") {
     return <Navigate to="/trainer" replace />;
+  }
+  // NAYA: Promotional Team Redirect
+  if (role === "promotional") {
+    return <Navigate to="/promo-dashboard" replace />;
   }
 
   return <Dashboard />;
@@ -80,6 +87,31 @@ function App() {
             </PrivateRoute>
           }
         />
+
+        <Route
+          path="/promo-dashboard"
+          element={
+            <PrivateRoute role="promotional">
+              <Layout>
+                <PromoDashboard />
+              </Layout>
+            </PrivateRoute>
+          }
+        />
+
+        // 1. Promo Dashboard route
+<Route path="/promo-dashboard" element={
+  <PrivateRoute role="promotional">
+    <Layout><PromoDashboard /></Layout>
+  </PrivateRoute>
+} />
+
+// 2. Drive Test Route (Yeh private nahi hoga taaki college ka bacha sidha test link open kare toh use pehle login/register karne bola jaye)
+<Route path="/drive/:driveCode" element={
+  <PrivateRoute>
+    <DriveTest /> {/* Note: Iske aas-paas <Layout> mat lagana, test screen puri full honi chahiye */}
+  </PrivateRoute>
+} />
 
         <Route
           path="/assignments/:id"

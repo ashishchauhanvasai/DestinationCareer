@@ -97,7 +97,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['student', 'admin', 'superadmin', 'trainer'], default: 'student' },
+  role: { type: String, enum: ['student', 'admin', 'superadmin', 'trainer', 'promotional'], default: 'student' },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
   employabilityScore: { type: Number, default: 0 },
 
@@ -2979,6 +2979,20 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
   }
 });
 
+
+// 5. Get Submissions for a Specific Drive (For Promo Dashboard)
+app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const submissions = await DriveSubmission.find({ drive: req.params.id })
+      .populate('student', 'name email profilePic highestQualification passingYear')
+      .sort({ percentage: -1 }) // Toppers upar aayenge
+      .lean();
+    res.json(submissions);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);

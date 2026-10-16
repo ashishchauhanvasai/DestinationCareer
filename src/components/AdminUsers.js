@@ -250,6 +250,7 @@ const AdminUsers = () => {
             {[
               { v: "student", l: "Students" },
               { v: "trainer", l: "Trainers" },
+              { v: "promotional", l: "Promo Team" }, // <--- NAYA TAB
               { v: "admin", l: "Admins" },
             ].map((t) => (
               <button
@@ -278,7 +279,6 @@ const AdminUsers = () => {
           </div>
         </div>
       </div>
-
       {/* BULK ACTIONS BAR */}
       {tab === "student" && selectedUserIds.length > 0 && (
         <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between shadow-sm animate-pulse">
