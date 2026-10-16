@@ -21,7 +21,7 @@ const ChangeCredentialsModal = ({ onClose }) => {
       if (form.newPassword) body.newPassword = form.newPassword;
       await axios.put(`${API}/users/me/credentials`, body, cfg());
       alert('Credentials updated. Please log in again with your new details.');
-      localStorage.clear();
+      localStorage.removeItem('token')
       window.location.href = '/login';
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update credentials');

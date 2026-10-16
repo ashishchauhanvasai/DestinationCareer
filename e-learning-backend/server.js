@@ -141,13 +141,21 @@ const userSchema = new mongoose.Schema({
   profilePic: { type: String, default: '' },                        
 
 
-  // --- STRICT 1 DESKTOP + 1 MOBILE BINDING ---
+  // --- STRICT 1 DESKTOP + 1 MOBILE DEVICE BINDING ---
+  // Existing field names are retained for compatibility with the current admin UI.
   allowedDesktopId: { type: String, default: null },
   pendingDesktopId: { type: String, default: null },
   desktopChangeRequested: { type: Boolean, default: false },
   allowedMobileId: { type: String, default: null },
   pendingMobileId: { type: String, default: null },
   mobileChangeRequested: { type: Boolean, default: false },
+
+  // New descriptive aliases used by the updated device-approval logic.
+  // Both old and new fields are synchronized to avoid breaking existing records/UI.
+  desktopDeviceId: { type: String, default: null },
+  pendingDesktopDeviceId: { type: String, default: null },
+  mobileDeviceId: { type: String, default: null },
+  pendingMobileDeviceId: { type: String, default: null },
   
   tokenVersion: { type: Number, default: 0 },
 
@@ -401,86 +409,101 @@ app.post('/api/register', async (req, res) => {
 
 app.post('/api/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId, deviceType } = req.body;
 
     const user = await User.findOne({ email });
-
     if (!user) {
-      return res.status(400).json({
-        message: 'Invalid credentials'
-      });
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-
     if (!isMatch) {
-      return res.status(400).json({
-        message: 'Invalid credentials'
-      });
+      return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     if (user.status === 'pending') {
-      return res.status(403).json({
-        message: 'Pending verification.'
-      });
+      return res.status(403).json({ message: 'Pending verification.' });
     }
 
     if (user.status === 'rejected') {
-      return res.status(403).json({
-        message: 'Registration declined.'
-      });
+      return res.status(403).json({ message: 'Registration declined.' });
     }
 
-    // --- DEVICE BINDING LOGIC (For Students Only) ---
+    // Device locking applies only to students.
     if (user.role === 'student') {
-      const { deviceId, deviceType } = req.body;
-
-      if (!deviceId || !deviceType) {
+      if (typeof deviceId !== 'string' || !deviceId.trim()) {
         return res.status(400).json({
-          message: 'Device identification or type missing.'
+          message: 'Device identification is missing. Please refresh the page and try again.'
         });
       }
 
-      if (deviceType === 'desktop') {
+      // Support both the explicit deviceType and the MOB- prefix from the frontend ID.
+      const normalizedDeviceType = String(deviceType || '').toLowerCase();
+      const isMobileDevice =
+        normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
 
-        if (!user.allowedDesktopId) {
-          user.allowedDesktopId = deviceId;
-          await user.save();
-
-        } else if (user.allowedDesktopId !== deviceId) {
-          user.pendingDesktopId = deviceId;
-          user.desktopChangeRequested = true;
-          await user.save();
-
-          return res.status(403).json({
-            message: 'New computer detected. Approval requested from your admin. Please try again later.'
-          });
-        }
-
-      } else if (deviceType === 'mobile') {
-
-        if (!user.allowedMobileId) {
-          user.allowedMobileId = deviceId;
-          await user.save();
-
-        } else if (user.allowedMobileId !== deviceId) {
-          user.pendingMobileId = deviceId;
-          user.mobileChangeRequested = true;
-          await user.save();
-
-          return res.status(403).json({
-            message: 'New mobile phone detected. Approval requested from your admin. Please try again later.'
-          });
-        }
-
-      } else {
+      if (normalizedDeviceType && !['mobile', 'desktop'].includes(normalizedDeviceType)) {
         return res.status(400).json({
           message: 'Invalid device type. Use desktop or mobile.'
         });
       }
+
+      if (isMobileDevice) {
+        // Read the new field first, with fallback to the existing field for old records.
+        const savedMobileId = user.mobileDeviceId || user.allowedMobileId;
+
+        if (!savedMobileId) {
+          // First login or device was reset by an administrator: bind this device.
+          user.mobileDeviceId = deviceId;
+          user.allowedMobileId = deviceId;
+          user.mobileChangeRequested = false;
+          user.pendingMobileDeviceId = null;
+          user.pendingMobileId = null;
+          await user.save();
+        } else if (savedMobileId !== deviceId) {
+          // New device: preserve the existing approved ID and store the request.
+          user.mobileChangeRequested = true;
+          user.pendingMobileDeviceId = deviceId;
+          user.pendingMobileId = deviceId;
+          await user.save();
+
+          return res.status(403).json({
+            message: 'New mobile device detected! Approval request sent to Admin.'
+          });
+        } else if (user.mobileDeviceId !== deviceId || user.allowedMobileId !== deviceId) {
+          // Keep old and new field names synchronized for existing records.
+          user.mobileDeviceId = deviceId;
+          user.allowedMobileId = deviceId;
+          await user.save();
+        }
+      } else {
+        const savedDesktopId = user.desktopDeviceId || user.allowedDesktopId;
+
+        if (!savedDesktopId) {
+          user.desktopDeviceId = deviceId;
+          user.allowedDesktopId = deviceId;
+          user.desktopChangeRequested = false;
+          user.pendingDesktopDeviceId = null;
+          user.pendingDesktopId = null;
+          await user.save();
+        } else if (savedDesktopId !== deviceId) {
+          user.desktopChangeRequested = true;
+          user.pendingDesktopDeviceId = deviceId;
+          user.pendingDesktopId = deviceId;
+          await user.save();
+
+          return res.status(403).json({
+            message: 'New laptop/desktop detected! Approval request sent to Admin.'
+          });
+        } else if (user.desktopDeviceId !== deviceId || user.allowedDesktopId !== deviceId) {
+          user.desktopDeviceId = deviceId;
+          user.allowedDesktopId = deviceId;
+          await user.save();
+        }
+      }
     }
 
-    // --- JWT TOKEN GENERATION ---
+    // JWT TOKEN GENERATION
     const token = jwt.sign(
       {
         id: user._id,
@@ -488,9 +511,7 @@ app.post('/api/login', async (req, res) => {
         version: user.tokenVersion
       },
       JWT_SECRET,
-      {
-        expiresIn: '4h'
-      }
+      { expiresIn: '4h' }
     );
 
     res.json({
@@ -499,19 +520,18 @@ app.post('/api/login', async (req, res) => {
       token,
       userId: user._id
     });
-
   } catch (err) {
-    res.status(500).json({
-      error: err.message
-    });
+    console.error('Login error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-
 // --- ADMIN APPROVE DEVICE CHANGE ---
 app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
-  
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -519,27 +539,43 @@ app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
     let deviceApproved = false;
 
     if (user.desktopChangeRequested) {
-      user.allowedDesktopId = user.pendingDesktopId;
-      user.pendingDesktopId = null;
-      user.desktopChangeRequested = false;
-      deviceApproved = true;
-    }
-    
-    if (user.mobileChangeRequested) {
-      user.allowedMobileId = user.pendingMobileId;
-      user.pendingMobileId = null;
-      user.mobileChangeRequested = false;
-      deviceApproved = true;
+      // Never overwrite the approved ID with null if no pending ID exists.
+      const pendingId = user.pendingDesktopDeviceId || user.pendingDesktopId;
+      if (pendingId) {
+        user.desktopDeviceId = pendingId;
+        user.allowedDesktopId = pendingId;
+        user.pendingDesktopDeviceId = null;
+        user.pendingDesktopId = null;
+        user.desktopChangeRequested = false;
+        deviceApproved = true;
+      }
     }
 
-    if (deviceApproved) {
-      user.tokenVersion += 1; 
-      await user.save();
-      res.json({ message: 'New device approved. Old device has been logged out.' });
-    } else {
-      res.status(400).json({ message: 'No pending device requests found for this user.' });
+    if (user.mobileChangeRequested) {
+      const pendingId = user.pendingMobileDeviceId || user.pendingMobileId;
+      if (pendingId) {
+        user.mobileDeviceId = pendingId;
+        user.allowedMobileId = pendingId;
+        user.pendingMobileDeviceId = null;
+        user.pendingMobileId = null;
+        user.mobileChangeRequested = false;
+        deviceApproved = true;
+      }
     }
+
+    if (!deviceApproved) {
+      return res.status(400).json({
+        message: 'No valid pending device requests found for this user.'
+      });
+    }
+
+    // Invalidate previously issued sessions after device approval.
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    await user.save();
+
+    return res.json({ message: 'Device permanently approved! Old sessions have been logged out.' });
   } catch (error) {
+    console.error('Approve device error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -2806,21 +2842,33 @@ app.put('/api/users/bulk-approve-device', verifyToken, async (req, res) => {
 
     for (const user of users) {
       let deviceApproved = false;
+
       if (user.desktopChangeRequested) {
-        user.allowedDesktopId = user.pendingDesktopId;
-        user.pendingDesktopId = null;
-        user.desktopChangeRequested = false;
-        deviceApproved = true;
+        const pendingId = user.pendingDesktopDeviceId || user.pendingDesktopId;
+        if (pendingId) {
+          user.desktopDeviceId = pendingId;
+          user.allowedDesktopId = pendingId;
+          user.pendingDesktopDeviceId = null;
+          user.pendingDesktopId = null;
+          user.desktopChangeRequested = false;
+          deviceApproved = true;
+        }
       }
+
       if (user.mobileChangeRequested) {
-        user.allowedMobileId = user.pendingMobileId;
-        user.pendingMobileId = null;
-        user.mobileChangeRequested = false;
-        deviceApproved = true;
+        const pendingId = user.pendingMobileDeviceId || user.pendingMobileId;
+        if (pendingId) {
+          user.mobileDeviceId = pendingId;
+          user.allowedMobileId = pendingId;
+          user.pendingMobileDeviceId = null;
+          user.pendingMobileId = null;
+          user.mobileChangeRequested = false;
+          deviceApproved = true;
+        }
       }
 
       if (deviceApproved) {
-        user.tokenVersion += 1;
+        user.tokenVersion = (user.tokenVersion || 0) + 1;
         await user.save();
         approvedCount++;
       }

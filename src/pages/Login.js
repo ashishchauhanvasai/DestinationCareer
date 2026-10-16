@@ -1,12 +1,89 @@
+
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiLock, FiCheckCircle } from 'react-icons/fi';
-// NEW: Import device detection
-import { isMobile } from 'react-device-detect'; 
+import { isMobile } from 'react-device-detect';
+
+// =========================================================
+// PERMANENT DEVICE ID HELPER
+// LocalStorage + 10-Year Cookie + Hardware Information
+// =========================================================
+const getPermanentDeviceId = () => {
+  const KEY = 'dc_permanent_device_id';
+
+  // 1. Check the new key and the existing deviceId key.
+  let deviceId =
+    localStorage.getItem(KEY) ||
+    localStorage.getItem('deviceId');
+
+  // 2. If not found, check the browser cookie.
+  if (!deviceId) {
+    const escapedKey = KEY.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&'
+    );
+
+    const match = document.cookie.match(
+      new RegExp('(?:^|;\\s*)' + escapedKey + '=([^;]*)')
+    );
+
+    if (match) {
+      try {
+        deviceId = decodeURIComponent(match[1]);
+      } catch {
+        deviceId = match[1];
+      }
+    }
+  }
+
+  // 3. Generate a new ID if no saved ID exists.
+  // Hardware details are included as descriptive information,
+  // not as a guaranteed unique hardware fingerprint.
+  if (!deviceId) {
+    const mobileDevice =
+      /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+    const platform = navigator.platform || 'unknown';
+
+    const screenRes =
+      `${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}`;
+
+    const cores = navigator.hardwareConcurrency || '4';
+
+    const randomPart =
+      Math.random().toString(36).substring(2, 10) +
+      Date.now().toString(36);
+
+    deviceId = [
+      mobileDevice ? 'MOB' : 'DESK',
+      platform,
+      screenRes,
+      cores,
+      randomPart
+    ].join('-').replace(/\s+/g, '');
+  }
+
+  // 4. Save the same ID under both localStorage keys.
+  localStorage.setItem(KEY, deviceId);
+  localStorage.setItem('deviceId', deviceId);
+
+  // 5. Save the ID in a cookie for 10 years.
+  // encodeURIComponent safely encodes special characters.
+  const cookieValue = encodeURIComponent(deviceId);
+
+  document.cookie =
+    `${KEY}=${cookieValue}; max-age=${60 * 60 * 24 * 365 * 10}; path=/; SameSite=Lax`;
+
+  return deviceId;
+};
 
 const Login = () => {
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({
+    email: '',
+    password: ''
+  });
+
   const [view, setView] = useState('login');
   const [resetEmail, setResetEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -18,32 +95,41 @@ const Login = () => {
 
   const navigate = useNavigate();
 
+  // =========================================================
+  // LOGIN
+  // =========================================================
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError(''); setSuccess(''); setIsPending(false); setIsLoading(true);
-    
-    // Retrieve or create deviceId
-    let deviceId = localStorage.getItem('deviceId');
-    if (!deviceId) {
-      deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      localStorage.setItem('deviceId', deviceId);
-    }
-    
+
+    setError('');
+    setSuccess('');
+    setIsPending(false);
+    setIsLoading(true);
+
     try {
-      // NEW: Add deviceType to the payload
-      const payload = { 
-        ...form, 
+      // Get the existing device ID or generate and save one.
+      const deviceId = getPermanentDeviceId();
+
+      // Keep the existing login payload and device detection.
+      const payload = {
+        ...form,
         deviceId,
-        deviceType: isMobile ? 'mobile' : 'desktop' 
+        deviceType: isMobile ? 'mobile' : 'desktop'
       };
-      
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, payload);
-      
+
+      const res = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/login`,
+        payload
+      );
+
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('role', res.data.role);
       localStorage.setItem('isLoggedIn', 'true');
-      
-      if (res.data.role === 'admin' || res.data.role === 'superadmin') {
+
+      if (
+        res.data.role === 'admin' ||
+        res.data.role === 'superadmin'
+      ) {
         navigate('/admin');
       } else if (res.data.role === 'trainer') {
         navigate('/trainer');
@@ -51,94 +137,24 @@ const Login = () => {
         navigate('/');
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Login failed';
-      if (err.response?.status === 403 && (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('device'))) {
-        setIsPending(true); 
+      const errorMessage =
+        err.response?.data?.message || 'Login failed';
+
+      if (
+        err.response?.status === 403 &&
+        (
+          errorMessage.toLowerCase().includes('pending') ||
+          errorMessage.toLowerCase().includes('device')
+        )
+      ) {
+        setIsPending(true);
       }
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
-
-  // ... (The rest of your functions: handleRequestOTP, handleVerifyOTP, handleResetPassword, clearMessages remain exactly the same) ...
-
-
-// import React, { useState } from 'react';
-// import axios from 'axios';
-// import { Link, useNavigate } from 'react-router-dom';
-// import { FiLock, FiCheckCircle } from 'react-icons/fi';
-
-// const Login = () => {
-//   // -----------------------------
-//   // LOGIN STATE
-//   // -----------------------------
-//   const [form, setForm] = useState({
-//     email: '',
-//     password: ''
-//   });
-
-//   // -----------------------------
-//   // FORGOT PASSWORD STATE
-//   // -----------------------------
-//   const [view, setView] = useState('login');
-//   const [resetEmail, setResetEmail] = useState('');
-//   const [otp, setOtp] = useState('');
-//   const [newPassword, setNewPassword] = useState('');
-
-//   // -----------------------------
-//   // UI STATE
-//   // -----------------------------
-//   const [error, setError] = useState('');
-//   const [success, setSuccess] = useState('');
-//   const [isPending, setIsPending] = useState(false);
-//   const [isLoading, setIsLoading] = useState(false);
-
-//   const navigate = useNavigate();
-
-//   // =========================================================
-//   // STANDARD LOGIN
-//   // =========================================================
-//   // --- 1. Standard Login Handler ---
-//   const handleLogin = async (e) => {
-//     e.preventDefault();
-//     setError(''); setSuccess(''); setIsPending(false); setIsLoading(true);
-    
-//     // --- NEW: Generate or retrieve a unique Device ID ---
-//     let deviceId = localStorage.getItem('deviceId');
-//     if (!deviceId) {
-//       // Create a random unique ID for this browser and save it permanently
-//       deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-//       localStorage.setItem('deviceId', deviceId);
-//     }
-    
-//     try {
-//       // Send the deviceId along with email and password
-//       const payload = { ...form, deviceId };
-//       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, payload);
-      
-//       localStorage.setItem('token', res.data.token);
-//       localStorage.setItem('role', res.data.role);
-//       localStorage.setItem('isLoggedIn', 'true');
-      
-//       if (res.data.role === 'admin' || res.data.role === 'superadmin') {
-//         navigate('/admin');
-//       } else if (res.data.role === 'trainer') {
-//         navigate('/trainer');
-//       } else {
-//         navigate('/');
-//       }
-//     } catch (err) {
-//       const errorMessage = err.response?.data?.message || 'Login failed';
-//       // If pending registration OR pending device approval
-//       if (err.response?.status === 403 && (errorMessage.toLowerCase().includes('pending') || errorMessage.toLowerCase().includes('device'))) {
-//         setIsPending(true); 
-//       }
-//       setError(errorMessage);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
 
   // =========================================================
   // REQUEST OTP
@@ -243,7 +259,6 @@ const Login = () => {
       );
 
       setSuccess(res.data.message);
-
       setView('login');
 
       setForm({
@@ -321,9 +336,7 @@ const Login = () => {
           </div>
         )}
 
-        {/* =====================================================
-            LOGIN
-        ====================================================== */}
+        {/* LOGIN */}
         {view === 'login' && (
           <form onSubmit={handleLogin} className="space-y-5">
 
@@ -412,9 +425,7 @@ const Login = () => {
           </form>
         )}
 
-        {/* =====================================================
-            REQUEST OTP
-        ====================================================== */}
+        {/* REQUEST OTP */}
         {view === 'request-otp' && (
           <form
             onSubmit={handleRequestOTP}
@@ -458,9 +469,7 @@ const Login = () => {
           </form>
         )}
 
-        {/* =====================================================
-            VERIFY OTP
-        ====================================================== */}
+        {/* VERIFY OTP */}
         {view === 'verify-otp' && (
           <form
             onSubmit={handleVerifyOTP}
@@ -524,9 +533,7 @@ const Login = () => {
           </form>
         )}
 
-        {/* =====================================================
-            RESET PASSWORD
-        ====================================================== */}
+        {/* RESET PASSWORD */}
         {view === 'reset-password' && (
           <form
             onSubmit={handleResetPassword}
@@ -561,6 +568,7 @@ const Login = () => {
             </button>
           </form>
         )}
+
       </div>
     </div>
   );

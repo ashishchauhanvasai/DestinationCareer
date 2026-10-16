@@ -14,7 +14,7 @@ axios.interceptors.response.use(
   (err) => {
     const msg = err.response?.data?.message;
     if (msg === 'Invalid token') {
-      localStorage.clear();
+      localStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(err);
