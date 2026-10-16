@@ -2821,11 +2821,12 @@ app.put('/api/staff/batches/bulk-change-student', verifyToken, async (req, res) 
 // 1. College Drive Schema (Created by Promotional Team)
 const collegeDriveSchema = new mongoose.Schema({
   collegeName: { type: String, required: true },
-  driveCode: { type: String, required: true, unique: true }, // e.g. "VIT-2026-CSR"
+  driveCode: { type: String, required: true, unique: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   selectedAssignmentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
+  selectedProblemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }], // <--- NAYA: Coding Problems ke liye
   durationMinutes: { type: Number, default: 60 },
-  cutoffPercentage: { type: Number, default: 70 }, // e.g. 70% to pass
+  cutoffPercentage: { type: Number, default: 70 },
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
@@ -2996,6 +2997,7 @@ app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
 // =========================================================
 // ADMIN CREATE USER API (For Promotional / Trainer accounts)
 // =========================================================
+
 app.post('/api/users/admin-create', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ message: 'Access denied' });
@@ -3020,6 +3022,39 @@ app.post('/api/users/admin-create', verifyToken, async (req, res) => {
     res.json({ message: `${role} account created successfully!`, user: newUser });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// Get ALL MCQ Assignments & Coding Problems for Promo Team
+app.get('/api/promo/resources', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    // Fetch only assignments that have at least one MCQ question
+    const assignments = await Assignment.find({ "topics.questions.qType": "MCQ" }).lean();
+    
+    // Fetch all Coding Problems (Assuming your coding model is named 'Problem')
+    const ProblemModel = mongoose.model('Problem');
+    const problems = await ProblemModel.find().lean();
+    
+    res.json({ assignments, problems });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Update Questions inside an existing Drive
+app.put('/api/drives/:id/questions', verifyToken, async (req, res) => {
+  try {
+    const { selectedAssignmentIds, selectedProblemIds } = req.body;
+    await CollegeDrive.findByIdAndUpdate(req.params.id, {
+      selectedAssignmentIds,
+      selectedProblemIds
+    });
+    res.json({ message: 'Questions assigned successfully!' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
   }
 });
 

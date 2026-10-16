@@ -1,17 +1,12 @@
 
-
 // import React, { useState, useEffect } from 'react';
-
 // import { Link, useLocation, useNavigate } from 'react-router-dom';
-
 // import {
 //   FiHome, FiBookOpen, FiFileText, FiBriefcase, FiSun, FiMoon, FiLogOut, FiUser,
 //   FiBook, FiStar, FiAward, FiImage, FiUsers, FiHelpCircle, FiClipboard, FiGrid, FiCheckSquare,
 //   FiMenu, FiX
 // } from 'react-icons/fi';
-
 // import { BsPatchQuestion } from 'react-icons/bs';
-
 // import ChangeCredentialsModal from './ChangeCredentialsModal';
 
 // const SidebarItem = ({ icon: Icon, text, to, isActive, onClick }) => (
@@ -41,7 +36,7 @@
 
 //   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-//   const adminMenu = [
+// const adminMenu = [
 //     { tab: 'Courses', text: 'Manage Courses', icon: FiBook },
 //     { tab: 'Testimonials', text: 'Testimonials', icon: FiStar },
 //     { tab: 'Performers', text: 'Top Performers', icon: FiAward },
@@ -58,12 +53,17 @@
 //           { tab: 'Batches', text: 'Batches & QR', icon: FiGrid }
 //         ]
 //       : []),
-//     { tab: 'Attendance Reports', text: 'Attendance Reports', icon: FiCheckSquare },
-//     { tab: 'Students by Batch', text: 'Students by Batch', icon: FiUsers },
+//     // "Attendance Reports" delete kar diya aur "Students by Batch" ko combine kar diya:
+//     { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
 //   ];
-
+//   // ==========================================
+//   // UPDATED LOGOUT FUNCTION
+//   // ==========================================
 //   const handleLogout = () => {
-//     localStorage.clear();
+//     // Only remove auth keys, keep deviceId intact!
+//     localStorage.removeItem('token');
+//     localStorage.removeItem('role');
+//     localStorage.removeItem('isLoggedIn');
 //     navigate('/login');
 //   };
 
@@ -333,12 +333,13 @@
 
 // export default Layout;
 
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiHome, FiBookOpen, FiFileText, FiBriefcase, FiSun, FiMoon, FiLogOut, FiUser,
   FiBook, FiStar, FiAward, FiImage, FiUsers, FiHelpCircle, FiClipboard, FiGrid, FiCheckSquare,
-  FiMenu, FiX
+  FiMenu, FiX, FiTarget
 } from 'react-icons/fi';
 import { BsPatchQuestion } from 'react-icons/bs';
 import ChangeCredentialsModal from './ChangeCredentialsModal';
@@ -365,12 +366,13 @@ const Layout = ({ children }) => {
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin' || role === 'superadmin';
   const isTrainer = role === 'trainer';
+  const isPromotional = role === 'promotional'; // <--- NAYA: Check for Promo Team
 
   const currentTab = new URLSearchParams(location.search).get('tab') || 'Courses';
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-const adminMenu = [
+  const adminMenu = [
     { tab: 'Courses', text: 'Manage Courses', icon: FiBook },
     { tab: 'Testimonials', text: 'Testimonials', icon: FiStar },
     { tab: 'Performers', text: 'Top Performers', icon: FiAward },
@@ -387,14 +389,10 @@ const adminMenu = [
           { tab: 'Batches', text: 'Batches & QR', icon: FiGrid }
         ]
       : []),
-    // "Attendance Reports" delete kar diya aur "Students by Batch" ko combine kar diya:
     { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
   ];
-  // ==========================================
-  // UPDATED LOGOUT FUNCTION
-  // ==========================================
+
   const handleLogout = () => {
-    // Only remove auth keys, keep deviceId intact!
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('isLoggedIn');
@@ -452,7 +450,7 @@ const adminMenu = [
 
           <nav className="mt-2 pr-4 pb-4">
             <p className="px-6 text-xs font-semibold text-gray-400 dark:text-slate-500 mb-2 uppercase tracking-wider">
-              {isAdmin ? 'Admin Panel' : isTrainer ? 'Trainer' : 'Menu'}
+              {isAdmin ? 'Admin Panel' : isTrainer ? 'Trainer' : isPromotional ? 'CSR Team' : 'Menu'}
             </p>
 
             {isTrainer ? (
@@ -474,7 +472,30 @@ const adminMenu = [
                   isActive={location.pathname === '/admin' && currentTab === item.tab}
                 />
               ))
+            ) : isPromotional ? (
+              // ==========================================
+              // NAYA: PROMO TEAM MENU
+              // ==========================================
+              <>
+                <SidebarItem
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  icon={FiTarget}
+                  text="Campus Drives"
+                  to="/promo-dashboard"
+                  isActive={location.pathname === '/promo-dashboard'}
+                />
+                <SidebarItem
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  icon={FiUser}
+                  text="My Profile"
+                  to="/profile"
+                  isActive={location.pathname === '/profile'}
+                />
+              </>
             ) : (
+              // ==========================================
+              // STUDENT MENU
+              // ==========================================
               <>
                 <SidebarItem
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -561,6 +582,7 @@ const adminMenu = [
         </div>
 
         <div className="p-4 border-t dark:border-slate-700 bg-white dark:bg-slate-800">
+          {/* Employability Score sirf student ke liye dikhega */}
           {role === 'student' && (
             <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-xl mb-4 border dark:border-slate-700 flex flex-col items-center transition-colors">
               <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">
@@ -601,19 +623,19 @@ const adminMenu = [
             <div className="flex items-center gap-3">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                  isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : 'bg-blue-600'
+                  isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : isPromotional ? 'bg-teal-600' : 'bg-blue-600'
                 }`}
               >
-                {isAdmin ? 'A' : isTrainer ? 'T' : 'S'}
+                {isAdmin ? 'A' : isTrainer ? 'T' : isPromotional ? 'P' : 'S'}
               </div>
 
               <div>
                 <p className="font-semibold text-sm dark:text-white truncate w-28">
-                  {isAdmin ? 'Administrator' : isTrainer ? 'Trainer' : 'Student Name'}
+                  {isAdmin ? 'Administrator' : isTrainer ? 'Trainer' : isPromotional ? 'Promo Exec' : 'Student Name'}
                 </p>
 
                 <p className="text-xs text-gray-500 dark:text-slate-400 truncate w-28">
-                  {isAdmin ? 'admin@dc.com' : isTrainer ? 'trainer@dc.com' : 'student@email.com'}
+                  {isAdmin ? 'admin@dc.com' : isTrainer ? 'trainer@dc.com' : isPromotional ? 'promo@dc.com' : 'student@email.com'}
                 </p>
               </div>
             </div>
@@ -646,10 +668,10 @@ const adminMenu = [
 
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-              isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : 'bg-blue-600'
+              isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : isPromotional ? 'bg-teal-600' : 'bg-blue-600'
             }`}
           >
-            {isAdmin ? 'A' : isTrainer ? 'T' : 'S'}
+            {isAdmin ? 'A' : isTrainer ? 'T' : isPromotional ? 'P' : 'S'}
           </div>
         </header>
 
