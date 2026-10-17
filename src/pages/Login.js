@@ -402,7 +402,6 @@ const Login = () => {
                 Your account is currently pending approval.
               </div>
             )}
-
             {/* LOGIN BUTTON */}
             <button
               type="submit"
@@ -411,7 +410,6 @@ const Login = () => {
             >
               {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
-
             {/* REGISTER */}
             <p className="text-center text-sm text-gray-600">
               Don't have an account?{' '}
@@ -424,7 +422,6 @@ const Login = () => {
             </p>
           </form>
         )}
-
         {/* REQUEST OTP */}
         {view === 'request-otp' && (
           <form
@@ -447,7 +444,6 @@ const Login = () => {
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
             <button
               type="submit"
               disabled={isLoading}
@@ -455,7 +451,6 @@ const Login = () => {
             >
               {isLoading ? 'Sending OTP...' : 'Send OTP'}
             </button>
-
             <button
               type="button"
               onClick={() => {
@@ -468,7 +463,6 @@ const Login = () => {
             </button>
           </form>
         )}
-
         {/* VERIFY OTP */}
         {view === 'verify-otp' && (
           <form
@@ -479,7 +473,6 @@ const Login = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Enter 6-digit OTP
               </label>
-
               <input
                 type="text"
                 inputMode="numeric"
@@ -497,7 +490,6 @@ const Login = () => {
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-bold text-xl"
               />
             </div>
-
             <button
               type="submit"
               disabled={isLoading}
@@ -505,7 +497,6 @@ const Login = () => {
             >
               {isLoading ? 'Verifying...' : 'Verify OTP'}
             </button>
-
             <div className="flex justify-between items-center">
               <button
                 type="button"
@@ -518,7 +509,6 @@ const Login = () => {
               >
                 Resend OTP
               </button>
-
               <button
                 type="button"
                 onClick={() => {
@@ -532,7 +522,6 @@ const Login = () => {
             </div>
           </form>
         )}
-
         {/* RESET PASSWORD */}
         {view === 'reset-password' && (
           <form
@@ -543,7 +532,6 @@ const Login = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 New Password
               </label>
-
               <input
                 type="password"
                 value={newPassword}
@@ -556,7 +544,6 @@ const Login = () => {
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
             <button
               type="submit"
               disabled={isLoading}
@@ -568,7 +555,6 @@ const Login = () => {
             </button>
           </form>
         )}
-
       </div>
     </div>
   );

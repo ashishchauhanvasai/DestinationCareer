@@ -111,27 +111,6 @@ transporter.verify(function (error, success) {
 });                  
 
 
-// 6. Student Registration directly from Drive Link
-// 6. Student Registration directly from Drive Link
-app.post('/api/drives/:code/register', async (req, res) => {
-  try {
-    const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, aadharNumber, address } = req.body;
-    
-    let user = await User.findOne({ email });
-    if (!user) {
-      user = new User({
-        name, email, password, role: 'student', status: 'approved',
-        profilePic, highestQualification, passingYear, percentage, contactNumber, aadharNumber, address
-      });
-      await user.save();
-    }
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || 'secretkey', { expiresIn: '7d' });
-    res.json({ token, user, message: "Registered successfully for the drive!" });
-  } catch (e) {
-    res.status(500).json({ message: e.message });
-  }
-});
-
 // 0. DATABASE SCHEMAS
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -534,7 +513,6 @@ app.post('/api/login', async (req, res) => {
       { expiresIn: '4h' }
     );
 
-    // Campus students receive their registered drive code for frontend redirection.
     let driveCode = null;
     if (user.role === 'campus_student' && user.registeredDrive) {
       const d = await CollegeDrive.findById(user.registeredDrive).select('driveCode');
@@ -546,7 +524,7 @@ app.post('/api/login', async (req, res) => {
       role: user.role,
       token,
       userId: user._id,
-      driveCode // Frontend can use this to redirect directly to /campus-portal.
+      driveCode
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -1293,6 +1271,8 @@ app.post('/api/trainers', verifyToken, async (req, res) => {
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already in use' });
     const trainer = await User.create({ name, email, password, role: 'trainer', status: 'approved' });
 
+    const loginUrl = `${APP_URL}/login`;
+
     transporter.sendMail({
       from: `"Destination Career" <${EMAIL_USER}>`,
       to: email,
@@ -1302,7 +1282,7 @@ app.post('/api/trainers', verifyToken, async (req, res) => {
           <h2 style="color: #2563eb;">Welcome, ${name}!</h2>
           <p>Your trainer account has been created on Destination Career.</p>
           <p><strong>Login Email:</strong> ${email}<br/><strong>Password:</strong> ${password}</p>
-          <a href="http://localhost:3000/login" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
+          <a href="${loginUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
         </div>
       `
     }, (err) => { if (err) console.error('Trainer welcome email failed:', err); });
@@ -2952,7 +2932,7 @@ app.put('/api/staff/batches/bulk-change-student', verifyToken, async (req, res) 
 
 
 // =========================================================
-// CAMPUS DRIVE / CSR MODULE SCHEMAS
+// CAMPUS DRIVE / CSR MODULE SCHEMAS (UPGRADED)
 // =========================================================
 
 // 1. College Drive Schema (Created by Promotional Team)
@@ -2961,7 +2941,8 @@ const collegeDriveSchema = new mongoose.Schema({
   driveCode: { type: String, required: true, unique: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   selectedAssignmentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
-  selectedProblemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }], // <--- NAYA: Coding Problems ke liye
+  selectedProblemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
+  scheduledTestTime: { type: Date, required: true },
   durationMinutes: { type: Number, default: 60 },
   cutoffPercentage: { type: Number, default: 70 },
   isActive: { type: Boolean, default: true }
@@ -2975,6 +2956,9 @@ const driveSubmissionSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   answers: [{
     questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    questionText: String,
+    options: [String],
+    correctIndex: Number,
     selectedIndex: Number,
     isCorrect: Boolean,
     marks: Number
@@ -2983,7 +2967,9 @@ const driveSubmissionSchema = new mongoose.Schema({
   maxScore: { type: Number, default: 0 },
   percentage: { type: Number, default: 0 },
   status: { type: String, enum: ['Selected', 'Rejected'], default: 'Rejected' },
-  warningsCount: { type: Number, default: 0 }, // For 3-strike anti-cheat
+  timeTakenSeconds: { type: Number, default: 0 },
+  warningsCount: { type: Number, default: 0 },
+  autoSubmitted: { type: Boolean, default: false },
   submittedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
@@ -2999,29 +2985,48 @@ app.post('/api/drives', verifyToken, async (req, res) => {
     return res.status(403).json({ message: 'Access denied' });
   }
   try {
-    const { collegeName, driveCode, selectedAssignmentIds, durationMinutes, cutoffPercentage } = req.body;
+    const { collegeName, driveCode, selectedAssignmentIds, selectedProblemIds, scheduledTestTime, durationMinutes, cutoffPercentage } = req.body;
+    if (!scheduledTestTime) {
+      return res.status(400).json({ message: 'Scheduled test date & time is required.' });
+    }
     const drive = new CollegeDrive({
       collegeName,
       driveCode,
       createdBy: req.user.id,
-      selectedAssignmentIds,
-      durationMinutes,
-      cutoffPercentage
+      selectedAssignmentIds: selectedAssignmentIds || [],
+      selectedProblemIds: selectedProblemIds || [],
+      scheduledTestTime: new Date(scheduledTestTime),
+      durationMinutes: Number(durationMinutes) || 60,
+      cutoffPercentage: Number(cutoffPercentage) || 70
     });
     await drive.save();
     res.json({ message: 'College Drive created successfully!', drive });
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({ message: e.code === 11000 ? 'Drive code already exists!' : e.message });
   }
 });
 
-// 2. Get All Drives (For Promo Dashboard)
+// 2. Get All Drives (For Promo Dashboard with Registration & Cutoff Stats)
 app.get('/api/drives', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
   try {
-    const drives = await CollegeDrive.find().populate('selectedAssignmentIds', 'title').sort({ createdAt: -1 }).lean();
-    // Count Selected & Rejected students for each drive
+    const drives = await CollegeDrive.find()
+      .populate('selectedAssignmentIds', 'title')
+      .sort({ createdAt: -1 })
+      .lean();
+
     for (let drive of drives) {
-      const subs = await DriveSubmission.find({ drive: drive._id }).lean();
+      const [subs, totalReg, pendingReg, approvedReg] = await Promise.all([
+        DriveSubmission.find({ drive: drive._id }).lean(),
+        User.countDocuments({ registeredDrive: drive._id }),
+        User.countDocuments({ registeredDrive: drive._id, status: 'pending' }),
+        User.countDocuments({ registeredDrive: drive._id, status: 'approved' })
+      ]);
+      drive.totalRegistered = totalReg;
+      drive.pendingApprovals = pendingReg;
+      drive.approvedStudents = approvedReg;
       drive.totalAppeared = subs.length;
       drive.totalSelected = subs.filter(s => s.status === 'Selected').length;
       drive.totalRejected = subs.filter(s => s.status === 'Rejected').length;
@@ -3031,38 +3036,180 @@ app.get('/api/drives', verifyToken, async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
-// 3. Get Drive Details by Code (For Student Test Link)
-app.get('/api/drives/:code', async (req, res) => {
+
+// 3. Public Info of Drive for Student Registration Link
+app.get('/api/drives/:code/public-info', async (req, res) => {
   try {
     const drive = await CollegeDrive.findOne({ driveCode: req.params.code, isActive: true })
-      .populate('selectedAssignmentIds')
+      .select('collegeName driveCode scheduledTestTime durationMinutes isActive')
       .lean();
-    if (!drive) return res.status(404).json({ message: 'Drive not found or inactive' });
+    if (!drive) return res.status(404).json({ message: 'Invalid or inactive Campus Drive registration link.' });
+    res.json(drive);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
-    // Extract only MCQ questions from selected assignments
-    let mcqQuestions = [];
-    drive.selectedAssignmentIds.forEach(assignment => {
-      assignment.topics.forEach(topic => {
-        topic.questions.forEach(q => {
-          if (q.qType === 'MCQ') {
-            mcqQuestions.push({
-              _id: q._id,
-              text: q.text,
-              images: q.images,
-              options: q.options,
-              marks: q.marks
-            });
-          }
-        });
-      });
+// 4. Student Registration via Special Drive Link (Requires Promo Approval)
+app.post('/api/drives/:code/register', async (req, res) => {
+  try {
+    const drive = await CollegeDrive.findOne({ driveCode: req.params.code, isActive: true });
+    if (!drive) return res.status(404).json({ message: 'Campus Drive not found or closed.' });
+
+    const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, address } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Name, email, and password are required.' });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: 'An account with this email already exists.' });
+    }
+
+    const user = new User({
+      name,
+      email,
+      password,
+      role: 'campus_student',
+      status: 'pending',
+      registeredDrive: drive._id,
+      profilePic: profilePic || '',
+      highestQualification: highestQualification || '',
+      passingYear: passingYear || '',
+      percentage: percentage || null,
+      contactNumber: contactNumber || '',
+      address: address || ''
     });
 
+    await user.save();
+    res.status(201).json({
+      message: 'Registration successful! Once the promotional team approves your registration, you will be able to log in to the test portal.'
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 5. Promo Team: Get All Registered Students for a Drive
+app.get('/api/drives/:id/students', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    const students = await User.find({ registeredDrive: req.params.id })
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json(students);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 6. Promo Team: Approve / Reject Registered Drive Students (Single or Bulk)
+app.put('/api/drives/:id/students/status', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    const { studentIds, status } = req.body;
+    if (!Array.isArray(studentIds) || studentIds.length === 0 || !['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Provide valid studentIds and status.' });
+    }
+
+    const drive = await CollegeDrive.findById(req.params.id);
+    if (!drive) return res.status(404).json({ message: 'Drive not found' });
+
+    await User.updateMany(
+      { _id: { $in: studentIds }, registeredDrive: drive._id },
+      { $set: { status } }
+    );
+
+    if (status === 'approved') {
+      const approvedUsers = await User.find({ _id: { $in: studentIds }, registeredDrive: drive._id }).select('name email');
+      const loginUrl = `${APP_URL}/login`;
+      const scheduledStr = new Date(drive.scheduledTestTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+      approvedUsers.forEach((u) => {
+        transporter.sendMail({
+          from: `"Destination Career" <${EMAIL_USER}>`,
+          to: u.email,
+          subject: `✅ Approved for ${drive.collegeName} Campus Drive Test`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
+              <h2 style="color: #0d9488;">Campus Drive Registration Approved!</h2>
+              <p>Hi <strong>${u.name}</strong>,</p>
+              <p>Your registration for the <strong>${drive.collegeName}</strong> Campus Recruitment Drive has been approved.</p>
+              <p><strong>Scheduled Test Time:</strong> ${scheduledStr}</p>
+              <p><strong>Duration:</strong> ${drive.durationMinutes} minutes</p>
+              <a href="${loginUrl}" style="display: inline-block; background-color: #0d9488; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Test Portal</a>
+            </div>
+          `
+        }, (err) => { if (err) console.error('Drive approval email error:', err); });
+      });
+    }
+
+    res.json({ message: `${studentIds.length} student(s) marked as ${status}.` });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 7. Restricted Student Portal: Get My Assigned Campus Drive & Test Questions
+app.get('/api/campus/my-drive', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('name email role status registeredDrive');
+    if (!user || !user.registeredDrive) {
+      return res.status(404).json({ message: 'No campus drive linked to your account.' });
+    }
+
+    const drive = await CollegeDrive.findById(user.registeredDrive)
+      .populate('selectedAssignmentIds')
+      .lean();
+    if (!drive) return res.status(404).json({ message: 'Campus drive not found.' });
+
+    const existingSub = await DriveSubmission.findOne({ drive: drive._id, student: user._id }).lean();
+    if (existingSub) {
+      return res.json({
+        alreadySubmitted: true,
+        collegeName: drive.collegeName,
+        submittedAt: existingSub.submittedAt,
+        message: 'Thank you for completing the test! We will update your result soon through your email.'
+      });
+    }
+
+    const now = new Date();
+    const scheduled = new Date(drive.scheduledTestTime);
+    const isTestLive = drive.isActive && now >= scheduled;
+
+    let mcqQuestions = [];
+    if (isTestLive) {
+      (drive.selectedAssignmentIds || []).forEach(assignment => {
+        (assignment.topics || []).forEach(topic => {
+          (topic.questions || []).forEach(q => {
+            if (q.qType === 'MCQ') {
+              mcqQuestions.push({
+                _id: q._id,
+                text: q.text,
+                images: q.images,
+                options: q.options,
+                marks: q.marks
+              });
+            }
+          });
+        });
+      });
+    }
+
     res.json({
+      alreadySubmitted: false,
       driveId: drive._id,
       collegeName: drive.collegeName,
       driveCode: drive.driveCode,
+      isActive: drive.isActive,
+      scheduledTestTime: drive.scheduledTestTime,
       durationMinutes: drive.durationMinutes,
-      cutoffPercentage: drive.cutoffPercentage,
+      isTestLive,
       questions: mcqQuestions
     });
   } catch (e) {
@@ -3070,10 +3217,10 @@ app.get('/api/drives/:code', async (req, res) => {
   }
 });
 
-// 4. Submit Drive Test (Auto-graded MCQ & Cutoff check)
+// 8. Submit Campus Drive Test (Blind Submission for Student, Full Metrics for Promo Team)
 app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
   try {
-    const { answers } = req.body; // [{ questionId, selectedIndex }]
+    const { answers = [], timeTakenSeconds = 0, warningsCount = 0, autoSubmitted = false } = req.body;
     const drive = await CollegeDrive.findById(req.params.id).populate('selectedAssignmentIds');
     if (!drive) return res.status(404).json({ message: 'Drive not found' });
 
@@ -3084,26 +3231,25 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
     let maxScore = 0;
     const gradedAnswers = [];
 
-    drive.selectedAssignmentIds.forEach(assignment => {
-      assignment.topics.forEach(topic => {
-        topic.questions.forEach(q => {
+    (drive.selectedAssignmentIds || []).forEach(assignment => {
+      (assignment.topics || []).forEach(topic => {
+        (topic.questions || []).forEach(q => {
           if (q.qType === 'MCQ') {
             maxScore += (q.marks || 1);
             const studentAns = answers.find(a => String(a.questionId) === String(q._id));
-            const selectedIndex = studentAns ? studentAns.selectedIndex : null;
+            const selectedIndex = (studentAns && studentAns.selectedIndex !== undefined) ? studentAns.selectedIndex : null;
             const isCorrect = selectedIndex === q.correctIndex;
             const marks = isCorrect ? (q.marks || 1) : 0;
 
             if (isCorrect) totalScore += marks;
-            // Detailed result frontend bhejenge
-            gradedAnswers.push({ 
-              questionId: q._id, 
+            gradedAnswers.push({
+              questionId: q._id,
               questionText: q.text,
               options: q.options,
               correctIndex: q.correctIndex,
-              selectedIndex, 
-              isCorrect, 
-              marks 
+              selectedIndex,
+              isCorrect,
+              marks
             });
           }
         });
@@ -3120,56 +3266,78 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
       totalScore,
       maxScore,
       percentage,
-      status
+      status,
+      timeTakenSeconds: Number(timeTakenSeconds) || 0,
+      warningsCount: Number(warningsCount) || 0,
+      autoSubmitted: Boolean(autoSubmitted)
     });
 
     await submission.save();
-    res.json({ message: 'Test submitted successfully', percentage, status, totalScore, maxScore, detailedResults: gradedAnswers });
+    res.json({
+      message: 'Thank you for completing the test! We will update your result soon through your email.'
+    });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
-
-// 5. Get Submissions for a Specific Drive (For Promo Dashboard)
+// 9. Get Submissions for a Specific Drive (For Promo Dashboard - Cutoff, Time, Malpractice)
 app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
-  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
   try {
     const submissions = await DriveSubmission.find({ drive: req.params.id })
-      .populate('student', 'name email profilePic highestQualification passingYear')
-      .sort({ percentage: -1 }) // Toppers upar aayenge
+      .populate('student', 'name email contactNumber highestQualification passingYear percentage')
+      .sort({ percentage: -1, timeTakenSeconds: 1 })
       .lean();
     res.json(submissions);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
+
 // =========================================================
 // ADMIN CREATE USER API (For Promotional / Trainer accounts)
 // =========================================================
-
 app.post('/api/users/admin-create', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ message: 'Access denied' });
   }
-  
+
   try {
     const { name, email, password, role } = req.body;
-    
-    // Check if email already exists
+
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: 'Email already exists!' });
 
+    const assignedRole = role || 'promotional';
     const newUser = new User({
       name,
       email,
-      password, // userSchema ka 'pre-save' hook isko automatically hash kar dega
-      role: role || 'promotional',
-      status: 'approved' // Automatically approved!
+      password,
+      role: assignedRole,
+      status: 'approved'
     });
 
     await newUser.save();
-    res.json({ message: `${role} account created successfully!`, user: newUser });
+
+    const loginUrl = `${APP_URL}/login`;
+    transporter.sendMail({
+      from: `"Destination Career" <${EMAIL_USER}>`,
+      to: email,
+      subject: `🎉 Welcome to Destination Career — ${assignedRole.toUpperCase()} Account Created`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
+          <h2 style="color: #0d9488;">Welcome, ${name}!</h2>
+          <p>Your <strong>${assignedRole}</strong> account has been created by the administrator.</p>
+          <p><strong>Login Email:</strong> ${email}<br/><strong>Password:</strong> ${password}</p>
+          <a href="${loginUrl}" style="display: inline-block; background-color: #0d9488; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
+        </div>
+      `
+    }, (err) => { if (err) console.error('Staff welcome email failed:', err); });
+
+    res.json({ message: `${assignedRole} account created successfully!`, user: newUser });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
