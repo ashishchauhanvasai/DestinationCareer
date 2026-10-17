@@ -79,24 +79,28 @@ const TopPerformer = mongoose.model('TopPerformer', topPerformerSchema);
 
 
 
-const nodemailer = require('nodemailer');
+const dns = require('dns');
 
+// Prefer IPv4 to avoid IPv6 connection timeouts on some cloud hosts (including Render).
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
+const nodemailer = require('nodemailer');
 const EMAIL_USER = process.env.EMAIL_USER;
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 465, // Explicitly using secure port
-  secure: true, 
+  port: 587,
+  secure: false, // Port 587 uses STARTTLS
+  requireTLS: true,
   auth: {
     user: EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  tls: {
-    // This helps bypass strict network firewalls on Render/Cloudflare
-    rejectUnauthorized: false
-  },
-  // Add timeouts so it never hangs indefinitely
-  connectionTimeout: 10000, 
+  // Keep TLS certificate verification enabled.
+  family: 4, // Force IPv4 for the SMTP socket
+  connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000
 });
