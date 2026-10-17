@@ -32,7 +32,7 @@ const Layout = ({ children }) => {
   const role = localStorage.getItem('role');
   const isAdmin = role === 'admin' || role === 'superadmin';
   const isTrainer = role === 'trainer';
-  const isPromotional = role === 'promotional'; // <--- NAYA: Check for Promo Team
+  const isPromotional = role === 'promotional'; 
 
   const currentTab = new URLSearchParams(location.search).get('tab') || 'Courses';
 
@@ -58,10 +58,11 @@ const Layout = ({ children }) => {
     { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
   ];
 
-  const handleLogout = () => {
+ const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('driveCode');
     navigate('/login');
   };
 

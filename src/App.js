@@ -14,6 +14,9 @@ import AdminAssignments from "./components/AdminAssignments";
 import AdminCompanies from "./components/AdminCompanies";
 
 import PromoDashboard from "./pages/PromoDashboard";
+// Top imports mein yeh 2 lines add karo (DriveTest ke paas):
+import DriveRegister from "./pages/DriveRegister";
+import CampusPortal from "./pages/CampusPortal";
 import DriveTest from "./pages/DriveTest";
 
 // Public Pages
@@ -60,9 +63,12 @@ const HomeRoute = () => {
   if (role === "trainer") {
     return <Navigate to="/trainer" replace />;
   }
-  // NAYA: Promotional Team Redirect
   if (role === "promotional") {
     return <Navigate to="/promo-dashboard" replace />;
+  }
+  // Restricted Campus Drive Student -> Cannot see main Dashboard!
+  if (role === "campus_student") {
+    return <Navigate to="/campus-portal" replace />;
   }
 
   return <Dashboard />;
@@ -88,6 +94,23 @@ function App() {
           }
         />
 
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        {/* Special Registration Link for Campus Drive Students */}
+        <Route path="/drive-register/:driveCode" element={<DriveRegister />} />
+
+        {/* Restricted Campus Student Portal (No Sidebar / No Main Portal Access) */}
+        <Route
+          path="/campus-portal"
+          element={
+            <PrivateRoute>
+              <CampusPortal />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Promotional Team Dashboard */}
         <Route
           path="/promo-dashboard"
           element={
@@ -99,12 +122,6 @@ function App() {
           }
         />
 
-        // 1. Promo Dashboard route
-<Route path="/promo-dashboard" element={
-  <PrivateRoute role="promotional">
-    <Layout><PromoDashboard /></Layout>
-  </PrivateRoute>
-} />
 
 // 2. Drive Test Route (Yeh private nahi hoga taaki college ka bacha sidha test link open kare toh use pehle login/register karne bola jaye)
 <Route path="/drive/:driveCode" element={
