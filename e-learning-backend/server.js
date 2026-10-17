@@ -78,18 +78,37 @@ const topPerformerSchema = new mongoose.Schema({
 const TopPerformer = mongoose.model('TopPerformer', topPerformerSchema);
 
 
+
 const nodemailer = require('nodemailer');
 
-// Configure your email transporter
-// FIX: email address and app password now come from .env (EMAIL_USER and EMAIL_PASS)
 const EMAIL_USER = process.env.EMAIL_USER;
+
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465, // Explicitly using secure port
+  secure: true, 
   auth: {
     user: EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  tls: {
+    // This helps bypass strict network firewalls on Render/Cloudflare
+    rejectUnauthorized: false
+  },
+  // Add timeouts so it never hangs indefinitely
+  connectionTimeout: 10000, 
+  greetingTimeout: 10000,
+  socketTimeout: 10000
 });
+
+// Optional: Test connection on startup (will show in Render logs)
+transporter.verify(function (error, success) {
+  if (error) {
+    console.error("Nodemailer SMTP Connection Error:", error);
+  } else {
+    console.log("Nodemailer is ready to send emails via Gmail!");
+  }
+});                  
 
 
 // 6. Student Registration directly from Drive Link
@@ -714,9 +733,10 @@ app.put('/api/users/:id/status', verifyToken, async (req, res) => {
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
             <h2 style="color: #2563eb;">Welcome to Destination Career!</h2>
             <p>Hi <strong>${user.name}</strong>,</p>
-            <p>Congratulations! Your registration has been reviewed and approved by our administrative team.</p>
+            <p>Congratulations! Your registration 
+            has been reviewed and approved by our administrative team.</p>
             <p>You can now log in to your dashboard to access your courses, mock tests, and placement resources.</p>
-            <a href="http://localhost:3000/login" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
+            <a href="https://bit.ly/ashishdc" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
             <p style="margin-top: 30px; font-size: 12px; color: #6b7280;">If you did not request this account, please ignore this email.</p>
           </div>
         `
@@ -1184,6 +1204,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email is required.' });
+    
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'No account found with this email.' });
 
@@ -1192,7 +1213,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     await OTP.create({ email, otp });
 
     const mailOptions = {
-      from: `"Destination Career" <${EMAIL_USER}>`,
+      from: `"Destination Career" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: '🔐 Your Destination Career Password Reset OTP',
       html: `
@@ -1207,10 +1228,19 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         </div>
       `
     };
-    await transporter.sendMail(mailOptions);
+
+    // ⏳ Timeout protection (8 seconds) so request never hangs in (pending) state
+    const sendMailPromise = transporter.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('SMTP connection timed out. Please try again.')), 8000)
+    );
+
+    await Promise.race([sendMailPromise, timeoutPromise]);
+
     res.json({ message: 'OTP sent successfully to your email.' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Forgot Password Error:', error.message);
+    res.status(500).json({ message: error.message || 'Failed to send email.' });
   }
 });
 
