@@ -371,8 +371,8 @@ app.put('/api/drives/:id/status', verifyToken, async (req, res) => {
   if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
   try {
     const drive = await CollegeDrive.findById(req.params.id);
-    drive.isActive = !drive.isActive;
-    await drive.save();
+    if (!drive) return res.status(404).json({ message: 'Drive not found' });
+    await CollegeDrive.findByIdAndUpdate(req.params.id, { isActive: !drive.isActive });
     res.json({ message: 'Status updated' });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -2946,7 +2946,7 @@ const collegeDriveSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   selectedAssignmentIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }],
   selectedProblemIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Problem' }],
-  scheduledTestTime: { type: Date, required: true },
+scheduledTestTime: { type: Date, default: Date.now }, 
   durationMinutes: { type: Number, default: 60 },
   cutoffPercentage: { type: Number, default: 70 },
   isActive: { type: Boolean, default: true }
