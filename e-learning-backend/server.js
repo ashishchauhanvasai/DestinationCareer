@@ -2990,16 +2990,15 @@ app.post('/api/drives', verifyToken, async (req, res) => {
   }
   try {
     const { collegeName, driveCode, selectedAssignmentIds, selectedProblemIds, scheduledTestTime, durationMinutes, cutoffPercentage } = req.body;
-    if (!scheduledTestTime) {
-      return res.status(400).json({ message: 'Scheduled test date & time is required.' });
-    }
+    
     const drive = new CollegeDrive({
       collegeName,
       driveCode,
       createdBy: req.user.id,
       selectedAssignmentIds: selectedAssignmentIds || [],
       selectedProblemIds: selectedProblemIds || [],
-      scheduledTestTime: new Date(scheduledTestTime),
+      // Agar frontend se time nahi aaya, toh current time le lega (error nahi dega!)
+      scheduledTestTime: scheduledTestTime ? new Date(scheduledTestTime) : new Date(),
       durationMinutes: Number(durationMinutes) || 60,
       cutoffPercentage: Number(cutoffPercentage) || 70
     });
