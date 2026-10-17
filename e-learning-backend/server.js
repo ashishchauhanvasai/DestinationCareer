@@ -137,8 +137,9 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['student', 'admin', 'superadmin', 'trainer', 'promotional'], default: 'student' },
+  role: { type: String, enum: ['student', 'campus_student', 'admin', 'superadmin', 'trainer', 'promotional'], default: 'student' },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
+  registeredDrive: { type: mongoose.Schema.Types.ObjectId, ref: 'CollegeDrive', default: null }, 
   employabilityScore: { type: Number, default: 0 },
 
   // --- STUDENT ELIGIBILITY PROFILE ---
@@ -449,7 +450,7 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Device locking applies only to students.
-    if (user.role === 'student') {
+    if (user.role === 'student' || user.role === 'campus_student') {
       if (typeof deviceId !== 'string' || !deviceId.trim()) {
         return res.status(400).json({
           message: 'Device identification is missing. Please refresh the page and try again.'
@@ -533,11 +534,19 @@ app.post('/api/login', async (req, res) => {
       { expiresIn: '4h' }
     );
 
+    // Campus students receive their registered drive code for frontend redirection.
+    let driveCode = null;
+    if (user.role === 'campus_student' && user.registeredDrive) {
+      const d = await CollegeDrive.findById(user.registeredDrive).select('driveCode');
+      driveCode = d?.driveCode || null;
+    }
+
     res.json({
       message: 'Login successful',
       role: user.role,
       token,
-      userId: user._id
+      userId: user._id,
+      driveCode // Frontend can use this to redirect directly to /campus-portal.
     });
   } catch (err) {
     console.error('Login error:', err);
