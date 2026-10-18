@@ -427,9 +427,20 @@ const handleDriveLogin = async (e) => {
           <div className="flex items-center gap-2 font-mono text-xl font-bold px-4 py-2 rounded-lg bg-slate-900 text-white shadow-inner">
             <FiClock /> {formatTime(timeLeft)}
           </div>
-          <button onClick={() => window.confirm('Are you sure you want to submit your test?') && submitTest("Manual Submission")} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold transition">
-            Submit
-          </button>
+          <button 
+  onClick={() => {
+    if (Object.keys(answers).length < questions.length) {
+      alert("Not finished, please attend all questions.");
+    } else {
+      if (window.confirm('Are you sure you want to submit your test?')) {
+        submitTest("Manual Submission");
+      }
+    }
+  }} 
+  className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold transition"
+>
+  Submit
+</button>
         </div>
       </header>
 
@@ -456,8 +467,37 @@ const handleDriveLogin = async (e) => {
             ))}
           </div>
           <div className="flex justify-between mt-8 pt-4 border-t">
-            <button onClick={() => setCurrentIdx(p => p - 1)} disabled={currentIdx === 0} className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30 hover:bg-gray-50 transition">Previous</button>
-            <button onClick={() => setCurrentIdx(p => p + 1)} disabled={currentIdx === questions.length - 1} className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30 hover:bg-gray-50 transition">Next</button>
+            <button 
+              onClick={() => setCurrentIdx(p => p - 1)} 
+              disabled={currentIdx === 0} 
+              className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30 hover:bg-gray-50 transition"
+            >
+              Previous
+            </button>
+            
+            {currentIdx === questions.length - 1 ? (
+              <button 
+                onClick={() => {
+                  if (Object.keys(answers).length < questions.length) {
+                    alert("Not finished, please attend all questions.");
+                  } else {
+                    if (window.confirm("Are you sure you want to submit your test?")) {
+                      submitTest("Manual Submission");
+                    }
+                  }
+                }} 
+                className="px-6 py-2 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm"
+              >
+                Finish Test
+              </button>
+            ) : (
+              <button 
+                onClick={() => setCurrentIdx(p => p + 1)} 
+                className="px-6 py-2 border rounded-lg font-bold hover:bg-gray-50 transition"
+              >
+                Next
+              </button>
+            )}
           </div>
         </div>
 
