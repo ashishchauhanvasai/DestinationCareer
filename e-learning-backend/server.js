@@ -3297,22 +3297,28 @@ if (isTestLive) {
 
 // --- CODING QUESTIONS ---
 let codingQuestions = [];
-if (isTestLive) {
-  (drive.selectedProblemIds || []).forEach(p => {
-    codingQuestions.push({
-      _id: p._id,
-      title: p.title,
-      statementMd: p.statementMd,
-      points: p.points,
-      testCases: (p.testCases || []).filter(t => t.isSample),
-      starterCode: p.starterCode,
-      mode: p.mode,
-      functionName: p.functionName,
-      returnType: p.returnType,
-      params: p.params
-    });
-  });
-}
+    if (isTestLive) {
+      (drive.selectedProblemIds || []).forEach(p => {
+        if (p && p.statementMd) {
+          // FIX: Generate the starter code on the fly for function questions
+          const generatedStarterCode = p.mode === 'function' ? harness.starterCode(harness.specOf(p)) : p.starterCode;
+          
+          codingQuestions.push({
+            _id: p._id,
+            title: p.title || "Coding Problem",
+            statementMd: p.statementMd,
+            points: p.points || 10,
+            testCases: (p.testCases || []).filter(t => t.isSample),
+            starterCode: generatedStarterCode, // <--- Use the generated code
+            mode: p.mode,
+            functionName: p.functionName,
+            returnType: p.returnType,
+            params: p.params,
+            slug: p.slug, // Include slug so "Run Examples" works
+          });
+        }
+      });
+    }
 
 res.json({
   alreadySubmitted: false,
@@ -3336,7 +3342,8 @@ res.json({
 app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
   try {
     const { answers = [], timeTakenSeconds = 0, warningsCount = 0, autoSubmitted = false } = req.body;
-    const drive = await CollegeDrive.findById(req.params.id).populate('selectedAssignmentIds');
+    // FIX: Add .populate('selectedProblemIds') so we have the test cases to evaluate against
+    const drive = await CollegeDrive.findById(req.params.id).populate('selectedAssignmentIds').populate('selectedProblemIds');
     if (!drive) return res.status(404).json({ message: 'Drive not found' });
 
     const existing = await DriveSubmission.findOne({ drive: drive._id, student: req.user.id });
@@ -3346,6 +3353,7 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
     let maxScore = 0;
     const gradedAnswers = [];
 
+    // --- EVALUATE MCQs ---
     (drive.selectedAssignmentIds || []).forEach(assignment => {
       (assignment.topics || []).forEach(topic => {
         (topic.questions || []).forEach(q => {
@@ -3370,6 +3378,43 @@ app.post('/api/drives/:id/submit', verifyToken, async (req, res) => {
         });
       });
     });
+
+    // --- EVALUATE CODING QUESTIONS VIA JUDGE0 ---
+    for (const problem of (drive.selectedProblemIds || [])) {
+      if (!problem) continue;
+      
+      const pPoints = problem.points || 10;
+      maxScore += pPoints;
+      
+      // Find the student's submitted code for this problem
+      const studentAns = answers.find(a => String(a.questionId) === String(problem._id));
+      const code = studentAns ? studentAns.code : '';
+      const language = studentAns ? studentAns.language : 'java'; 
+      
+      let pScore = 0;
+      let isCorrect = false;
+      
+      if (code && code.trim() !== '') {
+         // Run the code against ALL test cases (visible + hidden)
+         const results = await runCases(problem, code, language, problem.testCases);
+         
+         const passed = results.filter((r) => r.accepted).length;
+         const total = results.length;
+         pScore = total > 0 ? Math.round((passed / total) * pPoints) : 0;
+         isCorrect = passed === total && total > 0;
+      }
+      
+      totalScore += pScore;
+      
+      gradedAnswers.push({
+         questionId: problem._id,
+         questionText: problem.title,
+         code: code,
+         language: language,
+         isCorrect: isCorrect,
+         marks: pScore
+      });
+    }
 
     const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
     const status = percentage >= drive.cutoffPercentage ? 'Selected' : 'Rejected';
