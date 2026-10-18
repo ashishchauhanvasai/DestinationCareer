@@ -122,13 +122,8 @@ function App() {
           }
         />
 
-
-// 2. Drive Test Route (Yeh private nahi hoga taaki college ka bacha sidha test link open kare toh use pehle login/register karne bola jaye)
-<Route path="/drive/:driveCode" element={
-  <PrivateRoute>
-    <DriveTest /> {/* Note: Iske aas-paas <Layout> mat lagana, test screen puri full honi chahiye */}
-  </PrivateRoute>
-} />
+        
+        <Route path="/drive/:driveCode" element={<DriveTest />} />
 
         <Route
           path="/assignments/:id"

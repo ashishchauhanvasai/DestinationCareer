@@ -22,7 +22,7 @@ const DriveTest = () => {
   
   const [regForm, setRegForm] = useState({ 
     name: '', email: '', password: '', highestQualification: '', passingYear: '', percentage: '', profilePic: '',
-    contactNumber: '', aadharNumber: '', address: '' 
+    contactNumber: '', aadharNumber: '', address: '', stream: '', branch: '', yearOfStudy: '', tenthPercentage: '', twelfthPercentage: '', panCard: '' 
   });
   const [registering, setRegistering] = useState(false);
 
@@ -147,58 +147,80 @@ const DriveTest = () => {
 
   if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading...</div>;
 
+
   if (!token) {
     return (
       <div className="min-h-screen bg-gray-50 py-10 px-4">
-        <form onSubmit={handleRegister} className="bg-white p-8 rounded-2xl shadow-lg max-w-2xl mx-auto border">
+        <form onSubmit={handleRegister} className="bg-white p-8 rounded-2xl shadow-lg max-w-4xl mx-auto border">
           <h2 className="text-2xl font-bold text-gray-900 text-center mb-1">{driveData.collegeName}</h2>
-          <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Official Intake Form</p>
+          <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Campus Drive Registration Form</p>
           
           <div className="flex flex-col md:flex-row gap-8">
             {/* Left side: Photo & Credentials */}
             <div className="flex flex-col items-center space-y-4 w-full md:w-1/3 border-r pr-0 md:pr-4">
               <label className="cursor-pointer flex flex-col items-center">
                 {regForm.profilePic ? (
-                  <img src={regForm.profilePic} alt="DP" className="w-24 h-24 rounded-full object-cover border-4 border-blue-100 shadow-sm" />
+                  <img src={regForm.profilePic} alt="DP" className="w-32 h-32 rounded-full object-cover border-4 border-blue-100 shadow-sm" />
                 ) : (
-                  <div className="w-24 h-24 rounded-full bg-blue-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-blue-500 hover:bg-blue-100 transition">
-                    <FiUploadCloud size={28} />
-                    <span className="text-[10px] mt-1 font-bold">Upload Photo</span>
+                  <div className="w-32 h-32 rounded-full bg-blue-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-blue-500 hover:bg-blue-100 transition">
+                    <FiUploadCloud size={32} />
+                    <span className="text-xs mt-2 font-bold">Upload Photo *</span>
                   </div>
                 )}
                 <input type="file" accept="image/*" required className="hidden" onChange={handleImageUpload} />
               </label>
               
-              <input required type="text" placeholder="Full Name" value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-              <input required type="email" placeholder="Email ID" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-              <input required type="password" placeholder="Set Password" value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              <input required type="text" placeholder="Full Name *" value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              <input required type="email" placeholder="Email ID *" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              <input required type="password" placeholder="Set Password *" minLength={6} value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
             </div>
 
             {/* Right side: Academic & Personal Info */}
             <div className="w-full md:w-2/3 space-y-4">
               <h3 className="font-bold text-gray-700 text-sm border-b pb-1">Personal Details</h3>
               <div className="grid grid-cols-2 gap-3">
-                <input required type="text" placeholder="Contact Number" value={regForm.contactNumber} onChange={e => setRegForm({...regForm, contactNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <input required type="text" placeholder="Aadhar Number" value={regForm.aadharNumber} onChange={e => setRegForm({...regForm, aadharNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="text" placeholder="Contact Number *" value={regForm.contactNumber} onChange={e => setRegForm({...regForm, contactNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <textarea required placeholder="Full Residential Address *" value={regForm.address} onChange={e => setRegForm({...regForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" rows="1" />
               </div>
-              <textarea required placeholder="Full Residential Address" value={regForm.address} onChange={e => setRegForm({...regForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" rows="2" />
+              <div className="grid grid-cols-2 gap-3">
+                <input required type="text" placeholder="Aadhar Number *" value={regForm.aadharNumber} onChange={e => setRegForm({...regForm, aadharNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="text" placeholder="PAN Card No. *" value={regForm.panCard || ''} onChange={e => setRegForm({...regForm, panCard: e.target.value.toUpperCase()})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm uppercase" />
+              </div>
 
               <h3 className="font-bold text-gray-700 text-sm border-b pb-1 mt-4">Academic Details</h3>
               <div className="grid grid-cols-2 gap-3">
-                <input required type="text" placeholder="Degree (e.g. B.Tech)" value={regForm.highestQualification} onChange={e => setRegForm({...regForm, highestQualification: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <input required type="number" placeholder="Passing Year" value={regForm.passingYear} onChange={e => setRegForm({...regForm, passingYear: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="number" step="0.1" placeholder="10th Percentage *" value={regForm.tenthPercentage || ''} onChange={e => setRegForm({...regForm, tenthPercentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="number" step="0.1" placeholder="12th / Diploma Percentage *" value={regForm.twelfthPercentage || ''} onChange={e => setRegForm({...regForm, twelfthPercentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
               </div>
-              <input required type="number" step="0.1" placeholder="Overall Percentage / CGPA" value={regForm.percentage} onChange={e => setRegForm({...regForm, percentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <input required type="text" placeholder="Degree (e.g. B.Tech) *" value={regForm.highestQualification} onChange={e => setRegForm({...regForm, highestQualification: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="text" placeholder="Branch (e.g. CSE) *" value={regForm.branch || ''} onChange={e => setRegForm({...regForm, branch: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <select required value={regForm.yearOfStudy || ''} onChange={e => setRegForm({...regForm, yearOfStudy: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm">
+                  <option value="">Current Year *</option>
+                  <option>1st Year</option>
+                  <option>2nd Year</option>
+                  <option>3rd Year</option>
+                  <option>4th Year / Final</option>
+                  <option>Graduated</option>
+                </select>
+                <input required type="number" placeholder="Passout Year *" value={regForm.passingYear} onChange={e => setRegForm({...regForm, passingYear: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              </div>
+              
+              <div>
+                <input required type="number" step="0.1" placeholder="Current Degree Overall % / CGPA *" value={regForm.percentage} onChange={e => setRegForm({...regForm, percentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              </div>
             </div>
           </div>
 
-          <button type="submit" disabled={registering} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl mt-8 hover:bg-blue-700 shadow-md">
-            {registering ? 'Creating Profile...' : 'Submit Profile & Go To Test'}
+          <button type="submit" disabled={registering} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl mt-8 hover:bg-blue-700 shadow-md transition-colors">
+            {registering ? 'Validating Profile...' : 'Proceed for Assessment'}
           </button>
         </form>
       </div>
     );
   }
+ 
 
   if (testCompleted && result) {
     return (
