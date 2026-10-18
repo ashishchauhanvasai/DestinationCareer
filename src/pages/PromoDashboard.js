@@ -40,10 +40,23 @@ const PromoDashboard = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    const payload = { ...form, driveCode: form.driveCode.toUpperCase().replace(/\s+/g, '-') };
+    
+    // Create a new Date object from the local time input, then convert it to a universal ISO string
+    let formattedDate = '';
+    if (form.scheduledTestTime) {
+      const localDate = new Date(form.scheduledTestTime);
+      formattedDate = localDate.toISOString();
+    }
+
+    const payload = { 
+      ...form, 
+      driveCode: form.driveCode.toUpperCase().replace(/\s+/g, '-'),
+      scheduledTestTime: formattedDate // Use the safe ISO string
+    };
+
     try {
       const res = await axios.post(`${API}/drives`, payload, cfg());
-      setDrives([res.data.drive || res.data, ...drives]); // Instantly add new drive
+      setDrives([res.data.drive || res.data, ...drives]); 
       alert('College Drive Created Successfully!');
       setForm({ collegeName: '', driveCode: '', durationMinutes: 60, cutoffPercentage: 70, scheduledTestTime: '' });
       setView('list');

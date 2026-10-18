@@ -3077,14 +3077,16 @@ app.post('/api/drives', verifyToken, async (req, res) => {
   try {
     const { collegeName, driveCode, selectedAssignmentIds, selectedProblemIds, scheduledTestTime, durationMinutes, cutoffPercentage } = req.body;
     
+    // FIX: Parse the ISO string safely, or fallback to current time
+    const finalTime = scheduledTestTime ? new Date(scheduledTestTime) : new Date();
+
     const drive = new CollegeDrive({
       collegeName,
       driveCode,
       createdBy: req.user.id,
       selectedAssignmentIds: selectedAssignmentIds || [],
       selectedProblemIds: selectedProblemIds || [],
-      // Agar frontend se time nahi aaya, toh current time le lega (error nahi dega!)
-      scheduledTestTime: scheduledTestTime ? new Date(scheduledTestTime) : new Date(),
+      scheduledTestTime: finalTime,
       durationMinutes: Number(durationMinutes) || 60,
       cutoffPercentage: Number(cutoffPercentage) || 70
     });
@@ -3094,7 +3096,6 @@ app.post('/api/drives', verifyToken, async (req, res) => {
     res.status(500).json({ message: e.code === 11000 ? 'Drive code already exists!' : e.message });
   }
 });
-
 // 2. Get All Drives (For Promo Dashboard with Registration & Cutoff Stats)
 app.get('/api/drives', verifyToken, async (req, res) => {
   if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
