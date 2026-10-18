@@ -559,18 +559,29 @@ const DriveTest = () => {
         ) : (
           // CODING INTERFACE
           <>
-            <div className={`bg-white rounded-2xl border shadow-sm p-6 overflow-y-auto ${expanded ? 'hidden' : 'w-1/2'}`}>
+           <div className={`bg-white rounded-2xl border shadow-sm p-6 overflow-y-auto ${expanded ? 'hidden' : 'w-1/2'}`}>
               <div className="flex justify-between items-center border-b pb-3 mb-5">
                 <h2 className="text-lg font-bold text-gray-500 uppercase tracking-widest">Question {currentIdx + 1} of {problems.length}</h2>
-                <span className="text-sm font-bold bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-200">{currentQ?.points || 0} Marks</span>
+                <span className="text-sm font-bold bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-200">{currentQ?.points || 1} Marks</span>
               </div>
-              <h1 className="text-2xl font-bold mb-4">{currentQ?.title}</h1>
-              <div className={MD_CLASS}><ReactMarkdown>{currentQ?.statementMd}</ReactMarkdown></div>
-              {(currentQ?.testCases || []).map((t, i) => (
-                <div key={i} className="mt-5 text-sm">
-                  <p className="font-bold mb-1">Example {i + 1}</p>
-                  <p className="text-xs text-gray-500">Input</p><pre className="bg-gray-50 p-2 rounded border whitespace-pre-wrap mb-2">{t.input}</pre>
-                  <p className="text-xs text-gray-500">Output</p><pre className="bg-gray-50 p-2 rounded border whitespace-pre-wrap">{t.expectedOutput}</pre>
+              
+              {/* FIX: Properly render Coding Question Title and Statement */}
+              <h1 className="text-2xl font-bold mb-4 text-gray-900">{currentQ?.title || "Coding Problem"}</h1>
+              
+              <div className={MD_CLASS}>
+                <ReactMarkdown>
+                  {currentQ?.statementMd || currentQ?.text || "No description provided."}
+                </ReactMarkdown>
+              </div>
+
+              {/* Render Visible Examples/Test Cases */}
+              {(currentQ?.testCases || []).filter(t => t.isSample).map((t, i) => (
+                <div key={i} className="mt-6 text-sm border-t pt-4">
+                  <p className="font-bold mb-2 text-gray-800">Example {i + 1}</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Input</p>
+                  <pre className="bg-gray-50 p-3 rounded-lg border border-gray-200 whitespace-pre-wrap mb-3 font-mono text-gray-800">{t.input}</pre>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Output</p>
+                  <pre className="bg-gray-50 p-3 rounded-lg border border-gray-200 whitespace-pre-wrap font-mono text-gray-800">{t.expectedOutput}</pre>
                 </div>
               ))}
             </div>
