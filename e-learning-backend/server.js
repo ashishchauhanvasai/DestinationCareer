@@ -375,11 +375,20 @@ const verifyToken = async (req, res, next) => {
 
 // Delete a College Drive
 app.delete('/api/drives/:id', verifyToken, async (req, res) => {
-  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
   try {
+    // 1. Delete the Drive itself
     await CollegeDrive.findByIdAndDelete(req.params.id);
-    await DriveSubmission.deleteMany({ drive: req.params.id }); // Delete all tests related to this drive
-    res.json({ message: 'Drive deleted successfully' });
+    
+    // 2. Delete all Test Submissions for this drive
+    await DriveSubmission.deleteMany({ drive: req.params.id }); 
+    
+    // 3. FIX: Delete all student accounts that registered for this specific drive
+    await User.deleteMany({ registeredDrive: req.params.id, role: 'campus_student' });
+    
+    res.json({ message: 'Drive, test submissions, and all registered students deleted successfully' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

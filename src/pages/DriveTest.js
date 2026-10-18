@@ -155,11 +155,15 @@ const handleDriveLogin = async (e) => {
     setTestStarted(true);
   };
 
-  const submitTest = useCallback(async (reason = "Submitted Successfully") => {
+const submitTest = useCallback(async (reason = "Submitted Successfully") => {
     if (testCompletedRef.current) return;
+    
+    // FIX 1: Synchronously block all future events immediately
+    testCompletedRef.current = true; 
+    
     setTestCompleted(true);
     setTestStarted(false);
-    exitFullScreen();
+    exitFullScreen(); // When this triggers fullscreenchange, the ref will already be true!
 
     const timeTakenSeconds = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : 0;
     const formattedAnswers = Object.keys(answersRef.current).map(qId => ({
@@ -185,18 +189,26 @@ const handleDriveLogin = async (e) => {
     }
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
     const handleVisibilityChange = () => {
+      // If the test hasn't started or is already completed (checked via synchronous ref), ignore!
       if (!testStartedRef.current || testCompletedRef.current) return;
+      
       if (document.visibilityState === 'hidden' || !document.fullscreenElement) {
         let newWarnings = warningsRef.current + 1;
+        
+        // FIX 2: Synchronously update the warning ref to prevent queueing multiple alerts
+        warningsRef.current = newWarnings;
         setWarnings(newWarnings);
+        
         if (newWarnings >= 3) {
-          alert("Warning 3/3: Test is auto-submitting due to malpractice.");
+          alert("⚠️ MALPRACTICE LIMIT EXCEEDED (3/3)! Your test is being auto-submitted immediately.");
           submitTest("Auto-submitted due to Malpractice");
         } else {
-          alert(`Warning ${newWarnings}/3: Do NOT minimize the window or exit full screen.`);
-          if (!document.fullscreenElement) enterFullScreen();
+          alert(`⚠️ WARNING ${newWarnings}/3: Do NOT minimize the window or exit full screen.`);
+          if (!document.fullscreenElement && !testCompletedRef.current) {
+             enterFullScreen();
+          }
         }
       }
     };
