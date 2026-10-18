@@ -25,7 +25,10 @@ const DriveTest = () => {
     contactNumber: '', aadharNumber: '', address: '', stream: '', branch: '', yearOfStudy: '', tenthPercentage: '', twelfthPercentage: '', panCard: '' 
   });
   const [registering, setRegistering] = useState(false);
-
+  // NEW STATE FOR LOGIN TOGGLE
+  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loggingIn, setLoggingIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [driveData, setDriveData] = useState(null);
   const [testStarted, setTestStarted] = useState(false);
@@ -126,6 +129,26 @@ const DriveTest = () => {
     setRegistering(false);
   };
 
+const handleDriveLogin = async (e) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    try {
+      const res = await axios.post(`${API}/login`, { 
+        ...loginForm, 
+        deviceId: 'CAMPUS-PORTAL', 
+        deviceType: 'desktop' 
+      });
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('role', res.data.role);
+      setToken(res.data.token); // Triggers secure fetch automatically
+    } catch (err) { 
+      alert(err.response?.data?.message || 'Login failed. Please check your credentials.'); 
+    }
+    setLoggingIn(false);
+  };
+
+
+
   const startTest = () => {
     enterFullScreen();
     startTimeRef.current = Date.now();
@@ -194,77 +217,110 @@ const DriveTest = () => {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500">Loading Secure Portal...</div>;
   if (!driveData) return null;
 
-  // 1. REGISTRATION SCREEN
+  // 1. REGISTRATION & LOGIN SCREEN
   if (!token) {
     return (
       <div className="min-h-screen bg-gray-50 py-10 px-4">
-        <form onSubmit={handleRegister} className="bg-white p-8 rounded-2xl shadow-lg max-w-4xl mx-auto border">
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-1">{driveData.collegeName}</h2>
-          <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Campus Drive Registration Form</p>
-          
-          <div className="flex flex-col md:flex-row gap-8">
-            <div className="flex flex-col items-center space-y-4 w-full md:w-1/3 border-r pr-0 md:pr-4">
-              <label className="cursor-pointer flex flex-col items-center">
-                {regForm.profilePic ? (
-                  <img src={regForm.profilePic} alt="DP" className="w-32 h-32 rounded-full object-cover border-4 border-blue-100 shadow-sm" />
-                ) : (
-                  <div className="w-32 h-32 rounded-full bg-blue-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-blue-500 hover:bg-blue-100 transition">
-                    <FiUploadCloud size={32} />
-                    <span className="text-xs mt-2 font-bold">Upload Photo *</span>
-                  </div>
-                )}
-                <input type="file" accept="image/*" required className="hidden" onChange={handleImageUpload} />
-              </label>
-              
-              <input required type="text" placeholder="Full Name *" value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-              <input required type="email" placeholder="Email ID *" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-              <input required type="password" placeholder="Set Password *" minLength={6} value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-            </div>
-
-            <div className="w-full md:w-2/3 space-y-4">
-              <h3 className="font-bold text-gray-700 text-sm border-b pb-1">Personal Details</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <input required type="text" placeholder="Contact Number *" value={regForm.contactNumber} onChange={e => setRegForm({...regForm, contactNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <textarea required placeholder="Full Residential Address *" value={regForm.address} onChange={e => setRegForm({...regForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" rows="1" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input required type="text" placeholder="Aadhar Number *" value={regForm.aadharNumber} onChange={e => setRegForm({...regForm, aadharNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <input required type="text" placeholder="PAN Card No. *" value={regForm.panCard || ''} onChange={e => setRegForm({...regForm, panCard: e.target.value.toUpperCase()})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm uppercase" />
-              </div>
-
-              <h3 className="font-bold text-gray-700 text-sm border-b pb-1 mt-4">Academic Details</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <input required type="number" step="0.1" placeholder="10th Percentage *" value={regForm.tenthPercentage || ''} onChange={e => setRegForm({...regForm, tenthPercentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <input required type="number" step="0.1" placeholder="12th / Diploma Percentage *" value={regForm.twelfthPercentage || ''} onChange={e => setRegForm({...regForm, twelfthPercentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <input required type="text" placeholder="Degree (e.g. B.Tech) *" value={regForm.highestQualification} onChange={e => setRegForm({...regForm, highestQualification: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <input required type="text" placeholder="Branch (e.g. CSE) *" value={regForm.branch || ''} onChange={e => setRegForm({...regForm, branch: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-                <select required value={regForm.yearOfStudy || ''} onChange={e => setRegForm({...regForm, yearOfStudy: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm">
-                  <option value="">Current Year *</option>
-                  <option>1st Year</option>
-                  <option>2nd Year</option>
-                  <option>3rd Year</option>
-                  <option>4th Year / Final</option>
-                  <option>Graduated</option>
-                </select>
-                <input required type="number" placeholder="Passout Year *" value={regForm.passingYear} onChange={e => setRegForm({...regForm, passingYear: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
-              </div>
-              
+        
+        {isLoginMode ? (
+          /* DIRECT LOGIN FORM */
+          <form onSubmit={handleDriveLogin} className="bg-white p-8 rounded-2xl shadow-lg max-w-md mx-auto border mt-10">
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-1">{driveData.collegeName}</h2>
+            <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Test Portal Login</p>
+            
+            <div className="space-y-4">
               <div>
-                <input required type="number" step="0.1" placeholder="Current Degree Overall % / CGPA *" value={regForm.percentage} onChange={e => setRegForm({...regForm, percentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Email ID</label>
+                <input required type="email" value={loginForm.email} onChange={e => setLoginForm({...loginForm, email: e.target.value})} placeholder="you@example.com" className="w-full p-3 border rounded-lg bg-gray-50 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Password</label>
+                <input required type="password" value={loginForm.password} onChange={e => setLoginForm({...loginForm, password: e.target.value})} placeholder="Enter your password" className="w-full p-3 border rounded-lg bg-gray-50 text-sm" />
               </div>
             </div>
-          </div>
 
-          <button type="submit" disabled={registering} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl mt-8 hover:bg-blue-700 shadow-md transition-colors">
-            {registering ? 'Validating Profile...' : 'Proceed for Assessment'}
-          </button>
-        </form>
+            <button type="submit" disabled={loggingIn} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl mt-6 hover:bg-blue-700 shadow-md transition-colors">
+              {loggingIn ? 'Authenticating...' : 'Login to Portal'}
+            </button>
+
+            <p className="text-center text-xs text-gray-500 pt-4">
+              Not registered yet? <button type="button" onClick={() => setIsLoginMode(false)} className="text-blue-600 font-bold hover:underline">Register Here</button>
+            </p>
+          </form>
+        ) : (
+          /* REGISTRATION FORM */
+          <form onSubmit={handleRegister} className="bg-white p-8 rounded-2xl shadow-lg max-w-4xl mx-auto border">
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-1">{driveData.collegeName}</h2>
+            <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Campus Drive Registration Form</p>
+            
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="flex flex-col items-center space-y-4 w-full md:w-1/3 border-r pr-0 md:pr-4">
+                <label className="cursor-pointer flex flex-col items-center">
+                  {regForm.profilePic ? (
+                    <img src={regForm.profilePic} alt="DP" className="w-32 h-32 rounded-full object-cover border-4 border-blue-100 shadow-sm" />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-blue-50 border-2 border-dashed border-blue-300 flex flex-col items-center justify-center text-blue-500 hover:bg-blue-100 transition">
+                      <FiUploadCloud size={32} />
+                      <span className="text-xs mt-2 font-bold">Upload Photo *</span>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </label>
+                
+                <input required type="text" placeholder="Full Name *" value={regForm.name} onChange={e => setRegForm({...regForm, name: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="email" placeholder="Email ID *" value={regForm.email} onChange={e => setRegForm({...regForm, email: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                <input required type="password" placeholder="Set Password *" minLength={6} value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+              </div>
+
+              <div className="w-full md:w-2/3 space-y-4">
+                <h3 className="font-bold text-gray-700 text-sm border-b pb-1">Personal Details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <input required type="text" placeholder="Contact Number *" value={regForm.contactNumber} onChange={e => setRegForm({...regForm, contactNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                  <textarea required placeholder="Full Residential Address *" value={regForm.address} onChange={e => setRegForm({...regForm, address: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" rows="1" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <input required type="text" placeholder="Aadhar Number *" value={regForm.aadharNumber} onChange={e => setRegForm({...regForm, aadharNumber: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                  <input required type="text" placeholder="PAN Card No. *" value={regForm.panCard || ''} onChange={e => setRegForm({...regForm, panCard: e.target.value.toUpperCase()})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm uppercase" />
+                </div>
+
+                <h3 className="font-bold text-gray-700 text-sm border-b pb-1 mt-4">Academic Details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <input required type="number" step="0.1" placeholder="10th Percentage *" value={regForm.tenthPercentage || ''} onChange={e => setRegForm({...regForm, tenthPercentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                  <input required type="number" step="0.1" placeholder="12th / Diploma Percentage *" value={regForm.twelfthPercentage || ''} onChange={e => setRegForm({...regForm, twelfthPercentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <input required type="text" placeholder="Degree (e.g. B.Tech) *" value={regForm.highestQualification} onChange={e => setRegForm({...regForm, highestQualification: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                  <input required type="text" placeholder="Branch (e.g. CSE) *" value={regForm.branch || ''} onChange={e => setRegForm({...regForm, branch: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                  <select required value={regForm.yearOfStudy || ''} onChange={e => setRegForm({...regForm, yearOfStudy: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm">
+                    <option value="">Current Year *</option>
+                    <option>1st Year</option>
+                    <option>2nd Year</option>
+                    <option>3rd Year</option>
+                    <option>4th Year / Final</option>
+                    <option>Graduated</option>
+                  </select>
+                  <input required type="number" placeholder="Passout Year *" value={regForm.passingYear} onChange={e => setRegForm({...regForm, passingYear: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                </div>
+                
+                <div>
+                  <input required type="number" step="0.1" placeholder="Current Degree Overall % / CGPA *" value={regForm.percentage} onChange={e => setRegForm({...regForm, percentage: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" disabled={registering} className="w-full bg-teal-600 text-white font-bold py-3.5 rounded-xl mt-8 hover:bg-teal-700 shadow-md transition-colors">
+              {registering ? 'Validating Profile...' : 'Register & Proceed for Assessment'}
+            </button>
+            <p className="text-center text-xs text-gray-500 pt-4">
+              Already registered? <button type="button" onClick={() => setIsLoginMode(true)} className="text-teal-600 font-bold hover:underline">Login Here</button>
+            </p>
+          </form>
+        )}
       </div>
     );
   }
+
 
   // 2. BLIND THANK YOU SCREEN
   if (testCompleted && result) {

@@ -3370,10 +3370,25 @@ app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
   }
   try {
     const submissions = await DriveSubmission.find({ drive: req.params.id })
-      .populate('student', 'name email contactNumber highestQualification passingYear percentage')
+      .populate('student', 'name email contactNumber highestQualification passingYear percentage profilePic')
       .sort({ percentage: -1, timeTakenSeconds: 1 })
       .lean();
     res.json(submissions);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// --- PROMO TEAM: DELETE STUDENT FROM DRIVE ---
+app.delete('/api/drives/:driveId/students/:studentId', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    // Remove the student and any test submissions they made
+    await User.findOneAndDelete({ _id: req.params.studentId, registeredDrive: req.params.driveId });
+    await DriveSubmission.deleteMany({ student: req.params.studentId, drive: req.params.driveId });
+    res.json({ message: 'Student removed from campus drive successfully' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

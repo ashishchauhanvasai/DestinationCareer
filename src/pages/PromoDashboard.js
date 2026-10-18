@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiPlus, FiClock, FiX, FiCopy, FiTarget, FiArrowLeft, FiEdit3, FiCode, FiList, FiTrash2, FiPower, FiCheckCircle } from 'react-icons/fi';
@@ -14,6 +12,7 @@ const PromoDashboard = () => {
   const [view, setView] = useState('list'); 
   const [drives, setDrives] = useState([]);
   const [subs, setSubs] = useState([]);
+  const [registeredStudents, setRegisteredStudents] = useState([]);
   const [selectedDrive, setSelectedDrive] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -125,6 +124,24 @@ const PromoDashboard = () => {
     } catch (err) { alert("Could not load submissions"); }
   };
 
+  const openRegisteredStudents = async (drive) => {
+    setSelectedDrive(drive);
+    setView('registeredStudents');
+    try {
+      const res = await axios.get(`${API}/drives/${drive._id}/students`, cfg());
+      setRegisteredStudents(res.data);
+    } catch (err) { alert("Could not load registered students"); }
+  };
+
+  const deleteCampusStudent = async (studentId) => {
+    if (!window.confirm("Delete this student permanently from the drive?")) return;
+    try {
+      await axios.delete(`${API}/drives/${selectedDrive._id}/students/${studentId}`, cfg());
+      const res = await axios.get(`${API}/drives/${selectedDrive._id}/students`, cfg());
+      setRegisteredStudents(res.data);
+    } catch (err) { alert("Failed to delete student"); }
+  };
+
   const copyLink = (e, code) => {
     e.stopPropagation();
     const link = `${window.location.origin}/drive/${code}`;
@@ -138,20 +155,22 @@ const PromoDashboard = () => {
   if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading Dashboard...</div>;
 
   const DriveCard = ({ d }) => (
-    <div 
-      onClick={() => openSubmissions(d)}
-      className="bg-white rounded-2xl shadow-sm border p-5 hover:shadow-md hover:border-blue-300 transition flex flex-col justify-between cursor-pointer"
-    >
+    <div className="bg-white rounded-2xl shadow-sm border p-5 hover:shadow-md hover:border-blue-300 transition flex flex-col justify-between">
       <div>
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-bold text-lg text-gray-900 leading-tight">{d.collegeName}</h3>
-          <button onClick={(e) => deleteDrive(e, d._id)} className="text-gray-400 hover:text-red-500 p-1 bg-gray-50 rounded"><FiTrash2 /></button>
+          <div className="flex gap-2">
+            <button onClick={(e) => openAssignModal(e, d)} className="text-blue-500 hover:text-blue-700 p-1 bg-gray-50 rounded" title="Assign Questions"><FiEdit3 /></button>
+            <button onClick={(e) => deleteDrive(e, d._id)} className="text-gray-400 hover:text-red-500 p-1 bg-gray-50 rounded" title="Delete Drive"><FiTrash2 /></button>
+          </div>
         </div>
         
         <div className="flex items-center gap-2 mb-4">
           <span className="font-mono text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">{d.driveCode}</span>
           <button onClick={(e) => copyLink(e, d.driveCode)} className="text-gray-400 hover:text-blue-600 p-1.5 bg-gray-50 rounded" title="Copy Link"><FiCopy /></button>
-          <a onClick={e => e.stopPropagation()} href={`mailto:?subject=Campus Drive Link for ${d.collegeName}&body=Hello,%0A%0AHere is the official registration and test link for your campus drive:%0A${window.location.origin}/drive/${d.driveCode}%0A%0ABest Regards`} className="text-gray-400 hover:text-blue-600 p-1.5 bg-gray-50 rounded text-xs font-bold">Mail</a>
+          <button onClick={(e) => toggleStatus(e, d._id)} className="text-gray-400 hover:text-blue-600 p-1.5 bg-gray-50 rounded" title="Start/Stop Drive">
+            <FiPower className={d.isActive ? 'text-green-500' : 'text-red-500'} />
+          </button>
         </div>
         
         <div className="flex flex-wrap gap-2 mb-4 mt-2">
@@ -165,23 +184,27 @@ const PromoDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-3 grid grid-cols-2 gap-2 mb-4 border">
-        <div className="text-center">
-          <p className="text-[10px] font-bold text-green-600 uppercase">Selected</p>
-          <p className="text-xl font-bold text-green-700">{d.totalSelected}</p>
+      <div className="bg-gray-50 rounded-xl p-3 grid grid-cols-3 gap-2 mb-4 border text-center">
+        <div>
+          <p className="text-[10px] font-bold text-blue-600 uppercase">Registered</p>
+          <p className="text-xl font-bold text-blue-700">{d.totalRegistered || 0}</p>
         </div>
-        <div className="text-center border-l">
+        <div className="border-l">
+          <p className="text-[10px] font-bold text-green-600 uppercase">Selected</p>
+          <p className="text-xl font-bold text-green-700">{d.totalSelected || 0}</p>
+        </div>
+        <div className="border-l">
           <p className="text-[10px] font-bold text-red-500 uppercase">Rejected</p>
-          <p className="text-xl font-bold text-red-600">{d.totalRejected}</p>
+          <p className="text-xl font-bold text-red-600">{d.totalRejected || 0}</p>
         </div>
       </div>
 
       <div className="flex gap-2">
-        <button onClick={(e) => openAssignModal(e, d)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100 flex items-center justify-center gap-2">
-          <FiEdit3 /> Questions
+        <button onClick={() => openRegisteredStudents(d)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100">
+          View Registrations
         </button>
-        <button onClick={(e) => toggleStatus(e, d._id)} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-800 flex items-center justify-center gap-2">
-          <FiPower /> {d.isActive ? 'End Drive' : 'Reopen'}
+        <button onClick={() => openSubmissions(d)} className="flex-1 py-2 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-800">
+          View Results
         </button>
       </div>
     </div>
@@ -342,6 +365,75 @@ const PromoDashboard = () => {
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${s.status === 'Selected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {s.status}
                         </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {view === 'registeredStudents' && selectedDrive && (
+        <div className="space-y-4">
+          <button onClick={() => setView('list')} className="text-blue-600 hover:underline flex items-center gap-1 text-sm font-bold">
+            <FiArrowLeft /> Back to Drives
+          </button>
+          
+          <div className="bg-white rounded-2xl shadow-sm border p-6 flex flex-wrap justify-between items-center">
+             <div>
+               <h2 className="text-xl font-bold">{selectedDrive.collegeName} Registrations</h2>
+               <p className="text-sm text-gray-500">All students who filled the intake form.</p>
+             </div>
+             <div className="text-center">
+               <p className="text-[10px] font-bold text-blue-600 uppercase">Total Registered</p>
+               <p className="text-2xl font-bold">{registeredStudents.length}</p>
+             </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-gray-50 text-gray-500 border-b">
+                <tr>
+                  <th className="p-4">Student Details</th>
+                  <th className="p-4">Contact Info</th>
+                  <th className="p-4">Academic Background</th>
+                  <th className="p-4">Docs & Address</th>
+                  <th className="p-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {registeredStudents.length === 0 ? <tr><td colSpan="5" className="p-8 text-center text-gray-500">No students registered yet.</td></tr> : (
+                  registeredStudents.map(s => (
+                    <tr key={s._id} className="hover:bg-gray-50">
+                      <td className="p-4 flex items-center gap-3">
+                        <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-12 h-12 rounded-full border border-gray-200 object-cover bg-white"/>
+                        <div>
+                          <p className="font-bold text-gray-800">{s.name}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${s.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                            {s.status === 'approved' ? 'Active' : s.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-bold text-gray-700">{s.contactNumber}</p>
+                        <p className="text-xs text-gray-500">{s.email}</p>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-bold text-gray-800">{s.highestQualification} {s.branch ? `- ${s.branch}` : ''}</p>
+                        <p className="text-[10px] text-gray-500">Year: {s.yearOfStudy} | Passout: {s.passingYear} | Degree %: {s.percentage}%</p>
+                        <p className="text-[10px] text-gray-500">10th: {s.tenthPercentage}% | 12th: {s.twelfthPercentage}%</p>
+                      </td>
+                      <td className="p-4">
+                        <p className="text-xs text-gray-700 font-mono"><b>PAN:</b> {s.panCard || 'N/A'}</p>
+                        <p className="text-xs text-gray-700 font-mono"><b>UIDAI:</b> {s.aadharNumber || 'N/A'}</p>
+                        <p className="text-[10px] text-gray-500 truncate w-48 mt-1" title={s.address}>{s.address}</p>
+                      </td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => deleteCampusStudent(s._id)} className="text-red-500 hover:text-red-700 p-2 bg-red-50 hover:bg-red-100 rounded transition" title="Delete Student">
+                          <FiTrash2 size={18} />
+                        </button>
                       </td>
                     </tr>
                   ))
