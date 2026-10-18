@@ -3257,7 +3257,7 @@ app.get('/api/campus/my-drive', verifyToken, async (req, res) => {
 
     const drive = await CollegeDrive.findById(user.registeredDrive)
       .populate('selectedAssignmentIds')
-      
+      .populate('selectedProblemIds')
       .lean();
     if (!drive) return res.status(404).json({ message: 'Campus drive not found.' });
 
