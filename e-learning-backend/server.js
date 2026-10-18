@@ -3257,6 +3257,7 @@ app.get('/api/campus/my-drive', verifyToken, async (req, res) => {
 
     const drive = await CollegeDrive.findById(user.registeredDrive)
       .populate('selectedAssignmentIds')
+      
       .lean();
     if (!drive) return res.status(404).json({ message: 'Campus drive not found.' });
 
@@ -3274,36 +3275,58 @@ app.get('/api/campus/my-drive', verifyToken, async (req, res) => {
     const scheduled = new Date(drive.scheduledTestTime);
     const isTestLive = drive.isActive && now >= scheduled;
 
+    
     let mcqQuestions = [];
-    if (isTestLive) {
-      (drive.selectedAssignmentIds || []).forEach(assignment => {
-        (assignment.topics || []).forEach(topic => {
-          (topic.questions || []).forEach(q => {
-            if (q.qType === 'MCQ') {
-              mcqQuestions.push({
-                _id: q._id,
-                text: q.text,
-                images: q.images,
-                options: q.options,
-                marks: q.marks
-              });
-            }
+if (isTestLive) {
+  (drive.selectedAssignmentIds || []).forEach(assignment => {
+    (assignment.topics || []).forEach(topic => {
+      (topic.questions || []).forEach(q => {
+        if (q.qType === 'MCQ') {
+          mcqQuestions.push({
+            _id: q._id,
+            text: q.text,
+            images: q.images,
+            options: q.options,
+            marks: q.marks
           });
-        });
+        }
       });
-    }
-
-    res.json({
-      alreadySubmitted: false,
-      driveId: drive._id,
-      collegeName: drive.collegeName,
-      driveCode: drive.driveCode,
-      isActive: drive.isActive,
-      scheduledTestTime: drive.scheduledTestTime,
-      durationMinutes: drive.durationMinutes,
-      isTestLive,
-      questions: mcqQuestions
     });
+  });
+}
+
+// --- CODING QUESTIONS ---
+let codingQuestions = [];
+if (isTestLive) {
+  (drive.selectedProblemIds || []).forEach(p => {
+    codingQuestions.push({
+      _id: p._id,
+      title: p.title,
+      statementMd: p.statementMd,
+      points: p.points,
+      testCases: (p.testCases || []).filter(t => t.isSample),
+      starterCode: p.starterCode,
+      mode: p.mode,
+      functionName: p.functionName,
+      returnType: p.returnType,
+      params: p.params
+    });
+  });
+}
+
+res.json({
+  alreadySubmitted: false,
+  driveId: drive._id,
+  collegeName: drive.collegeName,
+  driveCode: drive.driveCode,
+  isActive: drive.isActive,
+  scheduledTestTime: drive.scheduledTestTime,
+  durationMinutes: drive.durationMinutes,
+  isTestLive,
+  questions: [...mcqQuestions, ...codingQuestions]
+});
+
+    
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
