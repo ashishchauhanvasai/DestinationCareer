@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { FiClock, FiAlertTriangle, FiCheckCircle, FiUploadCloud, FiXCircle } from 'react-icons/fi';
+import { FiClock, FiAlertTriangle, FiCheckCircle, FiUploadCloud, FiXCircle, FiPlay } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
 
@@ -37,11 +37,15 @@ const DriveTest = () => {
   const [warnings, setWarnings] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
 
+  // Time tracker for the waiting lobby
+  const [nowTime, setNowTime] = useState(Date.now());
+
   const answersRef = useRef(answers);
   const testStartedRef = useRef(testStarted);
   const testCompletedRef = useRef(testCompleted);
   const warningsRef = useRef(warnings);
   const driveDataRef = useRef(driveData);
+  const startTimeRef = useRef(null);
 
   useEffect(() => { answersRef.current = answers; }, [answers]);
   useEffect(() => { testStartedRef.current = testStarted; }, [testStarted]);
@@ -49,22 +53,46 @@ const DriveTest = () => {
   useEffect(() => { warningsRef.current = warnings; }, [warnings]);
   useEffect(() => { driveDataRef.current = driveData; }, [driveData]);
 
+  // Handle ticking clock for lobby
   useEffect(() => {
-    const fetchDrive = async () => {
+    const tick = setInterval(() => setNowTime(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  // Securely Fetch Drive & Questions
+  useEffect(() => {
+    const fetchDriveData = async () => {
       try {
-        const res = await axios.get(`${API}/drives/${driveCode}`);
-        setDriveData(res.data);
-        setQuestions(res.data.questions || []);
-        setTimeLeft(res.data.durationMinutes * 60);
+        if (!token) {
+          // Public Fetch: For Registration Form Only
+          const res = await axios.get(`${API}/drives/${driveCode}/public-info`);
+          setDriveData(res.data);
+          setLoading(false);
+        } else {
+          // Secure Fetch: Get Questions using the token
+          const res = await axios.get(`${API}/campus/my-drive`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (res.data.alreadySubmitted) {
+            setResult({ reason: res.data.message, status: 'Completed' });
+            setTestCompleted(true);
+          } else {
+            setDriveData(res.data);
+            setQuestions(res.data.questions || []);
+            setTimeLeft((res.data.durationMinutes || 60) * 60);
+          }
+          setLoading(false);
+        }
       } catch (err) {
-        alert('Invalid or closed Drive Link');
+        alert('Invalid or closed Campus Drive Link.');
         navigate('/login');
       }
-      setLoading(false);
     };
-    fetchDrive();
-  }, [driveCode, navigate]);
+    fetchDriveData();
+  }, [driveCode, token, navigate]);
 
+  // Active Test Timer
   useEffect(() => {
     let timer;
     if (testStarted && !testCompleted && timeLeft > 0) {
@@ -90,10 +118,18 @@ const DriveTest = () => {
     try {
       const res = await axios.post(`${API}/drives/${driveCode}/register`, regForm);
       localStorage.setItem('token', res.data.token);
-      localStorage.setItem('role', 'student');
-      setToken(res.data.token);
-    } catch (err) { alert(err.response?.data?.message || 'Registration failed'); }
+      localStorage.setItem('role', 'campus_student');
+      setToken(res.data.token); // Triggers the secure fetch automatically
+    } catch (err) { 
+      alert(err.response?.data?.message || 'Registration failed'); 
+    }
     setRegistering(false);
+  };
+
+  const startTest = () => {
+    enterFullScreen();
+    startTimeRef.current = Date.now();
+    setTestStarted(true);
   };
 
   const submitTest = useCallback(async (reason = "Submitted Successfully") => {
@@ -102,14 +138,24 @@ const DriveTest = () => {
     setTestStarted(false);
     exitFullScreen();
 
+    const timeTakenSeconds = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : 0;
     const formattedAnswers = Object.keys(answersRef.current).map(qId => ({
       questionId: qId, selectedIndex: answersRef.current[qId]
     }));
 
     try {
-      const res = await axios.post(`${API}/drives/${driveDataRef.current.driveId}/submit`, { answers: formattedAnswers }, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }});
-      setResult({ ...res.data, reason });
-      // Remove token to force login next time
+      // Use driveId from the secure fetch
+      await axios.post(`${API}/drives/${driveDataRef.current.driveId}/submit`, 
+        { 
+          answers: formattedAnswers,
+          timeTakenSeconds,
+          warningsCount: warningsRef.current,
+          autoSubmitted: reason !== "Manual Submission" 
+        }, 
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }}
+      );
+      
+      setResult({ reason });
       localStorage.removeItem('token'); 
     } catch (err) {
       setResult({ error: true, message: err.response?.data?.message || 'Failed to submit test' });
@@ -145,9 +191,10 @@ const DriveTest = () => {
     return `${m}:${s}`;
   };
 
- if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading...</div>;
-  if (!driveData) return null; // <--- FIX: Prevents crash while redirecting to login
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500">Loading Secure Portal...</div>;
+  if (!driveData) return null;
 
+  // 1. REGISTRATION SCREEN
   if (!token) {
     return (
       <div className="min-h-screen bg-gray-50 py-10 px-4">
@@ -156,7 +203,6 @@ const DriveTest = () => {
           <p className="text-center text-gray-500 mb-6 text-sm font-semibold uppercase tracking-wider border-b pb-4">Campus Drive Registration Form</p>
           
           <div className="flex flex-col md:flex-row gap-8">
-            {/* Left side: Photo & Credentials */}
             <div className="flex flex-col items-center space-y-4 w-full md:w-1/3 border-r pr-0 md:pr-4">
               <label className="cursor-pointer flex flex-col items-center">
                 {regForm.profilePic ? (
@@ -175,7 +221,6 @@ const DriveTest = () => {
               <input required type="password" placeholder="Set Password *" minLength={6} value={regForm.password} onChange={e => setRegForm({...regForm, password: e.target.value})} className="w-full p-2.5 border rounded-lg bg-gray-50 text-sm" />
             </div>
 
-            {/* Right side: Academic & Personal Info */}
             <div className="w-full md:w-2/3 space-y-4">
               <h3 className="font-bold text-gray-700 text-sm border-b pb-1">Personal Details</h3>
               <div className="grid grid-cols-2 gap-3">
@@ -220,8 +265,8 @@ const DriveTest = () => {
       </div>
     );
   }
- 
 
+  // 2. BLIND THANK YOU SCREEN
   if (testCompleted && result) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -248,40 +293,87 @@ const DriveTest = () => {
     );
   }
 
+  // Calculate live status dynamically
+  const isLiveNow = driveData.isActive && nowTime >= new Date(driveData.scheduledTestTime).getTime();
 
+  // 3. LOBBY SCREEN (Waiting or Ready)
   if (!testStarted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-xl w-full">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{driveData.collegeName} Test</h1>
-          <p className="text-gray-500 mb-6 text-sm">Please read the instructions carefully before starting.</p>
-          <div className="bg-blue-50 border rounded-xl p-5 mb-6 space-y-3 font-bold text-blue-900 text-sm">
-            <p><FiClock className="inline mr-2" /> Duration: {driveData.durationMinutes} Minutes</p>
-            <p>Total Questions: {questions.length}</p>
+        <div className="bg-white p-8 rounded-3xl shadow-xl border max-w-xl w-full space-y-6">
+          <div className="border-b pb-4">
+            <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-blue-50 text-blue-700">
+              Upcoming Assessment
+            </span>
+            <h2 className="text-2xl font-extrabold text-gray-800 mt-2">
+              {driveData.collegeName} — Recruitment Test
+            </h2>
           </div>
-          <div className="bg-red-50 border border-red-200 p-4 rounded-xl mb-8">
-            <h3 className="text-red-800 font-bold mb-2 flex items-center gap-2"><FiAlertTriangle /> STRICT WARNING</h3>
-            <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
-              <li>This test requires Full Screen mode.</li>
-              <li>Do NOT switch tabs or minimize.</li>
-              <li>On the 3rd warning, your test will auto-submit.</li>
+
+          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border text-sm">
+            <div>
+              <p className="text-xs text-gray-500">Scheduled Date & Time</p>
+              <p className="font-bold text-gray-800">
+                {new Date(driveData.scheduledTestTime).toLocaleString('en-IN')}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Duration</p>
+              <p className="font-bold text-gray-800">{driveData.durationMinutes} Minutes</p>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 space-y-1.5">
+            <p className="font-bold flex items-center gap-1.5 text-sm">
+              <FiAlertTriangle /> Strict Proctoring & Anti-Malpractice Rules:
+            </p>
+            <ul className="list-disc list-inside space-y-1 mt-2">
+              <li>Do not switch tabs, minimize the browser, or open other applications.</li>
+              <li>Each tab switch triggers a malpractice warning.</li>
+              <li>On the <strong>3rd warning</strong>, your test will be <strong>auto-submitted</strong> immediately.</li>
+              <li>Results will be communicated via email after evaluation.</li>
             </ul>
           </div>
-          <button onClick={() => { enterFullScreen(); setTestStarted(true); }} className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700">Start Test</button>
+
+          {isLiveNow ? (
+            <button
+              onClick={startTest}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-extrabold text-base flex items-center justify-center gap-2 shadow-lg transition"
+            >
+              <FiPlay /> Start Assessment Now
+            </button>
+          ) : (
+            <div className="text-center p-4 bg-slate-100 rounded-2xl border">
+              <p className="text-xs text-gray-500 uppercase font-bold mb-1">
+                Test will unlock automatically at the scheduled time
+              </p>
+              <p className="text-lg font-extrabold text-slate-800 flex items-center justify-center gap-2 mt-2">
+                <FiClock className="text-blue-600" />
+                {Math.max(0, Math.ceil((new Date(driveData.scheduledTestTime).getTime() - nowTime) / 60000))} minutes remaining
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // 4. ACTIVE TEST INTERFACE
   const currentQ = questions[currentIdx];
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col select-none">
-      <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 shadow-sm">
-        <h1 className="font-bold text-lg text-gray-800 hidden md:block">{driveData.collegeName}</h1>
+      <header className="bg-white border-b px-6 py-4 flex justify-between items-center sticky top-0 shadow-sm z-20">
+        <h1 className="font-bold text-lg text-gray-800 hidden md:block">{driveData.collegeName} Assessment</h1>
         <div className="flex items-center gap-4">
-          <span className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">Warnings: {warnings}/3</span>
-          <div className="flex items-center gap-2 font-mono text-xl font-bold px-4 py-2 rounded-lg bg-gray-100"><FiClock /> {formatTime(timeLeft)}</div>
-          <button onClick={() => window.confirm('Submit test?') && submitTest("Manual Submission")} className="bg-green-600 text-white px-5 py-2 rounded-lg font-bold">Submit</button>
+          <span className={`text-xs font-bold px-3 py-1.5 rounded-lg border ${warnings > 0 ? 'bg-red-50 text-red-600 border-red-200' : 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+            Warnings: {warnings}/3
+          </span>
+          <div className="flex items-center gap-2 font-mono text-xl font-bold px-4 py-2 rounded-lg bg-slate-900 text-white shadow-inner">
+            <FiClock /> {formatTime(timeLeft)}
+          </div>
+          <button onClick={() => window.confirm('Are you sure you want to submit your test?') && submitTest("Manual Submission")} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-bold transition">
+            Submit
+          </button>
         </div>
       </header>
 
@@ -291,28 +383,38 @@ const DriveTest = () => {
             <h2 className="text-lg font-bold text-gray-500 uppercase tracking-widest">Question {currentIdx + 1} of {questions.length}</h2>
           </div>
           <div className="prose text-gray-800 mb-6"><ReactMarkdown>{currentQ?.text}</ReactMarkdown></div>
+          
+          {currentQ?.images && currentQ.images.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-6">
+              {currentQ.images.map((imgId) => (
+                <img key={imgId} src={`${API}/assignment-images/${imgId}`} alt="question" className="max-h-56 rounded-lg border" />
+              ))}
+            </div>
+          )}
+
           <div className="space-y-3">
             {currentQ?.options?.map((opt, oIdx) => (
-              <button key={oIdx} onClick={() => setAnswers(prev => ({ ...prev, [currentQ._id]: oIdx }))} className={`w-full text-left p-4 rounded-xl border-2 font-semibold ${answers[currentQ._id] === oIdx ? 'border-blue-600 bg-blue-50 text-blue-900' : 'border-gray-200 text-gray-700'}`}>
+              <button key={oIdx} onClick={() => setAnswers(prev => ({ ...prev, [currentQ._id]: oIdx }))} className={`w-full text-left p-4 rounded-xl border-2 font-semibold transition ${answers[currentQ._id] === oIdx ? 'border-blue-600 bg-blue-50 text-blue-900' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
                 {String.fromCharCode(65 + oIdx)}. {opt}
               </button>
             ))}
           </div>
           <div className="flex justify-between mt-8 pt-4 border-t">
-            <button onClick={() => setCurrentIdx(p => p - 1)} disabled={currentIdx === 0} className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30">Previous</button>
-            <button onClick={() => setCurrentIdx(p => p + 1)} disabled={currentIdx === questions.length - 1} className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30">Next</button>
+            <button onClick={() => setCurrentIdx(p => p - 1)} disabled={currentIdx === 0} className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30 hover:bg-gray-50 transition">Previous</button>
+            <button onClick={() => setCurrentIdx(p => p + 1)} disabled={currentIdx === questions.length - 1} className="px-6 py-2 border rounded-lg font-bold disabled:opacity-30 hover:bg-gray-50 transition">Next</button>
           </div>
         </div>
 
         <div className="w-full md:w-72 bg-white rounded-2xl shadow-sm border p-5 flex flex-col h-fit">
-          <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Palette</h3>
+          <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Question Palette</h3>
           <div className="grid grid-cols-5 gap-2">
             {questions.map((q, i) => (
-              <button key={q._id} onClick={() => setCurrentIdx(i)} className={`h-10 rounded-lg font-bold text-sm border-2 ${i === currentIdx ? 'ring-2 ring-blue-500' : ''} ${answers[q._id] !== undefined ? 'bg-green-500 text-white border-green-600' : 'border-gray-200 text-gray-600'}`}>
+              <button key={q._id} onClick={() => setCurrentIdx(i)} className={`h-10 rounded-lg font-bold text-sm border-2 transition ${i === currentIdx ? 'ring-2 ring-blue-500' : ''} ${answers[q._id] !== undefined ? 'bg-green-500 text-white border-green-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
                 {i + 1}
               </button>
             ))}
           </div>
+          <p className="text-xs text-center text-gray-400 mt-4">Green = Answered</p>
         </div>
       </main>
     </div>

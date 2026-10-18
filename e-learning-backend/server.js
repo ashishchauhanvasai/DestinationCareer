@@ -3141,8 +3141,9 @@ app.post('/api/drives/:code/register', async (req, res) => {
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ message: 'An account with this email already exists.' });
 
+    // FIX: Set status to 'approved' so they don't have to wait for manual admin approval to take the test
     const user = new User({
-      name, email, password, role: 'campus_student', status: 'pending', registeredDrive: drive._id,
+      name, email, password, role: 'campus_student', status: 'approved', registeredDrive: drive._id,
       profilePic: profilePic || '', highestQualification: highestQualification || '',
       passingYear: passingYear || '', percentage: percentage || null,
       contactNumber: contactNumber || '', address: address || '', aadharNumber: aadharNumber || '',
@@ -3151,50 +3152,25 @@ app.post('/api/drives/:code/register', async (req, res) => {
     });
 
     await user.save();
-    res.status(201).json({ message: 'Registration successful! Once the promotional team approves your registration, you will be able to log in to the test portal.' });
+
+    // FIX: Generate JWT token immediately so the student is logged into the test portal
+    const token = jwt.sign(
+      { id: user._id, role: user.role, version: user.tokenVersion || 0 },
+      JWT_SECRET,
+      { expiresIn: '4h' }
+    );
+
+    res.status(201).json({ 
+      message: 'Registration successful! Generating your test portal...',
+      token,
+      role: user.role,
+      userId: user._id
+    });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
-// app.post('/api/drives/:code/register', async (req, res) => {
-//   try {
-//     const drive = await CollegeDrive.findOne({ driveCode: req.params.code, isActive: true });
-//     if (!drive) return res.status(404).json({ message: 'Campus Drive not found or closed.' });
-
-//     const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, address } = req.body;
-//     if (!name || !email || !password) {
-//       return res.status(400).json({ message: 'Name, email, and password are required.' });
-//     }
-
-//     const existing = await User.findOne({ email });
-//     if (existing) {
-//       return res.status(400).json({ message: 'An account with this email already exists.' });
-//     }
-
-//     const user = new User({
-//       name,
-//       email,
-//       password,
-//       role: 'campus_student',
-//       status: 'pending',
-//       registeredDrive: drive._id,
-//       profilePic: profilePic || '',
-//       highestQualification: highestQualification || '',
-//       passingYear: passingYear || '',
-//       percentage: percentage || null,
-//       contactNumber: contactNumber || '',
-//       address: address || ''
-//     });
-
-//     await user.save();
-//     res.status(201).json({
-//       message: 'Registration successful! Once the promotional team approves your registration, you will be able to log in to the test portal.'
-//     });
-//   } catch (e) {
-//     res.status(500).json({ message: e.message });
-//   }
-// });
 
 // 5. Promo Team: Get All Registered Students for a Drive
 app.get('/api/drives/:id/students', verifyToken, async (req, res) => {
