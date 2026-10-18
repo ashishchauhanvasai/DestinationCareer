@@ -201,50 +201,31 @@ const DriveTest = () => {
   }
 
   if (testCompleted && result) {
-    const isSelected = result.status === 'Selected';
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border p-8">
-          <div className="text-center border-b pb-6 mb-6">
-            {isSelected ? <FiCheckCircle className="text-green-500 text-6xl mx-auto mb-3" /> : <FiXCircle className="text-red-500 text-6xl mx-auto mb-3" />}
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{isSelected ? 'Congratulations! You are Selected.' : 'Test Completed (Not Selected)'}</h1>
-            <p className="text-gray-500 mb-4">{result.reason}</p>
-            <div className="flex justify-center gap-6">
-              <div className="bg-gray-50 px-6 py-3 rounded-xl border">
-                <p className="text-xs font-bold text-gray-400 uppercase">Your Score</p>
-                <p className="text-2xl font-bold text-gray-800">{result.totalScore} / {result.maxScore}</p>
-              </div>
-              <div className="bg-gray-50 px-6 py-3 rounded-xl border">
-                <p className="text-xs font-bold text-gray-400 uppercase">Percentage</p>
-                <p className="text-2xl font-bold text-blue-600">{result.percentage}%</p>
-              </div>
-            </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border p-10 text-center">
+          <div className="w-24 h-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <FiCheckCircle size={50} />
           </div>
-          <h3 className="font-bold text-lg mb-4 text-gray-800">Detailed Review</h3>
-          <div className="space-y-6">
-            {result.detailedResults?.map((q, idx) => (
-              <div key={q.questionId} className={`p-5 border-l-4 rounded-r-xl bg-gray-50 ${q.isCorrect ? 'border-green-500' : 'border-red-500'}`}>
-                <p className="font-bold text-gray-800 mb-3">{idx + 1}. {q.questionText}</p>
-                <div className="space-y-2">
-                  {q.options.map((opt, oIdx) => {
-                    let style = 'bg-white text-gray-600';
-                    if (oIdx === q.correctIndex) style = 'bg-green-100 border-green-500 text-green-800 font-bold';
-                    else if (oIdx === q.selectedIndex && !q.isCorrect) style = 'bg-red-100 border-red-500 text-red-800 font-bold';
-                    return (
-                      <div key={oIdx} className={`p-3 text-sm rounded-lg border ${style}`}>
-                        {opt} {oIdx === q.correctIndex && ' ✅'} {oIdx === q.selectedIndex && !q.isCorrect && ' ❌ (Your Answer)'}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-          <button onClick={() => navigate('/login')} className="mt-8 w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800">Return to Home Screen</button>
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-3">Test Submitted Successfully!</h1>
+          <p className="text-gray-600 text-sm leading-relaxed mb-8">
+            Thank you for participating. Your responses have been recorded and sent to the recruitment team securely. 
+            You will be notified regarding the next steps via email.
+          </p>
+          <button 
+            onClick={() => {
+              localStorage.clear();
+              navigate('/login');
+            }} 
+            className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-md"
+          >
+            Close Session
+          </button>
         </div>
       </div>
     );
   }
+
 
   if (!testStarted) {
     return (

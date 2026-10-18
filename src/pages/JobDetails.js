@@ -120,16 +120,6 @@ const JobDetails = () => {
       );
     }
 
-    if (p.employabilityScore < j.reqEmployabilityScore) {
-      eligible = false;
-
-      reasons.push(
-        `Employability score too low. Required: ${j.reqEmployabilityScore}, Yours: ${
-          p.employabilityScore || 0
-        }`,
-      );
-    }
-
     if (p.backlogs > j.reqMaxBacklogs) {
       eligible = false;
 

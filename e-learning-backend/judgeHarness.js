@@ -557,17 +557,7 @@ function buildSource(language, userCode, p) {
   }
 }
 
-// function buildSource(language, userCode, p) {
-//   const code = String(userCode || '');
-//   switch (language) {
-//     case 'java':
-//       // a public class must live in its own file, so quietly make "public class Solution" a normal class
-//       return code.replace(/\bpublic\s+class\s+Solution\b/, 'class Solution') + '\n' + javaDriver(p);
-//     case 'python': return code + '\n' + pythonDriver(p);
-//     case 'javascript': return code + '\n' + jsDriver(p);
-//     default: throw new Error('This language is not available for function-style questions.');
-//   }
-// }
+
 
 // plain-object copy of the function settings of a Problem document
 const specOf = (problem) => ({

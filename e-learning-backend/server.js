@@ -1,5 +1,3 @@
-
-
 // FIX: load the .env that sits next to this file, no matter which folder you start the server from
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const bcrypt = require('bcryptjs');
@@ -77,8 +75,6 @@ const topPerformerSchema = new mongoose.Schema({
 
 const TopPerformer = mongoose.model('TopPerformer', topPerformerSchema);
 
-
-
 const dns = require('dns');
 
 // Prefer IPv4 to avoid IPv6 connection timeouts on some cloud hosts (including Render).
@@ -98,8 +94,10 @@ const transporter = nodemailer.createTransport({
     user: EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
-  // Keep TLS certificate verification enabled.
-  family: 4, // Force IPv4 for the SMTP socket
+  tls: {
+    rejectUnauthorized: false // <--- ADD THIS FIX
+  },
+  family: 4,
   connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000
@@ -142,6 +140,27 @@ const userSchema = new mongoose.Schema({
 
   // NEW: Profile Picture (Base64 string store karne ke liye)
   profilePic: { type: String, default: '' },                        
+
+
+  // --- STUDENT ELIGIBILITY PROFILE ---
+  highestQualification: { type: String, default: '' },
+  passingYear: { type: String, default: '' },
+  percentage: { type: Number, default: null },
+  backlogs: { type: Number, default: 0 },
+  educationGap: { type: Number, default: 0 },
+  readyForRelocation: { type: Boolean, default: false },
+  contactNumber: { type: String, default: '' },
+  aadharNumber: { type: String, default: '' },
+  address: { type: String, default: '' },
+  skillsAcquired: { type: String, default: '' },
+
+  // --- NEW FIELDS FOR CAMPUS REGISTRATION ---
+  stream: { type: String, default: '' },
+  branch: { type: String, default: '' },
+  yearOfStudy: { type: String, default: '' },
+  tenthPercentage: { type: Number, default: null },
+  twelfthPercentage: { type: Number, default: null },
+  panCard: { type: String, default: '' },
 
 
   // --- STRICT 1 DESKTOP + 1 MOBILE DEVICE BINDING ---
@@ -790,6 +809,49 @@ app.put('/api/users/profile', verifyToken, async (req, res) => {
     
     await user.save();
     
+    const updatedUser = await User.findById(req.user.id).select('-password');
+    res.json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- ADMIN DELETE JOB ---
+app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    await Job.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Job deleted successfully' });
+  } catch (error) { res.status(500).json({ error: error.message }); }
+});
+
+// --- Update Profile (Skills Unlocked & Promo Fields) ---
+app.put('/api/users/profile', verifyToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    const { highestQualification, passingYear, percentage, backlogs, educationGap, readyForRelocation, skillsAcquired, contactNumber, address } = req.body;
+    
+    // Skills can ALWAYS be updated, regardless of lock
+    user.skillsAcquired = skillsAcquired;
+
+    // Allow promo team to save contact details
+    if (user.role === 'promotional') {
+      user.contactNumber = contactNumber;
+      user.address = address;
+    }
+    
+    // Only lock other fields for students
+    if (!user.profileLocked && user.role === 'student') {
+      user.highestQualification = highestQualification;
+      user.passingYear = passingYear;
+      user.percentage = percentage;
+      user.backlogs = backlogs;
+      user.educationGap = educationGap;
+      user.readyForRelocation = readyForRelocation;
+      user.profileLocked = true; 
+    }
+    
+    await user.save();
     const updatedUser = await User.findById(req.user.id).select('-password');
     res.json(updatedUser);
   } catch (error) {
@@ -1967,6 +2029,19 @@ const appUpload = multer({
   limits: { fileSize: RESUME_MAX, files: 2 }
 }).fields([{ name: 'photo', maxCount: 1 }, { name: 'resume', maxCount: 1 }]);
 
+// const checkJobEligibility = (j, p) => {
+//   const reasons = [];
+//   if (!p.highestQualification || !p.highestQualification.toLowerCase().includes(String(j.reqQualification).toLowerCase())) {
+//     reasons.push(`Qualification mismatch. Required: ${j.reqQualification}`);
+//   }
+//   if (String(p.passingYear) !== String(j.reqPassingYear)) reasons.push(`Passing year mismatch. Required: ${j.reqPassingYear}`);
+//   if (!(Number(p.percentage) >= Number(j.reqMinPercentage))) reasons.push(`Percentage too low. Required: ${j.reqMinPercentage}%`);
+//   if (Number(p.employabilityScore || 0) < Number(j.reqEmployabilityScore)) reasons.push(`Employability score too low. Required: ${j.reqEmployabilityScore}`);
+//   if (Number(p.backlogs || 0) > Number(j.reqMaxBacklogs)) reasons.push(`Too many active backlogs. Allowed: ${j.reqMaxBacklogs}`);
+//   if (Number(p.educationGap || 0) > Number(j.reqMaxEducationGap)) reasons.push(`Education gap too large. Allowed: ${j.reqMaxEducationGap} years`);
+//   return reasons;
+// };
+
 const checkJobEligibility = (j, p) => {
   const reasons = [];
   if (!p.highestQualification || !p.highestQualification.toLowerCase().includes(String(j.reqQualification).toLowerCase())) {
@@ -1974,7 +2049,9 @@ const checkJobEligibility = (j, p) => {
   }
   if (String(p.passingYear) !== String(j.reqPassingYear)) reasons.push(`Passing year mismatch. Required: ${j.reqPassingYear}`);
   if (!(Number(p.percentage) >= Number(j.reqMinPercentage))) reasons.push(`Percentage too low. Required: ${j.reqMinPercentage}%`);
-  if (Number(p.employabilityScore || 0) < Number(j.reqEmployabilityScore)) reasons.push(`Employability score too low. Required: ${j.reqEmployabilityScore}`);
+  
+  // REMOVED EMPLOYABILITY SCORE CHECK HERE
+
   if (Number(p.backlogs || 0) > Number(j.reqMaxBacklogs)) reasons.push(`Too many active backlogs. Allowed: ${j.reqMaxBacklogs}`);
   if (Number(p.educationGap || 0) > Number(j.reqMaxEducationGap)) reasons.push(`Education gap too large. Allowed: ${j.reqMaxEducationGap} years`);
   return reasons;
@@ -3059,39 +3136,65 @@ app.post('/api/drives/:code/register', async (req, res) => {
     const drive = await CollegeDrive.findOne({ driveCode: req.params.code, isActive: true });
     if (!drive) return res.status(404).json({ message: 'Campus Drive not found or closed.' });
 
-    const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, address } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required.' });
-    }
-
+    const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, address, stream, branch, yearOfStudy, tenthPercentage, twelfthPercentage, panCard, aadharNumber } = req.body;
+    
     const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: 'An account with this email already exists.' });
-    }
+    if (existing) return res.status(400).json({ message: 'An account with this email already exists.' });
 
     const user = new User({
-      name,
-      email,
-      password,
-      role: 'campus_student',
-      status: 'pending',
-      registeredDrive: drive._id,
-      profilePic: profilePic || '',
-      highestQualification: highestQualification || '',
-      passingYear: passingYear || '',
-      percentage: percentage || null,
-      contactNumber: contactNumber || '',
-      address: address || ''
+      name, email, password, role: 'campus_student', status: 'pending', registeredDrive: drive._id,
+      profilePic: profilePic || '', highestQualification: highestQualification || '',
+      passingYear: passingYear || '', percentage: percentage || null,
+      contactNumber: contactNumber || '', address: address || '', aadharNumber: aadharNumber || '',
+      stream: stream || '', branch: branch || '', yearOfStudy: yearOfStudy || '',
+      tenthPercentage: tenthPercentage || null, twelfthPercentage: twelfthPercentage || null, panCard: panCard || ''
     });
 
     await user.save();
-    res.status(201).json({
-      message: 'Registration successful! Once the promotional team approves your registration, you will be able to log in to the test portal.'
-    });
+    res.status(201).json({ message: 'Registration successful! Once the promotional team approves your registration, you will be able to log in to the test portal.' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
+
+// app.post('/api/drives/:code/register', async (req, res) => {
+//   try {
+//     const drive = await CollegeDrive.findOne({ driveCode: req.params.code, isActive: true });
+//     if (!drive) return res.status(404).json({ message: 'Campus Drive not found or closed.' });
+
+//     const { name, email, password, profilePic, highestQualification, passingYear, percentage, contactNumber, address } = req.body;
+//     if (!name || !email || !password) {
+//       return res.status(400).json({ message: 'Name, email, and password are required.' });
+//     }
+
+//     const existing = await User.findOne({ email });
+//     if (existing) {
+//       return res.status(400).json({ message: 'An account with this email already exists.' });
+//     }
+
+//     const user = new User({
+//       name,
+//       email,
+//       password,
+//       role: 'campus_student',
+//       status: 'pending',
+//       registeredDrive: drive._id,
+//       profilePic: profilePic || '',
+//       highestQualification: highestQualification || '',
+//       passingYear: passingYear || '',
+//       percentage: percentage || null,
+//       contactNumber: contactNumber || '',
+//       address: address || ''
+//     });
+
+//     await user.save();
+//     res.status(201).json({
+//       message: 'Registration successful! Once the promotional team approves your registration, you will be able to log in to the test portal.'
+//     });
+//   } catch (e) {
+//     res.status(500).json({ message: e.message });
+//   }
+// });
 
 // 5. Promo Team: Get All Registered Students for a Drive
 app.get('/api/drives/:id/students', verifyToken, async (req, res) => {
@@ -3377,6 +3480,127 @@ app.put('/api/drives/:id/questions', verifyToken, async (req, res) => {
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
+});
+
+
+// ============================================================================
+// ASSIGN / MOVE STUDENTS BETWEEN BATCHES  +  SAFE DELETE
+//
+// This is the backend the "Assign Batch / Change Batch / Bulk / Delete" screen needs.
+//
+// HOW TO USE
+//  1. In server.js, search for   /api/staff/batches/change-student
+//     - If it already exists, you do NOT need the two "move" routes below.
+//       (But still do steps 2, 3 and 4.)
+//  2. Delete the OLD delete-user route (the exact text is in my chat message).
+//  3. In the staff-tracking block, delete the single line   backfillBatchMembers();
+//     (reason is in my chat message: it would undo moved students after a restart)
+//  4. Paste this whole file just ABOVE   app.listen(...)   and restart the backend.
+// ============================================================================
+
+const ZERO_ID = '000000000000000000000000';
+
+// ---------- move one or many students into a batch ----------
+// oldBatchId can be empty / the zero id (= the student was in no batch).
+const moveStudents = async (studentIds, oldBatchId, newBatchId) => {
+  if (!mongoose.isValidObjectId(newBatchId)) return { error: 'Choose a batch' };
+  const newBatch = await Batch.findById(newBatchId);
+  if (!newBatch) return { error: 'Batch not found' };
+  if (newBatch.isActive === false) return { error: 'This batch is not active' };
+
+  const ids = [...new Set((Array.isArray(studentIds) ? studentIds : []).map(String))]
+    .filter((x) => mongoose.isValidObjectId(x))
+    .slice(0, 500);
+  if (!ids.length) return { error: 'No students selected' };
+
+  const students = await User.find({ _id: { $in: ids }, role: 'student' }).distinct('_id');
+  if (!students.length) return { error: 'No valid students found' };
+
+  // leave the old batch (their attendance history stays as it was)
+  if (oldBatchId && String(oldBatchId) !== ZERO_ID && mongoose.isValidObjectId(oldBatchId) && String(oldBatchId) !== String(newBatchId)) {
+    await BatchMember.deleteMany({ batch: oldBatchId, student: { $in: students } });
+  }
+
+  // join the new batch (safe to repeat)
+  await BatchMember.bulkWrite(students.map((s) => ({
+    updateOne: {
+      filter: { batch: newBatch._id, student: s },
+      update: { $setOnInsert: { joinedAt: new Date() } },
+      upsert: true
+    }
+  })));
+
+  return { moved: students.length };
+};
+
+app.put('/api/staff/batches/change-student', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const { studentId, oldBatchId, newBatchId } = req.body;
+    const r = await moveStudents([studentId], oldBatchId, newBatchId);
+    if (r.error) return res.status(400).json({ message: r.error });
+    res.json({ message: 'Student moved', moved: r.moved });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.put('/api/staff/batches/bulk-change-student', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    const { studentIds, oldBatchId, newBatchId } = req.body;
+    const r = await moveStudents(studentIds, oldBatchId, newBatchId);
+    if (r.error) return res.status(400).json({ message: r.error });
+    res.json({ message: `${r.moved} student(s) moved`, moved: r.moved });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ---------- delete a user (REPLACES the old DELETE /api/users/:id) ----------
+// admin + super admin can delete STUDENTS. Only the super admin can delete admins / trainers / staff.
+// Deleting a student also removes everything that belonged to them, so no orphan records are left.
+const removeStudentData = async (u) => {
+  const apps = await Application.find({ student: u._id }).select('photoFileId resumeFileId');
+  for (const a of apps) {
+    await deleteGridFile(a.photoFileId);
+    await deleteGridFile(a.resumeFileId);
+  }
+  const optional = mongoose.models.DriveSubmission
+    ? [mongoose.models.DriveSubmission.deleteMany({ student: u._id })]
+    : [];
+  await Promise.all([
+    Application.deleteMany({ student: u._id }),
+    BatchMember.deleteMany({ student: u._id }),
+    Attendance.deleteMany({ student: u._id }),
+    AssignmentAnswer.deleteMany({ user: u._id }),
+    MockRating.deleteMany({ student: u._id }),
+    Submission.deleteMany({ user: u._id }),
+    Doubt.deleteMany({ user: u._id }),
+    Doubt.updateMany({ 'replies.user': u._id }, { $pull: { replies: { user: u._id } } }),
+    OTP.deleteMany({ email: u.email }),
+    ...optional
+  ]);
+};
+
+app.delete('/api/users/:id', verifyToken, async (req, res) => {
+  if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid user id' });
+    if (req.params.id === req.user.id) return res.status(400).json({ message: 'You cannot delete your own account' });
+
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ message: 'User not found' });
+    if (target.role === 'superadmin') return res.status(403).json({ message: 'Cannot delete a super admin account' });
+
+    const isStudentType = target.role === 'student' || target.role === 'campus_student';
+    if (!isStudentType && !isSuperAdmin(req)) {
+      return res.status(403).json({ message: 'Only the super admin can remove admins, trainers or staff' });
+    }
+    if (target.role === 'trainer' && (await Batch.exists({ trainer: target._id }))) {
+      return res.status(400).json({ message: 'This trainer still has batches. Delete or reassign those batches first.' });
+    }
+
+    if (isStudentType) await removeStudentData(target);
+    await target.deleteOne();
+    res.json({ message: `${target.name} removed` });
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 app.listen(port, () => {
