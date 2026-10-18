@@ -40,30 +40,14 @@ const PromoDashboard = () => {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-
-    const payload = {
-      ...form,
-      driveCode: form.driveCode.toUpperCase().replace(/\s+/g, '-'),
-      scheduledTestTime: form.scheduledTestTime
-        ? new Date(form.scheduledTestTime).toISOString()
-        : null
-    };
-
+    const payload = { ...form, driveCode: form.driveCode.toUpperCase().replace(/\s+/g, '-') };
     try {
-      await axios.post(`${API}/drives`, payload, cfg());
+      const res = await axios.post(`${API}/drives`, payload, cfg());
+      setDrives([res.data.drive || res.data, ...drives]); // Instantly add new drive
       alert('College Drive Created Successfully!');
-      setForm({
-        collegeName: '',
-        driveCode: '',
-        scheduledTestTime: '',
-        durationMinutes: 60,
-        cutoffPercentage: 70
-      });
+      setForm({ collegeName: '', driveCode: '', durationMinutes: 60, cutoffPercentage: 70, scheduledTestTime: '' });
       setView('list');
-      fetchDrives();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create drive.');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Failed to create drive.'); }
   };
 
   const deleteDrive = async (e, id) => {
@@ -71,7 +55,7 @@ const PromoDashboard = () => {
     if (!window.confirm("Are you sure you want to delete this drive and all its student submissions?")) return;
     try {
       await axios.delete(`${API}/drives/${id}`, cfg());
-      fetchDrives();
+      setDrives(drives.filter(d => d._id !== id)); // Instantly remove
     } catch (err) { alert('Failed to delete'); }
   };
 
@@ -80,7 +64,7 @@ const PromoDashboard = () => {
     if (!window.confirm("Change drive status?")) return;
     try {
       await axios.put(`${API}/drives/${id}/status`, {}, cfg());
-      fetchDrives();
+      setDrives(drives.map(d => d._id === id ? { ...d, isActive: !d.isActive } : d)); // Instantly toggle
     } catch (err) { alert('Failed to update status'); }
   };
 
@@ -137,8 +121,7 @@ const PromoDashboard = () => {
     if (!window.confirm("Delete this student permanently from the drive?")) return;
     try {
       await axios.delete(`${API}/drives/${selectedDrive._id}/students/${studentId}`, cfg());
-      const res = await axios.get(`${API}/drives/${selectedDrive._id}/students`, cfg());
-      setRegisteredStudents(res.data);
+      setRegisteredStudents(registeredStudents.filter(s => s._id !== studentId)); // Instantly remove
     } catch (err) { alert("Failed to delete student"); }
   };
 

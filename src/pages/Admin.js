@@ -130,15 +130,18 @@ const Admin = () => {
     }
   };
 
+
   const handleDelete = async (type, id) => {
     if (!window.confirm('Are you sure you want to delete this?')) return;
-
-    await axios.delete(
-      `${process.env.REACT_APP_API_URL}/api/${type}/${id}`,
-      config
-    );
-
-    fetchData();
+    try {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/${type}/${id}`, config);
+      
+      // OPTIMISTIC UPDATE: Instantly remove from screen
+      if (type === 'courses') setCourses(courses.filter(c => c._id !== id));
+      else if (type === 'testimonials') setTestimonials(testimonials.filter(t => t._id !== id));
+      else if (type === 'jobs') setJobs(jobs.filter(j => j._id !== id));
+      
+    } catch (err) { alert('Failed to delete'); }
   };
 
   const handleImageUpload = (e, formType) => {
@@ -162,35 +165,17 @@ const Admin = () => {
 
   const handleTestSubmit = async (e) => {
     e.preventDefault();
-
-    if (editingTestId) {
-      await axios.put(
-        `${process.env.REACT_APP_API_URL}/api/testimonials/${editingTestId}`,
-        testForm,
-        config
-      );
-    } else {
-      await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/testimonials`,
-        testForm,
-        config
-      );
-    }
-
-    setTestForm({
-      studentName: '',
-      company: '',
-      message: '',
-      imageUrl: '',
-      education: '',
-      passoutYear: '',
-      collegeName: '',
-      role: '',
-      salaryPackage: '',
-    });
-
-    setEditingTestId(null);
-    fetchData();
+    try {
+      if (editingTestId) {
+        const res = await axios.put(`${process.env.REACT_APP_API_URL}/api/testimonials/${editingTestId}`, testForm, config);
+        setTestimonials(testimonials.map(t => t._id === editingTestId ? res.data : t));
+      } else {
+        const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/testimonials`, testForm, config);
+        setTestimonials([res.data, ...testimonials]);
+      }
+      setTestForm({ studentName: '', company: '', message: '', imageUrl: '', education: '', passoutYear: '', collegeName: '', role: '', salaryPackage: '' });
+      setEditingTestId(null);
+    } catch (err) { alert('Failed to save testimonial'); }
   };
 
   const loadTestForEdit = (t) => {
@@ -209,60 +194,24 @@ const Admin = () => {
     setEditingTestId(t._id);
   };
 
-  const handleJobSubmit = async (e) => {
+ const handleJobSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/jobs`,
-        jobForm,
-        config
-      );
-
-      setJobForm({
-        jobId: '',
-        title: '',
-        companyAbout: '',
-        description: '',
-        location: '',
-        salary: '',
-        hiringProcess: 'Online',
-        interviewDate: '',
-        interviewLocation: '',
-        lastDateToApply: '',
-        reqEmployabilityScore: 0,
-        reqQualification: '',
-        reqPassingYear: '',
-        reqMinPercentage: 0,
-        reqMaxBacklogs: 0,
-        reqMaxEducationGap: 0,
-        reqSkills: '',
-      });
-
-      fetchData();
+      const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/jobs`, jobForm, config);
+      setJobs([res.data, ...jobs]); // Instantly add to screen
+      setJobForm({ jobId: '', title: '', companyAbout: '', description: '', location: '', salary: '', hiringProcess: 'Online', interviewDate: '', interviewLocation: '', lastDateToApply: '', reqEmployabilityScore: 0, reqQualification: '', reqPassingYear: '', reqMinPercentage: 0, reqMaxBacklogs: 0, reqMaxEducationGap: 0, reqSkills: '' });
       alert('Job Posted Successfully!');
-    } catch (err) {
-      alert('Error posting job. Ensure Job ID is unique.');
-    }
+    } catch (err) { alert('Error posting job. Ensure Job ID is unique.'); }
   };
 
-  const handleStudentProfileSubmit = async (e) => {
+ const handleStudentProfileSubmit = async (e) => {
     e.preventDefault();
-
     try {
-      await axios.put(
-        `${process.env.REACT_APP_API_URL}/api/users/${editingStudentId}/admin-edit-profile`,
-        studentProfileForm,
-        config
-      );
-
-      alert('Student profile updated successfully!');
-
+      const res = await axios.put(`${process.env.REACT_APP_API_URL}/api/users/${editingStudentId}/admin-edit-profile`, studentProfileForm, config);
+      setStudents(students.map(s => s._id === editingStudentId ? res.data : s));
       setEditingStudentId(null);
-      fetchData();
-    } catch (err) {
-      alert('Failed to update student profile.');
-    }
+      alert('Student profile updated successfully!');
+    } catch (err) { alert('Failed to update student profile.'); }
   };
 
   const inputStyles =
@@ -714,7 +663,7 @@ const Admin = () => {
                                   config
                                 );
 
-                                fetchData();
+                               setPendingUsers(pendingUsers.filter(u => u._id !== user._id));
                               }}
                               className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 px-3 py-1 rounded font-bold text-sm transition-colors"
                             >
@@ -729,7 +678,7 @@ const Admin = () => {
                                   config
                                 );
 
-                                fetchData();
+                               setPendingUsers(pendingUsers.filter(u => u._id !== user._id));
                               }}
                               className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 px-3 py-1 rounded font-bold text-sm transition-colors"
                             >

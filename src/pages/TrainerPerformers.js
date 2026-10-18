@@ -73,30 +73,24 @@ const TrainerPerformers = () => {
     setSearchResults([]);
   };
 
-  const submit = async (e) => {
+ const submit = async (e) => {
     e.preventDefault();
-    if (!form.studentName) {
-      alert("Please select a student from the search.");
-      return;
-    }
-    if (isSuperAdmin && !form.category && !editingId) {
-      alert("Please select a domain/category for this student.");
-      return;
-    }
+    if (!form.studentName) return alert("Please select a student from the search.");
+    if (isSuperAdmin && !form.category && !editingId) return alert("Please select a domain/category for this student.");
 
     setSaving(true);
     try {
-      if (editingId) await axios.put(`${API}/performers/${editingId}`, form, cfg());
-      else await axios.post(`${API}/performers`, form, cfg());
-      
+      if (editingId) {
+        const res = await axios.put(`${API}/performers/${editingId}`, form, cfg());
+        setPerformers(performers.map(p => p._id === editingId ? res.data : p));
+      } else {
+        const res = await axios.post(`${API}/performers`, form, cfg());
+        setPerformers([res.data, ...performers]);
+      }
       setForm(emptyForm);
       setEditingId(null);
-      load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Could not save');
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Could not save'); } 
+    finally { setSaving(false); }
   };
 
   const startEdit = (p) => {
@@ -106,18 +100,13 @@ const TrainerPerformers = () => {
     setSearchResults([]);
   };
 
-  const remove = async (id) => {
+ const remove = async (id) => {
     if (!window.confirm('Remove this top performer?')) return;
     try {
       await axios.delete(`${API}/performers/${id}`, cfg());
-      if (editingId === id) {
-        setEditingId(null);
-        setForm(emptyForm);
-      }
-      load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Could not delete');
-    }
+      setPerformers(performers.filter(p => p._id !== id));
+      if (editingId === id) { setEditingId(null); setForm(emptyForm); }
+    } catch (err) { alert(err.response?.data?.message || 'Could not delete'); }
   };
 
   if (domain === null) return <p className="p-8 text-center text-gray-500 dark:text-gray-400">Loading...</p>;

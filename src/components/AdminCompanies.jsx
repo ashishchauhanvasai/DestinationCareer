@@ -35,19 +35,18 @@ const AdminCompanies = () => {
   // ---- Company ----
   const saveCompany = async (e) => {
     e.preventDefault();
-    const payload = {
-      name: cForm.name.trim(),
-      tags: cForm.tags.split(',').map((t) => t.trim()).filter(Boolean)
-    };
+    const payload = { name: cForm.name.trim(), tags: cForm.tags.split(',').map((t) => t.trim()).filter(Boolean) };
     try {
-      if (editingCompanyId) await axios.put(`${API}/${editingCompanyId}`, payload, cfg());
-      else await axios.post(API, payload, cfg());
+      if (editingCompanyId) {
+        const res = await axios.put(`${API}/${editingCompanyId}`, payload, cfg());
+        setCompanies(companies.map(c => c._id === editingCompanyId ? res.data : c));
+      } else {
+        const res = await axios.post(API, payload, cfg());
+        setCompanies([...companies, res.data]);
+      }
       setCForm(emptyCompany);
       setEditingCompanyId(null);
-      load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save company');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Failed to save company'); }
   };
 
   const editCompany = (c) => {
@@ -55,29 +54,26 @@ const AdminCompanies = () => {
     setCForm({ name: c.name, tags: (c.tags || []).join(', ') });
   };
 
-  const deleteCompany = async (id) => {
+ const deleteCompany = async (id) => {
     if (!window.confirm('Delete this company and all its questions?')) return;
     try {
       await axios.delete(`${API}/${id}`, cfg());
+      setCompanies(companies.filter(c => c._id !== id));
       if (selectedId === id) setSelectedId(null);
-      load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Could not delete the company');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Could not delete the company'); }
   };
 
   // ---- Questions ----
   const saveQuestion = async (e) => {
     e.preventDefault();
     try {
-      if (editingQId) await axios.put(`${API}/${selectedId}/questions/${editingQId}`, qForm, cfg());
-      else await axios.post(`${API}/${selectedId}/questions`, qForm, cfg());
+      let res;
+      if (editingQId) res = await axios.put(`${API}/${selectedId}/questions/${editingQId}`, qForm, cfg());
+      else res = await axios.post(`${API}/${selectedId}/questions`, qForm, cfg());
+      setCompanies(companies.map(c => c._id === selectedId ? res.data : c));
       setQForm(emptyQ);
       setEditingQId(null);
-      load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to save question');
-    }
+    } catch (err) { alert(err.response?.data?.message || 'Failed to save question'); }
   };
 
   const editQuestion = (q) => {
@@ -94,13 +90,10 @@ const AdminCompanies = () => {
   const deleteQuestion = async (qid) => {
     if (!window.confirm('Delete this question?')) return;
     try {
-      await axios.delete(`${API}/${selectedId}/questions/${qid}`, cfg());
-      load();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Could not delete the question');
-    }
+      const res = await axios.delete(`${API}/${selectedId}/questions/${qid}`, cfg());
+      setCompanies(companies.map(c => c._id === selectedId ? res.data : c));
+    } catch (err) { alert(err.response?.data?.message || 'Could not delete the question'); }
   };
-
   return (
     <div className="grid lg:grid-cols-3 gap-6">
       {/* LEFT: companies */}
