@@ -145,8 +145,8 @@ const DriveTest = () => {
     return `${m}:${s}`;
   };
 
-  if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading...</div>;
-
+ if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading...</div>;
+  if (!driveData) return null; // <--- FIX: Prevents crash while redirecting to login
 
   if (!token) {
     return (
