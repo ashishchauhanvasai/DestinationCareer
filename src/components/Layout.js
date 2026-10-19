@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -17,11 +15,11 @@ const SidebarItem = ({ icon: Icon, text, to, isActive, onClick }) => (
     className={`flex items-center gap-4 px-6 py-3 my-1 rounded-r-full font-medium transition-colors ${
       isActive
         ? 'bg-blue-50 dark:bg-slate-700/50 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
-        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
+        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 border-l-4 border-transparent'
     }`}
   >
-    <Icon size={20} />
-    <span>{text}</span>
+    <Icon size={20} className="shrink-0" />
+    <span className="truncate whitespace-nowrap">{text}</span>
   </Link>
 );
 
@@ -36,7 +34,8 @@ const Layout = ({ children }) => {
 
   const currentTab = new URLSearchParams(location.search).get('tab') || 'Courses';
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  // Unified Sidebar State for Mobile & Desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   const adminMenu = [
     { tab: 'Courses', text: 'Manage Courses', icon: FiBook },
@@ -58,7 +57,7 @@ const Layout = ({ children }) => {
     { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
   ];
 
- const handleLogout = () => {
+  const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('isLoggedIn');
@@ -82,23 +81,40 @@ const Layout = ({ children }) => {
     }
   }, [isDarkMode]);
 
+  // Handle auto-closing on mobile when navigating
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
   }, [location.pathname, location.search]);
+
+  // Handle resize events to gracefully handle crossing breakpoints
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsSidebarOpen(true);
+      } else {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const closeMobileSidebar = () => {
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden">
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      
+      {/* Mobile Overlay */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-30 md:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r dark:border-slate-700 flex flex-col justify-between transition-transform duration-300 md:relative md:translate-x-0 ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white dark:bg-slate-800 border-r dark:border-slate-700 flex flex-col justify-between transition-all duration-300 ease-in-out md:relative shrink-0
+        ${isSidebarOpen ? 'translate-x-0 md:ml-0' : '-translate-x-full md:-ml-64'}`}
       >
         <div className="overflow-y-auto custom-scrollbar">
           <div className="p-6 flex justify-between items-center">
@@ -107,9 +123,10 @@ const Layout = ({ children }) => {
               <span className="text-gray-800 dark:text-white text-lg">Career</span>
             </h1>
 
+            {/* Mobile Close Button */}
             <button
-              className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              onClick={() => setIsMobileMenuOpen(false)}
+              className="md:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 p-1"
+              onClick={() => setIsSidebarOpen(false)}
             >
               <FiX size={24} />
             </button>
@@ -122,17 +139,17 @@ const Layout = ({ children }) => {
 
             {isTrainer ? (
               <>
-                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiGrid} text="My Batches" to="/trainer" isActive={location.pathname === '/trainer'} />
-                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiUsers} text="My Students" to="/trainer/students" isActive={location.pathname === '/trainer/students'} />
-                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiClipboard} text="Assignments" to="/trainer/assignments" isActive={location.pathname.includes('assignment')} />
-                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiHelpCircle} text="Company Questions" to="/trainer/company-questions" isActive={location.pathname === '/trainer/company-questions'} />
-                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiAward} text="Top Performers" to="/trainer/performers" isActive={location.pathname === '/trainer/performers'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiGrid} text="My Batches" to="/trainer" isActive={location.pathname === '/trainer'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiUsers} text="My Students" to="/trainer/students" isActive={location.pathname === '/trainer/students'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiClipboard} text="Assignments" to="/trainer/assignments" isActive={location.pathname.includes('assignment')} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiHelpCircle} text="Company Questions" to="/trainer/company-questions" isActive={location.pathname === '/trainer/company-questions'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiAward} text="Top Performers" to="/trainer/performers" isActive={location.pathname === '/trainer/performers'} />
               </>
             ) : isAdmin ? (
               adminMenu.map((item) => (
                 <SidebarItem
                   key={item.tab}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={closeMobileSidebar}
                   icon={item.icon}
                   text={item.text}
                   to={`/admin?tab=${encodeURIComponent(item.tab)}`}
@@ -140,216 +157,99 @@ const Layout = ({ children }) => {
                 />
               ))
             ) : isPromotional ? (
-              // ==========================================
-              // NAYA: PROMO TEAM MENU
-              // ==========================================
               <>
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiTarget}
-                  text="Campus Drives"
-                  to="/promo-dashboard"
-                  isActive={location.pathname === '/promo-dashboard'}
-                />
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiUser}
-                  text="My Profile"
-                  to="/profile"
-                  isActive={location.pathname === '/profile'}
-                />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiTarget} text="Campus Drives" to="/promo-dashboard" isActive={location.pathname === '/promo-dashboard'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiUser} text="My Profile" to="/profile" isActive={location.pathname === '/profile'} />
               </>
             ) : (
-              // ==========================================
-              // STUDENT MENU
-              // ==========================================
               <>
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiHome}
-                  text="Dashboard"
-                  to="/"
-                  isActive={location.pathname === '/'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiUser}
-                  text="My Profile"
-                  to="/profile"
-                  isActive={location.pathname === '/profile'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiBookOpen}
-                  text="Courses"
-                  to="/courses"
-                  isActive={location.pathname === '/courses'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiFileText}
-                  text="Tests"
-                  to="/tests"
-                  isActive={location.pathname === '/tests'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiFileText}
-                  text="Assignments"
-                  to="/assignments"
-                  isActive={location.pathname === '/assignments'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiCheckSquare}
-                  text="Attendance"
-                  to="/attendance"
-                  isActive={location.pathname === '/attendance'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiStar}
-                  text="Mock Ratings"
-                  to="/mock-ratings"
-                  isActive={location.pathname === '/mock-ratings'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={BsPatchQuestion}
-                  text="Company Questions"
-                  to="/company-questions"
-                  isActive={location.pathname === '/company-questions'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiBriefcase}
-                  text="Jobs"
-                  to="/jobs"
-                  isActive={location.pathname === '/jobs'}
-                />
-
-                <SidebarItem
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  icon={FiClipboard}
-                  text="My Applications"
-                  to="/my-applications"
-                  isActive={location.pathname === '/my-applications'}
-                />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiHome} text="Dashboard" to="/" isActive={location.pathname === '/'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiUser} text="My Profile" to="/profile" isActive={location.pathname === '/profile'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiBookOpen} text="Courses" to="/courses" isActive={location.pathname === '/courses'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiFileText} text="Tests" to="/tests" isActive={location.pathname === '/tests'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiFileText} text="Assignments" to="/assignments" isActive={location.pathname === '/assignments'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiCheckSquare} text="Attendance" to="/attendance" isActive={location.pathname === '/attendance'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiStar} text="Mock Ratings" to="/mock-ratings" isActive={location.pathname === '/mock-ratings'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={BsPatchQuestion} text="Company Questions" to="/company-questions" isActive={location.pathname === '/company-questions'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiBriefcase} text="Jobs" to="/jobs" isActive={location.pathname === '/jobs'} />
+                <SidebarItem onClick={closeMobileSidebar} icon={FiClipboard} text="My Applications" to="/my-applications" isActive={location.pathname === '/my-applications'} />
               </>
             )}
           </nav>
         </div>
 
-        <div className="p-4 border-t dark:border-slate-700 bg-white dark:bg-slate-800">
-          {/* Employability Score sirf student ke liye dikhega */}
+        <div className="p-4 border-t dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
           {role === 'student' && (
             <div className="bg-gray-50 dark:bg-slate-900 p-4 rounded-xl mb-4 border dark:border-slate-700 flex flex-col items-center transition-colors">
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">
-                EMPLOYABILITY SCORE
-              </p>
-
-              <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                0 <span className="text-sm text-gray-400 dark:text-slate-500">/ 100</span>
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold mb-1">EMPLOYABILITY SCORE</p>
+              <p className="text-2xl font-bold text-gray-800 dark:text-white">0 <span className="text-sm text-gray-400 dark:text-slate-500">/ 100</span></p>
             </div>
           )}
 
           <div className="flex bg-gray-200 dark:bg-slate-900 rounded-full p-1 mb-4 transition-colors">
-            <button
-              onClick={() => setIsDarkMode(false)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-medium transition-all ${
-                !isDarkMode
-                  ? 'bg-white shadow text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
+            <button onClick={() => setIsDarkMode(false)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-medium transition-all ${!isDarkMode ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
               <FiSun /> Light
             </button>
-
-            <button
-              onClick={() => setIsDarkMode(true)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-medium transition-all ${
-                isDarkMode
-                  ? 'bg-slate-700 shadow text-white'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
+            <button onClick={() => setIsDarkMode(true)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-full text-sm font-medium transition-all ${isDarkMode ? 'bg-slate-700 shadow text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}>
               <FiMoon /> Dark
             </button>
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                  isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : isPromotional ? 'bg-teal-600' : 'bg-blue-600'
-                }`}
-              >
+            <div className="flex items-center gap-3 truncate">
+              <div className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white font-bold ${isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : isPromotional ? 'bg-teal-600' : 'bg-blue-600'}`}>
                 {isAdmin ? 'A' : isTrainer ? 'T' : isPromotional ? 'P' : 'S'}
               </div>
-
-              <div>
-                <p className="font-semibold text-sm dark:text-white truncate w-28">
+              <div className="truncate">
+                <p className="font-semibold text-sm dark:text-white truncate">
                   {isAdmin ? 'Administrator' : isTrainer ? 'Trainer' : isPromotional ? 'Promo Exec' : 'Student Name'}
                 </p>
-
-                <p className="text-xs text-gray-500 dark:text-slate-400 truncate w-28">
+                <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                   {isAdmin ? 'admin@dc.com' : isTrainer ? 'trainer@dc.com' : isPromotional ? 'promo@dc.com' : 'student@email.com'}
                 </p>
               </div>
             </div>
 
-            <button
-              onClick={handleLogout}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-slate-700 rounded-lg transition-colors"
-              title="Logout"
-            >
+            <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-slate-700 rounded-lg transition-colors shrink-0" title="Logout">
               <FiLogOut size={20} />
             </button>
           </div>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="md:hidden bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 flex items-center justify-between z-10 shrink-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* Top Header - Always visible to hold the Hamburger menu */}
+        <header className="bg-white dark:bg-slate-800 border-b dark:border-slate-700 p-4 flex items-center justify-between z-10 shrink-0 transition-colors">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="text-gray-600 dark:text-gray-300 p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="text-gray-600 dark:text-gray-300 p-1.5 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
             >
               <FiMenu size={24} />
             </button>
 
-            <h1 className="text-lg font-bold text-blue-600 dark:text-blue-400">
+            {/* Logo fades in on Desktop when the Sidebar is closed */}
+            <h1 className={`text-lg font-bold text-blue-600 dark:text-blue-400 transition-opacity duration-300 ${!isSidebarOpen || window.innerWidth < 768 ? 'opacity-100' : 'md:opacity-0 md:w-0 overflow-hidden'}`}>
               Destination<span className="text-gray-800 dark:text-white">Career</span>
             </h1>
           </div>
 
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm ${
               isAdmin ? 'bg-red-600' : isTrainer ? 'bg-purple-600' : isPromotional ? 'bg-teal-600' : 'bg-blue-600'
             }`}
+            title={role}
           >
             {isAdmin ? 'A' : isTrainer ? 'T' : isPromotional ? 'P' : 'S'}
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 dark:bg-slate-900 transition-colors">
           {children}
         </main>
       </div>
 
-      {showCreds && (
-        <ChangeCredentialsModal onClose={() => setShowCreds(false)} />
-      )}
+      {showCreds && <ChangeCredentialsModal onClose={() => setShowCreds(false)} />}
     </div>
   );
 };
