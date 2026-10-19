@@ -112,6 +112,66 @@ const DriveTest = () => {
   useEffect(() => { warningsRef.current = warnings; }, [warnings]);
   useEffect(() => { driveDataRef.current = driveData; }, [driveData]);
 
+  // =========================================================================
+  // FIXED: submitTest moved ABOVE the useEffects that reference it!
+  // =========================================================================
+  const submitTest = useCallback(async (reason = "Submitted Successfully") => {
+    if (isSubmittingRef.current || testCompletedRef.current) return;
+
+    // LOCK DOWN: Prevent loops
+    isSubmittingRef.current = true;
+    testCompletedRef.current = true;
+    setTestCompleted(true);
+    setTestStarted(false);
+
+    exitFullScreen();
+
+    if (videoRef.current && videoRef.current.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
+    }
+
+    const timeTakenSeconds = startTimeRef.current
+      ? Math.round((Date.now() - startTimeRef.current) / 1000)
+      : 0;
+
+    const formattedAnswers = problems.map(q => {
+      if (q.options) {
+        return { questionId: q._id, selectedIndex: mcqAnswersRef.current[q._id] };
+      }
+
+      const codeData = q._id === problems[currentIdx]?._id
+        ? codesRef.current
+        : (codeAnswersRef.current[q._id] || {});
+
+      return {
+        questionId: q._id,
+        code: codeData[lang.id] || '',
+        language: lang.id
+      };
+    }).filter(Boolean);
+
+    try {
+      await axios.post(
+        `${API}/drives/${driveDataRef.current.driveId}/submit`,
+        {
+          answers: formattedAnswers,
+          timeTakenSeconds,
+          warningsCount: warningsRef.current,
+          autoSubmitted: reason !== "Manual Submission"
+        },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      );
+
+      setResult({ reason });
+      localStorage.removeItem('token');
+    } catch (err) {
+      setResult({
+        error: true,
+        message: err.response?.data?.message || 'Failed to submit test'
+      });
+    }
+  }, [lang, problems, currentIdx]);
+
   useEffect(() => {
     const tick = setInterval(() => setNowTime(Date.now()), 1000);
     return () => clearInterval(tick);
@@ -158,7 +218,7 @@ const DriveTest = () => {
     }
 
     return () => clearInterval(timer);
-  }, [testStarted, testCompleted, timeLeft]);
+  }, [testStarted, testCompleted, timeLeft, submitTest]);
 
   // PROCTORING: Auto Capture Webcam Image every 10 mins
   useEffect(() => {
@@ -458,63 +518,6 @@ const DriveTest = () => {
       submitTest("Manual Submission");
     }
   };
-
-  const submitTest = useCallback(async (reason = "Submitted Successfully") => {
-    if (isSubmittingRef.current || testCompletedRef.current) return;
-
-    // LOCK DOWN: Prevent loops
-    isSubmittingRef.current = true;
-    testCompletedRef.current = true;
-    setTestCompleted(true);
-    setTestStarted(false);
-
-    exitFullScreen();
-
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-    }
-
-    const timeTakenSeconds = startTimeRef.current
-      ? Math.round((Date.now() - startTimeRef.current) / 1000)
-      : 0;
-
-    const formattedAnswers = problems.map(q => {
-      if (q.options) {
-        return { questionId: q._id, selectedIndex: mcqAnswersRef.current[q._id] };
-      }
-
-      const codeData = q._id === problems[currentIdx]?._id
-        ? codesRef.current
-        : (codeAnswersRef.current[q._id] || {});
-
-      return {
-        questionId: q._id,
-        code: codeData[lang.id] || '',
-        language: lang.id
-      };
-    }).filter(Boolean);
-
-    try {
-      await axios.post(
-        `${API}/drives/${driveDataRef.current.driveId}/submit`,
-        {
-          answers: formattedAnswers,
-          timeTakenSeconds,
-          warningsCount: warningsRef.current,
-          autoSubmitted: reason !== "Manual Submission"
-        },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-      );
-
-      setResult({ reason });
-      localStorage.removeItem('token');
-    } catch (err) {
-      setResult({
-        error: true,
-        message: err.response?.data?.message || 'Failed to submit test'
-      });
-    }
-  }, [lang, problems, currentIdx]);
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
