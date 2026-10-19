@@ -18,7 +18,7 @@ const AskTAI = () => {
         <div className="text-blue-600 text-5xl mb-4 font-bold flex items-center">
           D<span className="text-3xl mx-1">≡</span>C
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Hi Ashish, I'm TAI</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Hi Ashish, I'm DC Assistance</h1>
         <p className="text-gray-500">Your AI study buddy. What do you want to do today?</p>
       </div>
 

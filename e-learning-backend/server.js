@@ -3040,6 +3040,14 @@ scheduledTestTime: { type: Date, default: Date.now },
 
 const CollegeDrive = mongoose.model('CollegeDrive', collegeDriveSchema);
 
+const proctorCaptureSchema = new mongoose.Schema({
+  drive: { type: mongoose.Schema.Types.ObjectId, ref: 'CollegeDrive', required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  image: { type: String, required: true }
+}, { timestamps: true });
+
+const ProctorCapture = mongoose.model('ProctorCapture', proctorCaptureSchema);
+
 // 2. Drive Submission / Test Result Schema
 const driveSubmissionSchema = new mongoose.Schema({
   drive: { type: mongoose.Schema.Types.ObjectId, ref: 'CollegeDrive', required: true },
@@ -3454,6 +3462,37 @@ app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
     res.json(submissions);
   } catch (e) {
     res.status(500).json({ message: e.message });
+  }
+});
+
+
+// --- SAVE WEBCAM SNAPSHOT ---
+app.post('/api/drives/:id/proctor', verifyToken, async (req, res) => {
+  try {
+    await ProctorCapture.create({
+      drive: req.params.id,
+      student: req.user.id,
+      image: req.body.image
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// --- PROMO TEAM: VIEW STUDENT'S WEBCAM LOGS ---
+app.get('/api/drives/:id/proctor/:studentId', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    const images = await ProctorCapture.find({ 
+      drive: req.params.id, 
+      student: req.params.studentId 
+    }).sort({ createdAt: 1 }).lean();
+    res.json(images);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

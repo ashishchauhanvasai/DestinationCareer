@@ -2,24 +2,31 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiPlus, FiClock, FiX, FiCopy, FiTarget, FiArrowLeft, FiEdit3, FiCode, FiList, FiTrash2, FiPower, FiCheckCircle } from 'react-icons/fi';
 
+
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
+
 const inputCls = 'w-full p-2.5 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400';
 const labelCls = 'block text-xs font-semibold text-gray-500 mb-1 uppercase';
+
 
 const PromoDashboard = () => {
   const [view, setView] = useState('list'); 
   const [drives, setDrives] = useState([]);
   const [subs, setSubs] = useState([]);
   const [registeredStudents, setRegisteredStudents] = useState([]);
+  const [proctorLogs, setProctorLogs] = useState(null);
   const [selectedDrive, setSelectedDrive] = useState(null);
   const [loading, setLoading] = useState(true);
+
 
   const [resources, setResources] = useState({ assignments: [], problems: [] });
   const [assignForm, setAssignForm] = useState({ selectedAssignmentIds: [], selectedProblemIds: [] });
 
+
   useEffect(() => { fetchDrives(); }, []);
+
 
   const fetchDrives = async () => {
     setLoading(true);
@@ -30,6 +37,7 @@ const PromoDashboard = () => {
     setLoading(false);
   };
 
+
   const [form, setForm] = useState({
     collegeName: '',
     driveCode: '',
@@ -37,6 +45,7 @@ const PromoDashboard = () => {
     durationMinutes: 60,
     cutoffPercentage: 70
   });
+
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -48,11 +57,13 @@ const PromoDashboard = () => {
       formattedDate = localDate.toISOString();
     }
 
+
     const payload = { 
       ...form, 
       driveCode: form.driveCode.toUpperCase().replace(/\s+/g, '-'),
       scheduledTestTime: formattedDate // Use the safe ISO string
     };
+
 
     try {
       const res = await axios.post(`${API}/drives`, payload, cfg());
@@ -63,6 +74,7 @@ const PromoDashboard = () => {
     } catch (err) { alert(err.response?.data?.message || 'Failed to create drive.'); }
   };
 
+
   const deleteDrive = async (e, id) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this drive and all its student submissions?")) return;
@@ -72,6 +84,7 @@ const PromoDashboard = () => {
     } catch (err) { alert('Failed to delete'); }
   };
 
+
   const toggleStatus = async (e, id) => {
     e.stopPropagation();
     if (!window.confirm("Change drive status?")) return;
@@ -80,6 +93,7 @@ const PromoDashboard = () => {
       setDrives(drives.map(d => d._id === id ? { ...d, isActive: !d.isActive } : d)); // Instantly toggle
     } catch (err) { alert('Failed to update status'); }
   };
+
 
   const openAssignModal = async (e, drive) => {
     e.stopPropagation();
@@ -95,6 +109,7 @@ const PromoDashboard = () => {
     } catch (err) { alert('Failed to load questions'); }
   };
 
+
   const saveAssignedQuestions = async () => {
     try {
       await axios.put(`${API}/drives/${selectedDrive._id}/questions`, assignForm, cfg());
@@ -104,6 +119,7 @@ const PromoDashboard = () => {
     } catch (err) { alert('Failed to assign questions'); }
   };
 
+
   const toggleSelection = (type, id) => {
     setAssignForm(prev => {
       const arr = prev[type];
@@ -111,6 +127,7 @@ const PromoDashboard = () => {
       return { ...prev, [type]: newArr };
     });
   };
+
 
   const openSubmissions = async (drive) => {
     setSelectedDrive(drive);
@@ -121,6 +138,7 @@ const PromoDashboard = () => {
     } catch (err) { alert("Could not load submissions"); }
   };
 
+
   const openRegisteredStudents = async (drive) => {
     setSelectedDrive(drive);
     setView('registeredStudents');
@@ -130,12 +148,23 @@ const PromoDashboard = () => {
     } catch (err) { alert("Could not load registered students"); }
   };
 
+
   const deleteCampusStudent = async (studentId) => {
     if (!window.confirm("Delete this student permanently from the drive?")) return;
     try {
       await axios.delete(`${API}/drives/${selectedDrive._id}/students/${studentId}`, cfg());
       setRegisteredStudents(registeredStudents.filter(s => s._id !== studentId)); // Instantly remove
     } catch (err) { alert("Failed to delete student"); }
+  };
+
+
+  const viewProctorLogs = async (studentId, studentName) => {
+    try {
+      const res = await axios.get(`${API}/drives/${selectedDrive._id}/proctor/${studentId}`, cfg());
+      setProctorLogs({ name: studentName, images: res.data });
+    } catch(err) {
+      alert("Failed to load proctor images");
+    }
   };
 
   const copyLink = (e, code) => {
@@ -145,10 +174,13 @@ const PromoDashboard = () => {
     alert('Link Copied: ' + link);
   };
 
+
   const ongoingDrives = drives.filter(d => d.isActive);
   const completedDrives = drives.filter(d => !d.isActive);
 
+
   if (loading) return <div className="p-10 text-center font-bold text-gray-500">Loading Dashboard...</div>;
+
 
   const DriveCard = ({ d }) => (
     <div className="bg-white rounded-2xl shadow-sm border p-5 hover:shadow-md hover:border-blue-300 transition flex flex-col justify-between">
@@ -180,6 +212,7 @@ const PromoDashboard = () => {
         </div>
       </div>
 
+
       <div className="bg-gray-50 rounded-xl p-3 grid grid-cols-3 gap-2 mb-4 border text-center">
         <div>
           <p className="text-[10px] font-bold text-blue-600 uppercase">Registered</p>
@@ -195,6 +228,7 @@ const PromoDashboard = () => {
         </div>
       </div>
 
+
       <div className="flex gap-2">
         <button onClick={() => openRegisteredStudents(d)} className="flex-1 py-2 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100">
           View Registrations
@@ -205,6 +239,7 @@ const PromoDashboard = () => {
       </div>
     </div>
   );
+
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -220,6 +255,7 @@ const PromoDashboard = () => {
         )}
       </div>
 
+
       {view === 'create' && (
         <form onSubmit={handleCreate} className="bg-white rounded-2xl shadow-sm border p-6 space-y-6">
           <div className="flex justify-between items-center border-b pb-4">
@@ -232,20 +268,24 @@ const PromoDashboard = () => {
               <input required placeholder="e.g. VIT Pune" value={form.collegeName} onChange={e => setForm({...form, collegeName: e.target.value})} className={inputCls} />
             </div>
 
+
             <div>
               <label className={labelCls}>Drive Link Code</label>
               <input required placeholder="e.g. VIT-2026" value={form.driveCode} onChange={e => setForm({...form, driveCode: e.target.value.toUpperCase().replace(/\s+/g, '-')})} className={`${inputCls} font-mono uppercase`} />
             </div>
+
 
             <div>
               <label className={labelCls}>Scheduled Start Time</label>
               <input required type="datetime-local" value={form.scheduledTestTime} onChange={e => setForm({...form, scheduledTestTime: e.target.value})} className={inputCls} />
             </div>
 
+
             <div>
               <label className={labelCls}>Test Duration (Mins)</label>
               <input type="number" min="10" required value={form.durationMinutes} onChange={e => setForm({...form, durationMinutes: Number(e.target.value)})} className={inputCls} />
             </div>
+
 
             <div>
               <label className={labelCls}>Cutoff Percentage</label>
@@ -255,6 +295,7 @@ const PromoDashboard = () => {
           <div className="flex justify-end pt-4 border-t"><button type="submit" className="px-5 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700">Create Batch</button></div>
         </form>
       )}
+
 
       {view === 'assign' && (
         <div className="bg-white rounded-2xl shadow-sm border p-6 space-y-6">
@@ -290,6 +331,7 @@ const PromoDashboard = () => {
         </div>
       )}
 
+
       {view === 'list' && (
         <div className="space-y-8">
           <div>
@@ -310,6 +352,7 @@ const PromoDashboard = () => {
           </div>
         </div>
       )}
+
 
       {view === 'submissions' && selectedDrive && (
         <div className="space-y-4">
@@ -357,10 +400,18 @@ const PromoDashboard = () => {
                         <p className="font-bold text-gray-800">{s.totalScore} / {s.maxScore}</p>
                         <p className="text-[10px] text-blue-600 font-bold">{s.percentage}%</p>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-center space-y-2 flex flex-col items-center">
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${s.status === 'Selected' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {s.status}
                         </span>
+
+                        {/* NEW BUTTON FOR PROCTOR LOGS */}
+                        <button
+                          onClick={() => viewProctorLogs(s.student?._id, s.student?.name)}
+                          className="text-[10px] text-blue-600 font-bold hover:underline border border-blue-200 bg-blue-50 px-2 py-1 rounded"
+                        >
+                          View Proctor Logs
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -370,6 +421,7 @@ const PromoDashboard = () => {
           </div>
         </div>
       )}
+
 
       {view === 'registeredStudents' && selectedDrive && (
         <div className="space-y-4">
@@ -439,8 +491,49 @@ const PromoDashboard = () => {
           </div>
         </div>
       )}
+
+
+      {/* PROCTOR LOGS MODAL */}
+      {proctorLogs && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setProctorLogs(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-red-500"
+            >
+              <FiX size={24}/>
+            </button>
+
+            <h2 className="text-xl font-bold mb-4 text-gray-900 border-b pb-2">
+              Proctor Logs: {proctorLogs.name}
+            </h2>
+
+            {proctorLogs.images.length === 0 ? (
+              <p className="text-gray-500 py-10 text-center">
+                No images captured during this test session.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {proctorLogs.images.map((log, i) => (
+                  <div key={i} className="border border-gray-200 rounded-lg p-2 bg-gray-50 text-center shadow-sm hover:shadow-md transition">
+                    <img
+                      src={log.image}
+                      alt="Proctor Snapshot"
+                      className="rounded w-full h-auto object-cover mb-2 border border-gray-300"
+                    />
+                    <p className="text-xs font-bold text-gray-600 bg-white inline-block px-2 py-1 rounded shadow-sm border border-gray-100">
+                      {new Date(log.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 
 export default PromoDashboard;
