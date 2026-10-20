@@ -3795,31 +3795,69 @@ app.get('/api/online-classes', verifyToken, async (req, res) => {
   }
 });
 
-// 2. Super Admin: Create Online Batch / Class
+// 2. Super Admin / Trainer: Create Online Batch / Class
 app.post('/api/online-classes', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-    return res.status(403).json({ message: 'Only Admin/SuperAdmin can create online classes' });
+  if (
+    req.user.role !== 'admin' &&
+    req.user.role !== 'superadmin' &&
+    req.user.role !== 'trainer'
+  ) {
+    return res.status(403).json({
+      message: 'Only Admin and Trainers can create online classes'
+    });
   }
+
   try {
-    const { title, batchCode, subject, trainerId, scheduledTime, durationMinutes } = req.body;
+    const {
+      title,
+      batchCode,
+      subject,
+      trainerId,
+      scheduledTime,
+      durationMinutes
+    } = req.body;
+
+    if (!title || !batchCode || !subject || !scheduledTime) {
+      return res.status(400).json({
+        message: 'Title, Batch Code, Subject and Scheduled Time are required.'
+      });
+    }
+
     const cleanCode = batchCode.trim().toUpperCase().replace(/\s+/g, '-');
-    
+
     const existing = await OnlineClass.findOne({ batchCode: cleanCode });
-    if (existing) return res.status(400).json({ message: 'Batch Code already exists. Choose a unique code.' });
+
+    if (existing) {
+      return res.status(400).json({
+        message: 'Batch Code already exists. Choose a unique code.'
+      });
+    }
+
+    // If a trainer creates the class and no trainerId is provided,
+    // assign themselves as the trainer.
+    const finalTrainerId =
+      req.user.role === 'trainer'
+        ? (trainerId || req.user._id || req.user.id)
+        : (trainerId || null);
 
     const newClass = await OnlineClass.create({
       title,
       batchCode: cleanCode,
       subject,
-      trainer: trainerId || null,
+      trainer: finalTrainerId,
       scheduledTime,
       durationMinutes: Number(durationMinutes) || 60
     });
 
-    const populated = await OnlineClass.findById(newClass._id).populate('trainer', 'name email');
-    res.json(populated);
+    const populated = await OnlineClass
+      .findById(newClass._id)
+      .populate('trainer', 'name email');
+
+    res.status(201).json(populated);
   } catch (e) {
-    res.status(500).json({ message: e.message });
+    res.status(500).json({
+      message: e.message || 'Failed to create online class'
+    });
   }
 });
 

@@ -12,6 +12,7 @@ import StaffBatchTracker from '../components/StaffBatchTracker';
 import AdminUsers from '../components/AdminUsers';
 // IMPORTING THE NEW TOP PERFORMERS COMPONENT
 import TrainerPerformers from './TrainerPerformers';
+import OnlineClassesManager from '../components/OnlineClassesManager';
 
 import {
   FiTrash2,
@@ -1299,6 +1300,8 @@ const Admin = () => {
 
         {activeTab === 'Batches' && <AdminBatches />}
 
+        {activeTab === 'online-classes' && <OnlineClassesManager />}
+        
         {activeTab === 'Manage Users' && <AdminUsers />}
 
         {activeTab === 'Applications' && <AdminApplications />}
