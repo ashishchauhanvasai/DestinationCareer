@@ -9,7 +9,7 @@ import {
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import {
-  FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiHand,
+  FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiBell,
   FiVideoOff, FiMicOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload
 } from 'react-icons/fi';
 
@@ -240,7 +240,7 @@ const LiveClassroom = () => {
 
             {!isHost && !canSpeak && (
               <button onClick={toggleHandRaise} className={`flex items-center gap-2 text-sm font-bold px-4 py-1.5 rounded-lg transition ${roomData.raisedHands.some(h => h.userId === user._id) ? 'bg-amber-500 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}>
-                <FiHand /> {roomData.raisedHands.some(h => h.userId === user._id) ? 'Hand Raised' : 'Raise Hand'}
+                <FiBell /> {roomData.raisedHands.some(h => h.userId === user._id) ? 'Hand Raised' : 'Raise Hand'}
               </button>
             )}
 
