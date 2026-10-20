@@ -1312,7 +1312,7 @@ const Admin = () => {
 
         {activeTab === 'Coding Tests' && <AdminTests />}
 
-        {activeTab === 'Online Classes' && <OnlineClassesManager />}
+        {(activeTab === 'online-classes' || activeTab === 'Online Classes') && <OnlineClassesManager />}
       </div>
     </div>
   );
