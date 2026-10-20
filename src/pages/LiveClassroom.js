@@ -5,12 +5,11 @@ import {
   LiveKitRoom,
   VideoConference,
   RoomAudioRenderer,
-  ControlBar
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import {
   FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiBell,
-  FiVideoOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload
+  FiVideoOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload, FiX
 } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
@@ -30,9 +29,12 @@ const LiveClassroom = () => {
   const [loading, setLoading] = useState(true);
 
   // UI State
-  const [activeTab, setActiveTab] = useState('chat'); // 'chat', 'polls', 'people'
+  const [activeTab, setActiveTab] = useState('chat'); 
   const [chatInput, setChatInput] = useState('');
   const [pollForm, setPollForm] = useState({ question: '', opt1: '', opt2: '', opt3: '' });
+  
+  // Mobile Panel State
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   // Recorder State
   const [recorder, setRecorder] = useState(null);
@@ -157,11 +159,15 @@ const LiveClassroom = () => {
   if (!lkToken || !lkUrl) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-red-500 font-bold">Connection Failed.</div>;
 
   return (
-    // MAIN LAYOUT: flex-col for Mobile (Video top, Chat bottom), flex-row for Desktop (Video left, Chat right)
-    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans">
+    <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans relative">
       
+      {/* CSS injection to completely hide LiveKit's default duplicate UI bars */}
+      <style>{`
+        .lk-control-bar, .lk-chat { display: none !important; }
+      `}</style>
+
       {/* LEFT/TOP: LIVEKIT VIDEO ENGINE */}
-      <div className="flex-1 flex flex-col relative border-b md:border-b-0 md:border-r border-gray-800 min-h-[50vh] md:min-h-0">
+      <div className="flex-1 flex flex-col relative w-full h-full">
         
         {/* Top Navbar */}
         <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-3 md:px-4 z-10 shrink-0">
@@ -170,12 +176,21 @@ const LiveClassroom = () => {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500"></span>
             </span>
-            <h1 className="font-bold text-white tracking-wide text-sm md:text-base truncate max-w-[120px] md:max-w-sm">
-              {roomData.title} <span className="hidden md:inline text-gray-500 font-normal text-xs ml-2">({batchCode})</span>
+            <h1 className="font-bold text-white tracking-wide text-sm md:text-base truncate max-w-[100px] md:max-w-sm">
+              {roomData.title}
             </h1>
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
+            
+            {/* MOBILE ONLY: Open Chat/Panel Button */}
+            <button 
+              onClick={() => setShowMobileSidebar(true)} 
+              className="md:hidden flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-md transition"
+            >
+              <FiMessageSquare /> Chat
+            </button>
+
             {/* RECORDING CONTROLS (TRAINER ONLY) */}
             {isHost && (
               <div className="flex items-center bg-gray-800 rounded-lg p-1">
@@ -195,7 +210,7 @@ const LiveClassroom = () => {
                       </button>
                     )}
                     <button onClick={stopRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1.5 rounded bg-red-600 text-white hover:bg-red-500 transition">
-                      <FiDownload /> <span className="hidden sm:inline">Stop & Save</span>
+                      <FiDownload /> <span className="hidden sm:inline">Save</span>
                     </button>
                     <span className="hidden md:inline text-xs text-red-500 animate-pulse ml-2 font-bold px-2">● REC</span>
                   </>
@@ -217,33 +232,40 @@ const LiveClassroom = () => {
 
         {/* LiveKit Video Container */}
         <div className="flex-1 relative bg-black">
+          
           <LiveKitRoom
-            video={isHost || canSpeak}
-            audio={isHost || canSpeak}
-            token={lkToken}
-            serverUrl={lkUrl}
-            data-lk-theme="default"
-            style={{ height: '100%' }}
-          >
-            <VideoConference />
-            <RoomAudioRenderer />
-            
-            {/* Control Bar completely hidden for viewers to avoid double mic buttons */}
-            {(isHost || canSpeak) && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                {/* We removed the double control bar code here earlier */}
-              </div>
-            )}
-          </LiveKitRoom>
+          video={isHost || canSpeak}
+          audio={isHost || canSpeak}
+          token={lkToken}
+          serverUrl={lkUrl}
+          data-lk-theme="default"
+          style={{ height: '100%' }}
+          // YEH NAYE PERFORMANCE OPTIONS ADD KIYE HAIN 👇
+          options={{
+            adaptiveStream: true, // Student ki network speed ke hisaab se quality adjust karega
+            dynacast: true,       // Faltu ka data bhejna band karega
+            publishDefaults: {
+              videoSimulcast: true, // High, Med, Low quality ki streams banayega
+              screenShareSimulcast: true,
+            }
+          }}
+        >
+          <VideoConference />
+          <RoomAudioRenderer />
+        </LiveKitRoom>
+           
         </div>
       </div>
 
-      {/* RIGHT/BOTTOM: CUSTOM SIDEBAR */}
-      {/* Desktop: w-80 lg:w-96 | Mobile: takes remaining 40-50% height */}
-      <div className="w-full md:w-80 lg:w-96 h-[40dvh] md:h-auto flex flex-col bg-gray-900 shrink-0">
+      {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (Slide-up on Mobile, Fixed on Desktop) */}
+      <div className={`
+        fixed bottom-0 left-0 w-full h-[60dvh] z-50 bg-gray-900 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transform transition-transform duration-300 flex flex-col
+        md:relative md:w-80 lg:w-96 md:h-full md:rounded-none md:shadow-none md:translate-y-0 md:border-l md:border-gray-800 shrink-0
+        ${showMobileSidebar ? 'translate-y-0' : 'translate-y-full'}
+      `}>
         
         {/* Sidebar Tabs */}
-        <div className="flex border-b border-gray-800 p-2 gap-1 shrink-0">
+        <div className="flex border-b border-gray-800 p-2 gap-1 shrink-0 items-center">
           {[
             { id: 'chat', icon: <FiMessageSquare />, label: 'Chat' },
             { id: 'polls', icon: <FiBarChart2 />, label: 'Polls' },
@@ -257,6 +279,14 @@ const LiveClassroom = () => {
               {t.icon} <span className="hidden sm:inline">{t.label}</span>
             </button>
           ))}
+          
+          {/* Mobile Only: Close Button */}
+          <button 
+            onClick={() => setShowMobileSidebar(false)} 
+            className="md:hidden p-2 text-gray-400 hover:text-white ml-2 rounded-lg bg-gray-800"
+          >
+            <FiX size={18} />
+          </button>
         </div>
 
         {/* ---------------- CHAT TAB ---------------- */}
