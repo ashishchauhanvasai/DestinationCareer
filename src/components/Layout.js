@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiHome, FiBookOpen, FiFileText, FiBriefcase, FiSun, FiMoon, FiLogOut, FiUser,
   FiBook, FiStar, FiAward, FiImage, FiUsers, FiHelpCircle, FiClipboard, FiGrid, FiCheckSquare,
-  FiMenu, FiX, FiTarget
+  FiMenu, FiX, FiTarget, FiVideo // <-- ADDED FiVideo
 } from 'react-icons/fi';
 import { BsPatchQuestion } from 'react-icons/bs';
 import ChangeCredentialsModal from './ChangeCredentialsModal';
@@ -54,6 +54,9 @@ const Layout = ({ children }) => {
           { tab: 'Batches', text: 'Batches & QR', icon: FiGrid }
         ]
       : []),
+    // --- ADDED ONLINE CLASSES TO SIDEBAR ---
+    { tab: 'online-classes', text: 'Online Classes', icon: FiVideo },
+    // ---------------------------------------
     { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
   ];
 
