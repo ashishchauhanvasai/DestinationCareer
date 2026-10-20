@@ -10,7 +10,7 @@ import {
 import '@livekit/components-styles';
 import {
   FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiHand,
-  FiVideoOff, FiMicOff, FiLock, FiUnlock, FiRecord, FiPause, FiPlay, FiDownload
+  FiVideoOff, FiMicOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload
 } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
@@ -216,7 +216,7 @@ const LiveClassroom = () => {
               <div className="flex items-center bg-gray-800 rounded-lg p-1">
                 {!isRecording ? (
                   <button onClick={startRecording} className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded hover:bg-gray-700 text-gray-300 transition">
-                    <FiRecord className="text-red-500" /> Record Session
+                    <FiCircle className="text-red-500 fill-current" /> Record Session
                   </button>
                 ) : (
                   <>
