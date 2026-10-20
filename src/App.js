@@ -18,6 +18,7 @@ import PromoDashboard from "./pages/PromoDashboard";
 import DriveRegister from "./pages/DriveRegister";
 import CampusPortal from "./pages/CampusPortal";
 import DriveTest from "./pages/DriveTest";
+import LiveClassroom from './pages/LiveClassroom';
 
 // Public Pages
 import Login from "./pages/Login";
@@ -121,6 +122,7 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route path="/live-class/:batchCode" element={<LiveClassroom />} />
 
         
         <Route path="/drive/:driveCode" element={<DriveTest />} />

@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@livekit/components-react": "^2.9.24",
+    "@livekit/components-styles": "^1.2.0",
     "@monaco-editor/react": "^4.7.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -16,6 +18,7 @@
     "express": "^5.1.0",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.2",
+    "livekit-client": "^2.23.0",
     "mongodb": "^6.16.0",
     "mongoose": "^9.10.1",
     "multer": "^1.4.5-lts.2",

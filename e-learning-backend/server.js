@@ -3711,6 +3711,371 @@ app.delete('/api/users/:id', verifyToken, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
+
+// ============================================================================
+// ONLINE LIVE CLASSES & WEBINAR MODULE (1000-3000 STUDENTS SCALE WITH LIVEKIT)
+// ============================================================================
+
+const { AccessToken, RoomServiceClient } = require('livekit-server-sdk');
+
+const onlineClassSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  batchCode: { type: String, required: true, unique: true },
+  subject: { type: String, required: true },
+  trainer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  scheduledTime: { type: Date, required: true },
+  durationMinutes: { type: Number, default: 60 },
+  status: { type: String, enum: ['scheduled', 'live', 'ended'], default: 'scheduled' },
+  
+  // Real-time Classroom Controls
+  chatEnabled: { type: Boolean, default: true },
+  pinnedAnnouncement: { type: String, default: '' },
+  allowedSpeakers: [{ type: String }], // Student User IDs allowed to unmute Mic/Cam
+  raisedHands: [{
+    userId: String,
+    name: String,
+    email: String,
+    raisedAt: { type: Date, default: Date.now }
+  }],
+  
+  // Live Chat Messages (capped to last 200 for performance)
+  messages: [{
+    senderId: String,
+    senderName: String,
+    senderRole: String,
+    text: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+
+  // Live Polls
+  polls: [{
+    question: String,
+    options: [String],
+    votes: [{ userId: String, optionIndex: Number }],
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
+
+  // Auto-Attendance Tracking
+  attendance: [{
+    student: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    name: String,
+    email: String,
+    firstJoinedAt: Date,
+    lastSeenAt: Date
+  }]
+}, { timestamps: true });
+
+const OnlineClass = mongoose.models.OnlineClass || mongoose.model('OnlineClass', onlineClassSchema);
+
+// Helper to get LiveKit RoomServiceClient
+const getLiveKitClient = () => {
+  if (!process.env.LIVEKIT_URL || !process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET) return null;
+  const httpUrl = process.env.LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://');
+  return new RoomServiceClient(httpUrl, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+};
+
+// 1. Get all Trainers (for Super Admin dropdown) + All Online Classes
+app.get('/api/online-classes', verifyToken, async (req, res) => {
+  try {
+    let query = {};
+    if (req.user.role === 'trainer') {
+      query = { trainer: req.user.id };
+    }
+    const classes = await OnlineClass.find(query)
+      .populate('trainer', 'name email profilePic')
+      .select('-messages') // keep list lightweight
+      .sort({ scheduledTime: -1 })
+      .lean();
+
+    const trainers = await User.find({ role: 'trainer' }).select('name email').lean();
+    res.json({ classes, trainers });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 2. Super Admin: Create Online Batch / Class
+app.post('/api/online-classes', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Only Admin/SuperAdmin can create online classes' });
+  }
+  try {
+    const { title, batchCode, subject, trainerId, scheduledTime, durationMinutes } = req.body;
+    const cleanCode = batchCode.trim().toUpperCase().replace(/\s+/g, '-');
+    
+    const existing = await OnlineClass.findOne({ batchCode: cleanCode });
+    if (existing) return res.status(400).json({ message: 'Batch Code already exists. Choose a unique code.' });
+
+    const newClass = await OnlineClass.create({
+      title,
+      batchCode: cleanCode,
+      subject,
+      trainer: trainerId || null,
+      scheduledTime,
+      durationMinutes: Number(durationMinutes) || 60
+    });
+
+    const populated = await OnlineClass.findById(newClass._id).populate('trainer', 'name email');
+    res.json(populated);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 3. Super Admin: Update Trainer, Class Timings, or Status anytime
+app.put('/api/online-classes/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && req.user.role !== 'trainer') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    const { title, subject, trainerId, scheduledTime, durationMinutes, status } = req.body;
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (subject !== undefined) updateData.subject = subject;
+    if (trainerId !== undefined) updateData.trainer = trainerId || null;
+    if (scheduledTime !== undefined) updateData.scheduledTime = scheduledTime;
+    if (durationMinutes !== undefined) updateData.durationMinutes = Number(durationMinutes);
+    if (status !== undefined) updateData.status = status;
+
+    const updated = await OnlineClass.findByIdAndUpdate(req.params.id, updateData, { new: true })
+      .populate('trainer', 'name email');
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 4. Super Admin: Delete Online Class
+app.delete('/api/online-classes/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+  try {
+    await OnlineClass.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted successfully' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 5. Join Class & Generate LiveKit Token (Logs Student Attendance Automatically)
+app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() })
+      .populate('trainer', 'name email');
+    if (!cls) return res.status(404).json({ message: 'Online Class not found' });
+
+    const user = await User.findById(req.user.id).lean();
+    if (!user) return res.status(401).json({ message: 'User not found' });
+
+    const isHost = ['admin', 'superadmin'].includes(user.role) || 
+                   (cls.trainer && String(cls.trainer._id) === String(user._id));
+
+    // Log Attendance if Student
+    if (!isHost) {
+      const existingAtt = cls.attendance.find(a => String(a.student) === String(user._id));
+      if (existingAtt) {
+        existingAtt.lastSeenAt = new Date();
+      } else {
+        cls.attendance.push({
+          student: user._id,
+          name: user.name,
+          email: user.email,
+          firstJoinedAt: new Date(),
+          lastSeenAt: new Date()
+        });
+      }
+      await cls.save();
+    } else if (cls.status === 'scheduled') {
+      // Auto mark live when Trainer/Admin joins
+      cls.status = 'live';
+      await cls.save();
+    }
+
+    const canSpeak = isHost || cls.allowedSpeakers.includes(String(user._id));
+
+    // Generate LiveKit Token if configured
+    let lkToken = null;
+    if (process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
+      const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
+        identity: String(user._id),
+        name: `${user.name} (${isHost ? 'Trainer' : 'Student'})`,
+        metadata: JSON.stringify({ role: isHost ? 'host' : 'student', email: user.email })
+      });
+      at.addGrant({
+        roomJoin: true,
+        room: cls.batchCode,
+        canPublish: canSpeak,        // Only Trainer or permitted students can turn on Mic/Cam
+        canSubscribe: true,          // All 3000 students can watch/listen
+        canPublishData: true
+      });
+      lkToken = await at.toJwt();
+    }
+
+    res.json({
+      classData: cls,
+      isHost,
+      canSpeak,
+      user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+      livekitToken: lkToken,
+      livekitUrl: process.env.LIVEKIT_URL || ''
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 6. Real-Time Classroom State Polling (Chat, Polls, Raised Hands, Permissions)
+app.get('/api/online-classes/:batchCode/state', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() })
+      .populate('trainer', 'name email')
+      .lean();
+    if (!cls) return res.status(404).json({ message: 'Not found' });
+    res.json(cls);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic & Cam
+app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    if (!cls) return res.status(404).json({ message: 'Class not found' });
+
+    const isHost = ['admin', 'superadmin'].includes(req.user.role) || String(cls.trainer) === String(req.user.id);
+    if (!isHost) return res.status(403).json({ message: 'Only Trainer/Admin can change classroom controls' });
+
+    const { action, studentId, chatEnabled, pinnedAnnouncement, status } = req.body;
+
+    if (action === 'toggle-chat') {
+      cls.chatEnabled = chatEnabled;
+    } else if (action === 'pin') {
+      cls.pinnedAnnouncement = pinnedAnnouncement || '';
+    } else if (action === 'status') {
+      cls.status = status;
+    } else if (action === 'allow-speaker' && studentId) {
+      if (!cls.allowedSpeakers.includes(studentId)) cls.allowedSpeakers.push(studentId);
+      cls.raisedHands = cls.raisedHands.filter(h => h.userId !== studentId);
+      
+      // Dynamically update LiveKit permission in real-time
+      const lk = getLiveKitClient();
+      if (lk) {
+        lk.updateParticipant(cls.batchCode, studentId, undefined, {
+          canPublish: true, canSubscribe: true, canPublishData: true
+        }).catch(() => {});
+      }
+    } else if (action === 'revoke-speaker' && studentId) {
+      cls.allowedSpeakers = cls.allowedSpeakers.filter(id => id !== studentId);
+      
+      const lk = getLiveKitClient();
+      if (lk) {
+        lk.updateParticipant(cls.batchCode, studentId, undefined, {
+          canPublish: false, canSubscribe: true, canPublishData: true
+        }).catch(() => {});
+      }
+    } else if (action === 'revoke-all-speakers') {
+      const prevSpeakers = [...cls.allowedSpeakers];
+      cls.allowedSpeakers = [];
+      const lk = getLiveKitClient();
+      if (lk) {
+        prevSpeakers.forEach(sId => {
+          lk.updateParticipant(cls.batchCode, sId, undefined, {
+            canPublish: false, canSubscribe: true, canPublishData: true
+          }).catch(() => {});
+        });
+      }
+    }
+
+    await cls.save();
+    res.json(cls);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 8. Student Raise / Lower Hand
+app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const user = await User.findById(req.user.id).lean();
+    const uId = String(user._id);
+
+    const exists = cls.raisedHands.some(h => h.userId === uId);
+    if (exists) {
+      cls.raisedHands = cls.raisedHands.filter(h => h.userId !== uId);
+    } else {
+      cls.raisedHands.push({ userId: uId, name: user.name, email: user.email });
+    }
+    await cls.save();
+    res.json({ raisedHands: cls.raisedHands });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 9. Send Chat Message
+app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const user = await User.findById(req.user.id).lean();
+    const isHost = ['admin', 'superadmin'].includes(user.role) || String(cls.trainer) === String(user._id);
+
+    if (!cls.chatEnabled && !isHost) {
+      return res.status(403).json({ message: 'Chat is currently disabled by the Trainer.' });
+    }
+
+    cls.messages.push({
+      senderId: String(user._id),
+      senderName: user.name,
+      senderRole: isHost ? 'Trainer' : 'Student',
+      text: req.body.text
+    });
+
+    if (cls.messages.length > 200) cls.messages = cls.messages.slice(-200);
+    await cls.save();
+    res.json(cls.messages);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// 10. Create Poll & Vote on Poll
+app.post('/api/online-classes/:batchCode/polls', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const { question, options } = req.body;
+    cls.polls.forEach(p => { p.isActive = false; }); // close previous polls
+    cls.polls.push({ question, options, votes: [], isActive: true });
+    await cls.save();
+    res.json(cls.polls);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async (req, res) => {
+  try {
+    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const poll = cls.polls.id(req.params.pollId);
+    if (!poll || !poll.isActive) return res.status(400).json({ message: 'Poll is closed' });
+
+    const uId = String(req.user.id);
+    const existingVote = poll.votes.find(v => v.userId === uId);
+    if (existingVote) {
+      existingVote.optionIndex = req.body.optionIndex;
+    } else {
+      poll.votes.push({ userId: uId, optionIndex: req.body.optionIndex });
+    }
+    await cls.save();
+    res.json(cls.polls);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);
 });
