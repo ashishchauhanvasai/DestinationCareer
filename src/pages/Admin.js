@@ -1293,14 +1293,12 @@ const Admin = () => {
           </div>
         )}
 
-        {/* Existing Components */}
+       {/* Existing Components */}
         {activeTab === 'Company Questions' && <AdminCompanies />}
 
         {activeTab === 'Assignments' && <AdminAssignments />}
 
         {activeTab === 'Batches' && <AdminBatches />}
-
-        {activeTab === 'Online Classes' && <OnlineClassesManager />}
 
         {activeTab === 'Manage Users' && <AdminUsers />}
 
@@ -1312,7 +1310,8 @@ const Admin = () => {
 
         {activeTab === 'Coding Tests' && <AdminTests />}
 
-        {(activeTab === 'online-classes' || activeTab === 'Online Classes') && <OnlineClassesManager />}
+        {/* YE RAHI EK CLEAN LINE ONLINE CLASSES KE LIYE */}
+        {activeTab === 'online-classes' && <OnlineClassesManager />}
       </div>
     </div>
   );
