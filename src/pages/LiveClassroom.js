@@ -264,12 +264,7 @@ const LiveClassroom = () => {
             <VideoConference />
             <RoomAudioRenderer />
             
-            {/* If user is not allowed to speak, hide their control bar entirely to avoid confusion */}
-            {(isHost || canSpeak) && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-900/90 p-2 rounded-xl backdrop-blur border border-gray-700 shadow-2xl">
-                <ControlBar controls={{ camera: true, microphone: true, screenShare: true, chat: false, leave: false }} />
-              </div>
-            )}
+           
           </LiveKitRoom>
         </div>
       </div>

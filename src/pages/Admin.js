@@ -1300,8 +1300,8 @@ const Admin = () => {
 
         {activeTab === 'Batches' && <AdminBatches />}
 
-        {activeTab === 'online-classes' && <OnlineClassesManager />}
-        
+        {activeTab === 'Online Classes' && <OnlineClassesManager />}
+
         {activeTab === 'Manage Users' && <AdminUsers />}
 
         {activeTab === 'Applications' && <AdminApplications />}
@@ -1311,6 +1311,8 @@ const Admin = () => {
         )}
 
         {activeTab === 'Coding Tests' && <AdminTests />}
+
+        {activeTab === 'Online Classes' && <OnlineClassesManager />}
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('t
 const OnlineClassesManager = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem('role');
- const isAdmin = ['admin', 'superadmin', 'trainer'].includes(role);
+ const isAdmin = ['admin', 'superadmin', 'trainer'].includes(role?.toLowerCase());
 
   const [classes, setClasses] = useState([]);
   const [trainers, setTrainers] = useState([]);

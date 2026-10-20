@@ -3884,9 +3884,9 @@ app.put('/api/online-classes/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 4. Super Admin: Delete Online Class
+// 4. Delete Online Class
 app.delete('/api/online-classes/:id', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied' });
   }
   try {
