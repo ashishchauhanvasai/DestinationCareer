@@ -3778,6 +3778,41 @@ const getLiveKitClient = () => {
 const getClassEnd = (cls) =>
   new Date(new Date(cls.scheduledTime).getTime() + (cls.durationMinutes || 60) * 60000);
 
+// Fields that are wiped when a class is closed (chat, polls, hands, speaker permissions, pin).
+// Attendance is kept as a record.
+const endedFields = () => ({
+  status: 'ended',
+  messages: [],
+  polls: [],
+  raisedHands: [],
+  allowedSpeakers: [],
+  pinnedAnnouncement: ''
+});
+
+// Auto-close every class whose time is over and delete its in-class history
+const sweepExpiredClasses = async () => {
+  try {
+    const expired = await OnlineClass.find({
+      status: { $ne: 'ended' },
+      $expr: {
+        $lt: [
+          { $add: ['$scheduledTime', { $multiply: [{ $ifNull: ['$durationMinutes', 60] }, 60000] }] },
+          new Date()
+        ]
+      }
+    }).select('_id').lean();
+
+    if (expired.length) {
+      await OnlineClass.updateMany(
+        { _id: { $in: expired.map(e => e._id) } },
+        { $set: endedFields() }
+      );
+    }
+  } catch (e) {
+    console.error('Sweep error:', e.message);
+  }
+};
+
 // 1. Get all Trainers (for Super Admin dropdown) + All Online Classes
 app.get('/api/online-classes', verifyToken, async (req, res) => {
   try {
@@ -3801,7 +3836,7 @@ app.get('/api/online-classes', verifyToken, async (req, res) => {
       }
     });
     if (expiredIds.length) {
-      await OnlineClass.updateMany({ _id: { $in: expiredIds } }, { status: 'ended' });
+      await OnlineClass.updateMany({ _id: { $in: expiredIds } }, { $set: endedFields() });
     }
 
     const trainers = await User.find({ role: 'trainer' }).select('name email').lean();
@@ -3910,8 +3945,17 @@ app.put('/api/online-classes/:id', verifyToken, async (req, res) => {
       }
     }
 
+    // Class is being closed -> wipe in-class history and disconnect the room
+    const closingNow = updateData.status === 'ended' && existing.status !== 'ended';
+    if (updateData.status === 'ended') Object.assign(updateData, endedFields());
+
     const updated = await OnlineClass.findByIdAndUpdate(req.params.id, updateData, { new: true })
       .populate('trainer', 'name email');
+
+    if (closingNow) {
+      const lk = getLiveKitClient();
+      if (lk) lk.deleteRoom(existing.batchCode).catch(() => {});
+    }
     res.json(updated);
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -3961,8 +4005,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
     if (!isHost) {
       if (isOver) {
         if (cls.status !== 'ended') {
-          cls.status = 'ended';
-          await cls.save();
+          await OnlineClass.updateOne({ _id: cls._id }, { $set: endedFields() });
         }
         return res.status(410).json({ code: 'ENDED', message: 'This session is closed.', ...gateInfo });
       }
@@ -4057,6 +4100,12 @@ app.get('/api/online-classes/:batchCode/state', verifyToken, async (req, res) =>
 
     if (!cls) return res.status(404).json({ message: 'Not found' });
 
+    // Time is over -> close and wipe history
+    if (cls.status !== 'ended' && getClassEnd(cls) < new Date()) {
+      await OnlineClass.updateOne({ _id: cls._id }, { $set: endedFields() });
+      Object.assign(cls, endedFields());
+    }
+
     res.json(cls);
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -4099,7 +4148,19 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
     } else if (action === 'pin') {
       cls.pinnedAnnouncement = pinnedAnnouncement || '';
     } else if (action === 'status') {
-      cls.status = status;
+      if (status === 'ended') {
+        cls.status = 'ended';
+        cls.messages = [];
+        cls.polls = [];
+        cls.raisedHands = [];
+        cls.allowedSpeakers = [];
+        cls.pinnedAnnouncement = '';
+
+        const lk = getLiveKitClient();
+        if (lk) lk.deleteRoom(cls.batchCode).catch(() => {});
+      } else {
+        cls.status = status;
+      }
     } else if (action === 'allow-speaker' && studentId) {
       if (!cls.allowedSpeakers.includes(studentId)) {
         cls.allowedSpeakers.push(studentId);
@@ -4290,6 +4351,11 @@ app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async
     res.status(500).json({ message: e.message });
   }
 });
+
+
+// Close expired classes (and delete their chat/polls) every minute
+sweepExpiredClasses();
+setInterval(sweepExpiredClasses, 60 * 1000);
 
 
 app.listen(port, () => {

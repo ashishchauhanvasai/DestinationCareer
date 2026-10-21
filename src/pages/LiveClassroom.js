@@ -32,15 +32,14 @@ const PresenceReporter = ({ onChange }) => {
   return null;
 };
 
-// Dedicated screen share button for Trainer / allowed students.
-// Desktop/laptop: real screen share.
-// Mobile browsers cannot screen share (browser limitation) -> Flip Camera (front/rear) instead.
+// Screen share button for Trainer / allowed students.
+// Only shown on browsers that support screen capture (desktop/laptop).
+// Mobile browsers do not provide screen capture, so nothing is shown there.
 const ScreenShareButton = () => {
   const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
-  const [rearCam, setRearCam] = useState(false);
-  const [busy, setBusy] = useState(false);
-
   const supported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
+
+  if (!supported) return null;
 
   const toggleScreen = async () => {
     try {
@@ -51,38 +50,6 @@ const ScreenShareButton = () => {
       }
     }
   };
-
-  const flipCamera = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const next = !rearCam;
-      await localParticipant.setCameraEnabled(false);
-      await localParticipant.setCameraEnabled(true, { facingMode: next ? 'environment' : 'user' });
-      setRearCam(next);
-    } catch (err) {
-      alert('Could not switch camera. ' + (err?.message || ''));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!supported) {
-    return (
-      <button
-        onClick={flipCamera}
-        disabled={busy}
-        className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition disabled:opacity-50 ${
-          rearCam
-            ? 'bg-blue-600 border-blue-500 text-white'
-            : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
-        }`}
-      >
-        <FiMonitor size={16} />
-        <span>{rearCam ? 'Front Camera' : 'Rear Camera'}</span>
-      </button>
-    );
-  }
 
   return (
     <button
@@ -139,6 +106,7 @@ const LiveClassroom = () => {
   const [tick, setTick] = useState(Date.now());
   const serverOffset = useRef(0); // serverTime - clientTime, avoids wrong device clocks
   const retryLock = useRef(false);
+  const joinedStatus = useRef(''); // class status when we joined
 
 
   // 1. Initial Join & Token Generation
@@ -146,6 +114,7 @@ const LiveClassroom = () => {
     try {
       const res = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
       setGate(null);
+      joinedStatus.current = res.data.classData?.status || '';
       setLkToken(res.data.livekitToken);
       setLkUrl(res.data.livekitUrl);
       setRoomData(res.data.classData);
@@ -196,6 +165,18 @@ const LiveClassroom = () => {
 
     try {
       const res = await axios.get(`${API}/online-classes/${batchCode}/state`, cfg());
+      // Class was closed while we were inside -> show Session Closed screen
+      if (res.data.status === 'ended' && joinedStatus.current !== 'ended') {
+        setGate({
+          type: 'ENDED',
+          title: res.data.title,
+          subject: res.data.subject,
+          scheduledTime: res.data.scheduledTime
+        });
+        setUser(null); // stops polling
+        return;
+      }
+
       setRoomData(res.data);
 
       if (!isHost) {
