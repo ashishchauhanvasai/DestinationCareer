@@ -813,8 +813,8 @@ const LiveClassroom = () => {
               const totalVotes = poll.votes.length;
               const myVote = poll.votes.find(v => v.userId === user._id);
 
-              return (
-                <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ? 'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
+              return ( 
+              <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ?'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
                   <div className="flex justify-between items-start mb-3">
                     <p className="font-bold text-sm text-white">{poll.question}</p>
 
@@ -828,8 +828,6 @@ const LiveClassroom = () => {
                       const votesForOpt = poll.votes.filter(v => v.optionIndex === oIdx).length;
                       const percent = totalVotes > 0 ? Math.round((votesForOpt / totalVotes) * 100) : 0;
                       const hasVotedThis = myVote?.optionIndex === oIdx;
-
-
                       return (
                         <button
                           key={oIdx}
@@ -841,9 +839,7 @@ const LiveClassroom = () => {
                             className={`absolute top-0 left-0 h-full transition-all duration-500 ${hasVotedThis ? 'bg-blue-600/30' : 'bg-gray-700/50'}`}
                             style={{ width: `${(myVote || isHost || !poll.isActive) ? percent : 0}%` }}
                           />
-
                           <span className="relative z-10 text-gray-200 truncate pr-2">{opt}</span>
-
                           {(myVote || isHost || !poll.isActive) && (
                             <span className="relative z-10 font-bold text-gray-400">{percent}%</span>
                           )}
@@ -851,7 +847,6 @@ const LiveClassroom = () => {
                       );
                     })}
                   </div>
-
                   <p className="text-[10px] text-gray-500 text-right mt-2">{totalVotes} votes</p>
                 </div>
               );
