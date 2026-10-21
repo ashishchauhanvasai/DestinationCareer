@@ -32,16 +32,17 @@ const PresenceReporter = ({ onChange }) => {
   return null;
 };
 
-// Dedicated screen share button for Trainer / allowed students
+// Dedicated screen share button for Trainer / allowed students.
+// Desktop/laptop: real screen share.
+// Mobile browsers cannot screen share (browser limitation) -> Flip Camera (front/rear) instead.
 const ScreenShareButton = () => {
   const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
+  const [rearCam, setRearCam] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  const toggle = async () => {
-    const supported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
-    if (!supported) {
-      alert('Screen sharing is not supported on this device/browser. Please use Chrome, Edge or Firefox on a laptop/desktop.');
-      return;
-    }
+  const supported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
+
+  const toggleScreen = async () => {
     try {
       await localParticipant.setScreenShareEnabled(!isScreenShareEnabled, { audio: true });
     } catch (err) {
@@ -51,9 +52,41 @@ const ScreenShareButton = () => {
     }
   };
 
+  const flipCamera = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const next = !rearCam;
+      await localParticipant.setCameraEnabled(false);
+      await localParticipant.setCameraEnabled(true, { facingMode: next ? 'environment' : 'user' });
+      setRearCam(next);
+    } catch (err) {
+      alert('Could not switch camera. ' + (err?.message || ''));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!supported) {
+    return (
+      <button
+        onClick={flipCamera}
+        disabled={busy}
+        className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition disabled:opacity-50 ${
+          rearCam
+            ? 'bg-blue-600 border-blue-500 text-white'
+            : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
+        }`}
+      >
+        <FiMonitor size={16} />
+        <span>{rearCam ? 'Front Camera' : 'Rear Camera'}</span>
+      </button>
+    );
+  }
+
   return (
     <button
-      onClick={toggle}
+      onClick={toggleScreen}
       className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition ${
         isScreenShareEnabled
           ? 'bg-blue-600 border-blue-500 text-white'
