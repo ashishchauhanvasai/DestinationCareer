@@ -229,18 +229,23 @@ const LiveClassroom = () => {
         </div>
 
             {/* LiveKit Video Container */}
-        <div className="flex-1 relative bg-black">
+        {/* MOBILE FIX: Added pb-20 (padding-bottom) so video is fully visible above taskbar */}
+        <div className="flex-1 relative bg-black pb-20 md:pb-0">
           
-          {/* YEH NAYA STYLE TAG ADD KARNA HAI */}
           <style>{`
             /* 1. Duplicate Chat aur Leave button hide karne ke liye */
             .lk-chat-toggle, .lk-disconnect-button, .lk-button[title="Chat"], .lk-button[title="Leave"] { 
               display: none !important; 
             }
             
-            /* 2. Students ke liye Pinch-to-Zoom aur un-cropped video allow karne ke liye */
+            /* 2. Students ke liye Pinch-to-Zoom Allow karna */
+            .lk-video-container, .lk-participant-tile {
+              touch-action: auto !important;
+              overflow: visible !important;
+            }
             .lk-participant-tile video {
-              touch-action: pan-x pan-y pinch-zoom !important;
+              touch-action: auto !important;
+              pointer-events: auto !important;
               object-fit: contain !important;
             }
           `}</style>
@@ -264,8 +269,17 @@ const LiveClassroom = () => {
             <VideoConference />
             <RoomAudioRenderer />
             
+            {/* YEH WALI LINE CHANGE KI HAI */}
+            {/* Mobile pe 'bottom-24' rahega (taskbar se upar), aur laptop pe 'md:bottom-4' */}
+            {(isHost || canSpeak) && (
+              <div className="absolute bottom-24 md:bottom-4 left-1/2 -translate-x-1/2 bg-gray-900/90 rounded-xl border border-gray-700 shadow-2xl p-1 z-50">
+                 <ControlBar controls={{ camera: true, microphone: true, screenShare: true, chat: false, leave: false }} />
+              </div>
+            )}
+            
           </LiveKitRoom>
         </div>
+
 
       </div>
 
