@@ -20,6 +20,11 @@ const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 
+// Recording quality - tune these two numbers to trade size vs sharpness.
+// ~1.5 hr class (max size):  500 kbps ~ 340 MB | 800 kbps ~ 540 MB | 1500 kbps ~ 1 GB
+const REC_VIDEO_BPS = 800000;
+const REC_FPS = 15;
+
 // Stable options object (a new object every render makes LiveKit re-evaluate its config)
 const LK_OPTIONS = {
   adaptiveStream: true,
@@ -117,6 +122,8 @@ const LiveClassroom = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const recordedChunks = useRef([]);
+  const recStreamsRef = useRef([]); // every stream opened for recording (stopped on finish)
+  const recAudioCtxRef = useRef(null);
 
 
   // Gate state (before start / after end)
@@ -229,15 +236,74 @@ const LiveClassroom = () => {
 
 
   // RECORDING CONTROLS (TRAINER ONLY)
+  const cleanupRecording = () => {
+    recStreamsRef.current.forEach(st => st.getTracks().forEach(t => t.stop()));
+    recStreamsRef.current = [];
+    if (recAudioCtxRef.current) {
+      recAudioCtxRef.current.close().catch(() => {});
+      recAudioCtxRef.current = null;
+    }
+  };
+
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-      
+      // 1. Screen (+ computer/tab audio if the trainer ticks "share audio" in the popup)
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: REC_FPS, max: REC_FPS }
+        },
+        audio: true
+      });
+      recStreamsRef.current = [displayStream];
+
+      // Tell the encoder this is screen content (slides/text) so it keeps text sharp
+      const screenTrack = displayStream.getVideoTracks()[0];
+      if (screenTrack && 'contentHint' in screenTrack) screenTrack.contentHint = 'detail';
+
+      // 2. Trainer's microphone (getDisplayMedia never includes the mic)
+      let micStream = null;
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true }
+        });
+        recStreamsRef.current.push(micStream);
+      } catch (e) {
+        alert('Microphone not available - recording will have no trainer voice.');
+      }
+
+      // 3. Mix mic + screen audio into ONE audio track
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      recAudioCtxRef.current = audioCtx;
+      const dest = audioCtx.createMediaStreamDestination();
+
+      if (micStream && micStream.getAudioTracks().length) {
+        audioCtx.createMediaStreamSource(micStream).connect(dest);
+      }
+      if (displayStream.getAudioTracks().length) {
+        audioCtx.createMediaStreamSource(new MediaStream(displayStream.getAudioTracks())).connect(dest);
+      }
+
+      const mixedStream = new MediaStream([
+        ...displayStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks()
+      ]);
+
+      // Best available codec: VP9 (sharper at the same size) -> VP8 -> default
+      const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
+        .find(t => MediaRecorder.isTypeSupported(t));
+
+      const mediaRecorder = new MediaRecorder(mixedStream, {
+        mimeType,
+        videoBitsPerSecond: REC_VIDEO_BPS,
+        audioBitsPerSecond: 64000 // clear voice, small size
+      });
+
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) recordedChunks.current.push(e.data);
       };
-      
+
       mediaRecorder.onstop = () => {
         const blob = new Blob(recordedChunks.current, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
@@ -246,17 +312,22 @@ const LiveClassroom = () => {
         a.download = `${batchCode}_Class_Recording.webm`;
         a.click();
         recordedChunks.current = [];
+        cleanupRecording();
         setIsRecording(false);
         setIsPaused(false);
       };
 
+      // Trainer pressed the browser's "Stop sharing" button
+      displayStream.getVideoTracks()[0].onended = () => {
+        if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      };
 
-      stream.getVideoTracks()[0].onended = () => mediaRecorder.stop();
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // save a chunk every second
       setRecorder(mediaRecorder);
       setIsRecording(true);
       setIsPaused(false);
     } catch (err) {
+      cleanupRecording();
       alert("Failed to start recording. Please allow permissions.");
     }
   };
@@ -278,8 +349,7 @@ const LiveClassroom = () => {
 
   const stopRecording = () => {
     if (recorder && (recorder.state === "recording" || recorder.state === "paused")) {
-      recorder.stop();
-      recorder.stream.getTracks().forEach(t => t.stop());
+      recorder.stop(); // onstop saves the file and stops all streams
     }
   };
 
