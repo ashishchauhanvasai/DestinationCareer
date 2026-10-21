@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -49,25 +49,60 @@ const LiveClassroom = () => {
   const recordedChunks = useRef([]);
 
 
+  // Gate state (before start / after end)
+  const [gate, setGate] = useState(null); // { type: 'NOT_STARTED' | 'ENDED', ...info }
+  const [tick, setTick] = useState(Date.now());
+  const serverOffset = useRef(0); // serverTime - clientTime, avoids wrong device clocks
+  const retryLock = useRef(false);
+
+
   // 1. Initial Join & Token Generation
-  useEffect(() => {
-    const joinClass = async () => {
-      try {
-        const res = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
-        setLkToken(res.data.livekitToken);
-        setLkUrl(res.data.livekitUrl);
-        setRoomData(res.data.classData);
-        setIsHost(res.data.isHost);
-        setCanSpeak(res.data.canSpeak);
-        setUser(res.data.user);
+  const joinClass = useCallback(async () => {
+    try {
+      const res = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
+      setGate(null);
+      setLkToken(res.data.livekitToken);
+      setLkUrl(res.data.livekitUrl);
+      setRoomData(res.data.classData);
+      setIsHost(res.data.isHost);
+      setCanSpeak(res.data.canSpeak);
+      setUser(res.data.user);
+      setLoading(false);
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.code === 'NOT_STARTED' || data?.code === 'ENDED') {
+        if (data.serverTime) serverOffset.current = new Date(data.serverTime).getTime() - Date.now();
+        setGate({ type: data.code, ...data });
         setLoading(false);
-      } catch (err) {
-        alert(err.response?.data?.message || "Failed to join class. Ensure you are logged in.");
-        navigate('/login');
+        return;
       }
-    };
-    joinClass();
+      alert(data?.message || "Failed to join class. Ensure you are logged in.");
+      navigate('/login');
+    }
   }, [batchCode, navigate]);
+
+  useEffect(() => {
+    joinClass();
+  }, [joinClass]);
+
+
+  // Countdown ticker (only while waiting for class to start)
+  useEffect(() => {
+    if (gate?.type !== 'NOT_STARTED') return;
+    const t = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [gate]);
+
+
+  // When countdown hits zero, try joining automatically
+  useEffect(() => {
+    if (gate?.type !== 'NOT_STARTED') return;
+    const remaining = new Date(gate.scheduledTime).getTime() - (tick + serverOffset.current);
+    if (remaining <= 0 && !retryLock.current) {
+      retryLock.current = true;
+      joinClass().finally(() => setTimeout(() => { retryLock.current = false; }, 3000));
+    }
+  }, [tick, gate, joinClass]);
 
 
   // 2. Fast Poll Room Data (1s latency) & Dynamic Permission Upgrade
@@ -250,6 +285,58 @@ const LiveClassroom = () => {
       alert('Action failed');
     }
   };
+
+
+  // GATE SCREEN: "Class will start soon" countdown / "Session Closed"
+  if (gate) {
+    const startMs = new Date(gate.scheduledTime).getTime();
+    const remaining = Math.max(0, startMs - (tick + serverOffset.current));
+    const d = Math.floor(remaining / 86400000);
+    const h = Math.floor((remaining % 86400000) / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    const box = (val, label) => (
+      <div className="bg-gray-800 border border-gray-700 rounded-xl px-3 py-3 md:px-5 md:py-4 min-w-[64px]">
+        <p className="text-2xl md:text-4xl font-bold text-white tabular-nums">{String(val).padStart(2, '0')}</p>
+        <p className="text-[10px] text-gray-400 uppercase mt-1">{label}</p>
+      </div>
+    );
+
+    return (
+      <div className="h-[100dvh] flex flex-col items-center justify-center bg-gray-900 text-white px-4 text-center">
+        <h1 className="text-xl md:text-2xl font-bold mb-1">{gate.title}</h1>
+        {gate.subject && <p className="text-sm text-gray-400 mb-6">{gate.subject}</p>}
+
+        {gate.type === 'NOT_STARTED' ? (
+          <>
+            <p className="text-amber-400 font-bold mb-4">Class will start soon</p>
+            <div className="flex gap-2 md:gap-3">
+              {d > 0 && box(d, 'Days')}
+              {box(h, 'Hours')}
+              {box(m, 'Minutes')}
+              {box(s, 'Seconds')}
+            </div>
+            <p className="text-xs text-gray-500 mt-5">
+              Starts at {new Date(gate.scheduledTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}.
+              You will join automatically when the timer ends.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-red-400 font-bold text-lg mb-2">Session Closed</p>
+            <p className="text-sm text-gray-400">This class has ended. Please contact your trainer for the next session.</p>
+          </>
+        )}
+
+        <button
+          onClick={() => navigate('/tests')}
+          className="mt-8 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg text-sm font-bold"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
 
 
   if (loading) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-white font-bold">Joining Live Classroom...</div>;

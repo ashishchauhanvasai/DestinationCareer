@@ -3711,7 +3711,6 @@ app.delete('/api/users/:id', verifyToken, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-
 // ============================================================================
 // ONLINE LIVE CLASSES & WEBINAR MODULE (1000-3000 STUDENTS SCALE WITH LIVEKIT)
 // ============================================================================
@@ -3726,7 +3725,7 @@ const onlineClassSchema = new mongoose.Schema({
   scheduledTime: { type: Date, required: true },
   durationMinutes: { type: Number, default: 60 },
   status: { type: String, enum: ['scheduled', 'live', 'ended'], default: 'scheduled' },
-  
+
   // Real-time Classroom Controls
   chatEnabled: { type: Boolean, default: true },
   pinnedAnnouncement: { type: String, default: '' },
@@ -3737,7 +3736,7 @@ const onlineClassSchema = new mongoose.Schema({
     email: String,
     raisedAt: { type: Date, default: Date.now }
   }],
-  
+
   // Live Chat Messages (capped to last 200 for performance)
   messages: [{
     senderId: String,
@@ -3775,6 +3774,10 @@ const getLiveKitClient = () => {
   return new RoomServiceClient(httpUrl, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
 };
 
+// Class end time = scheduledTime + duration
+const getClassEnd = (cls) =>
+  new Date(new Date(cls.scheduledTime).getTime() + (cls.durationMinutes || 60) * 60000);
+
 // 1. Get all Trainers (for Super Admin dropdown) + All Online Classes
 app.get('/api/online-classes', verifyToken, async (req, res) => {
   try {
@@ -3787,6 +3790,19 @@ app.get('/api/online-classes', verifyToken, async (req, res) => {
       .select('-messages') // keep list lightweight
       .sort({ scheduledTime: -1 })
       .lean();
+
+    // Auto-close sessions whose time is over
+    const now = new Date();
+    const expiredIds = [];
+    classes.forEach(c => {
+      if (c.status !== 'ended' && getClassEnd(c) < now) {
+        c.status = 'ended';
+        expiredIds.push(c._id);
+      }
+    });
+    if (expiredIds.length) {
+      await OnlineClass.updateMany({ _id: { $in: expiredIds } }, { status: 'ended' });
+    }
 
     const trainers = await User.find({ role: 'trainer' }).select('name email').lean();
     res.json({ classes, trainers });
@@ -3861,12 +3877,16 @@ app.post('/api/online-classes', verifyToken, async (req, res) => {
   }
 });
 
-// 3. Super Admin: Update Trainer, Class Timings, or Status anytime
+// 3. Super Admin / Trainer: Update Trainer, Class Timings, or Status anytime
+//    Changing time re-evaluates status. Batch code (link) never changes.
 app.put('/api/online-classes/:id', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin' && req.user.role !== 'trainer') {
     return res.status(403).json({ message: 'Access denied' });
   }
   try {
+    const existing = await OnlineClass.findById(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Class not found' });
+
     const { title, subject, trainerId, scheduledTime, durationMinutes, status } = req.body;
     const updateData = {};
     if (title !== undefined) updateData.title = title;
@@ -3875,6 +3895,20 @@ app.put('/api/online-classes/:id', verifyToken, async (req, res) => {
     if (scheduledTime !== undefined) updateData.scheduledTime = scheduledTime;
     if (durationMinutes !== undefined) updateData.durationMinutes = Number(durationMinutes);
     if (status !== undefined) updateData.status = status;
+
+    // If time/duration changed and no explicit status was sent, re-evaluate status
+    if (status === undefined && (scheduledTime !== undefined || durationMinutes !== undefined)) {
+      const newStart = new Date(scheduledTime !== undefined ? scheduledTime : existing.scheduledTime);
+      const newDur = durationMinutes !== undefined ? Number(durationMinutes) : (existing.durationMinutes || 60);
+      const newEnd = new Date(newStart.getTime() + newDur * 60000);
+      const now = new Date();
+
+      if (newEnd <= now) {
+        updateData.status = 'ended';
+      } else if (existing.status === 'ended' || newStart > now) {
+        updateData.status = 'scheduled'; // reopened / rescheduled
+      }
+    }
 
     const updated = await OnlineClass.findByIdAndUpdate(req.params.id, updateData, { new: true })
       .populate('trainer', 'name email');
@@ -3907,8 +3941,35 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
     const user = await User.findById(req.user.id).lean();
     if (!user) return res.status(401).json({ message: 'User not found' });
 
-    const isHost = ['admin', 'superadmin'].includes(user.role) || 
+    const isHost = ['admin', 'superadmin'].includes(user.role) ||
                    (cls.trainer && String(cls.trainer._id) === String(user._id));
+
+    const now = new Date();
+    const start = new Date(cls.scheduledTime);
+    const end = getClassEnd(cls);
+    const isOver = cls.status === 'ended' || now > end;
+
+    const gateInfo = {
+      title: cls.title,
+      subject: cls.subject,
+      scheduledTime: start.toISOString(),
+      endTime: end.toISOString(),
+      serverTime: now.toISOString()
+    };
+
+    // Students: block if class is closed or hasn't started yet
+    if (!isHost) {
+      if (isOver) {
+        if (cls.status !== 'ended') {
+          cls.status = 'ended';
+          await cls.save();
+        }
+        return res.status(410).json({ code: 'ENDED', message: 'This session is closed.', ...gateInfo });
+      }
+      if (cls.status !== 'live' && now < start) {
+        return res.status(403).json({ code: 'NOT_STARTED', message: 'Class will start soon.', ...gateInfo });
+      }
+    }
 
     // Log Attendance if Student
     if (!isHost) {
@@ -3925,13 +3986,13 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
         });
       }
       await cls.save();
-    } else if (cls.status === 'scheduled') {
+    } else if (cls.status === 'scheduled' && !isOver) {
       // Auto mark live when Trainer/Admin joins
       cls.status = 'live';
       await cls.save();
     }
-    const canSpeak = onlineClass.allowedSpeakers.includes(String(req.user._id));
 
+    const canSpeak = (cls.allowedSpeakers || []).includes(String(user._id));
 
     // Generate LiveKit Token if configured
     let lkToken = null;
@@ -3952,7 +4013,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
 
       at.addGrant({
         roomJoin: true,
-        room: onlineClass.batchCode,
+        room: cls.batchCode,
 
         // Allows Mic, Camera, AND Screen Share when true
         canPublish: isHost || canSpeak,
@@ -3965,7 +4026,6 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
 
       lkToken = await at.toJwt();
     }
-
 
     res.json({
       classData: cls,
