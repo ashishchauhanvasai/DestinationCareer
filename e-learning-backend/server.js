@@ -4016,6 +4016,9 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
 
     // Log Attendance if Student
     if (!isHost) {
+      // Fresh start on (re)join: drop any stale raised hand from a previous visit
+      cls.raisedHands = cls.raisedHands.filter(h => h.userId !== String(user._id));
+
       const existingAtt = cls.attendance.find(a => String(a.student) === String(user._id));
       if (existingAtt) {
         existingAtt.lastSeenAt = new Date();

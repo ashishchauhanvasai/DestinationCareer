@@ -20,6 +20,24 @@ const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
 
+// Stable options object (a new object every render makes LiveKit re-evaluate its config)
+const LK_OPTIONS = {
+  adaptiveStream: true,
+  dynacast: true,
+  publishDefaults: {
+    videoSimulcast: true,
+    screenShareSimulcast: true,
+  }
+};
+
+// Memoized so the 1-second chat/poll refresh does not re-render the video grid
+const VideoStage = React.memo(() => (
+  <>
+    <VideoConference />
+    <RoomAudioRenderer />
+  </>
+));
+
 // Reports who is CURRENTLY connected to the LiveKit room (real-time presence)
 const PresenceReporter = ({ onChange }) => {
   const participants = useParticipants();
@@ -409,6 +427,11 @@ const LiveClassroom = () => {
   if (!lkToken || !lkUrl) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-red-500 font-bold">Connection Failed.</div>;
 
 
+  // Only people currently in the room can have a raised hand / show as active speaker
+  const activeHands = (roomData?.raisedHands || []).filter(h => activeIds.includes(String(h.userId)));
+  const activeSpeakerIds = (roomData?.allowedSpeakers || []).filter(id => activeIds.includes(String(id)));
+
+
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans relative">
       
@@ -536,19 +559,11 @@ const LiveClassroom = () => {
             serverUrl={lkUrl}
             data-lk-theme="default"
             className="flex-1 flex flex-col min-h-0 w-full h-full overflow-hidden"
-            options={{
-              adaptiveStream: true,
-              dynacast: true,
-              publishDefaults: {
-                videoSimulcast: true,
-                screenShareSimulcast: true,
-              }
-            }}
+            options={LK_OPTIONS}
           >
             {/* 1. Video Grid Area (Takes available space without covering controls) */}
             <div className="flex-1 relative min-h-0 w-full overflow-hidden">
-              <VideoConference />
-              <RoomAudioRenderer />
+              <VideoStage />
               <PresenceReporter onChange={setActiveIds} />
             </div>
 
@@ -587,7 +602,7 @@ const LiveClassroom = () => {
           {[
             { id: 'chat', icon: <FiMessageSquare />, label: 'Chat' },
             { id: 'polls', icon: <FiBarChart2 />, label: 'Polls' },
-            { id: 'people', icon: <FiUsers />, label: isHost && roomData?.raisedHands?.length > 0 ? `Hands (${roomData.raisedHands.length})` : 'People' }
+            { id: 'people', icon: <FiUsers />, label: isHost && activeHands.length > 0 ? `Hands (${activeHands.length})` : 'People' }
           ].map(t => (
             <button
               key={t.id}
@@ -779,14 +794,14 @@ const LiveClassroom = () => {
         {activeTab === 'people' && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4 md:space-y-6">
             
-            {isHost && roomData?.raisedHands?.length > 0 && (
+            {isHost && activeHands.length > 0 && (
               <div className="bg-amber-900/20 border border-amber-900/50 rounded-xl p-3">
                 <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-2">
-                  Raised Hands ({roomData.raisedHands.length})
+                  Raised Hands ({activeHands.length})
                 </p>
 
                 <div className="space-y-2">
-                  {roomData.raisedHands.map(h => (
+                  {activeHands.map(h => (
                     <div key={h.userId} className="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-800">
                       <div className="truncate pr-2">
                         <p className="text-xs font-bold text-gray-200 truncate">{h.name}</p>
@@ -805,7 +820,7 @@ const LiveClassroom = () => {
             )}
 
 
-            {roomData?.allowedSpeakers?.length > 0 && (
+            {activeSpeakerIds.length > 0 && (
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Active Speakers</p>
@@ -821,7 +836,7 @@ const LiveClassroom = () => {
                 </div>
 
                 <div className="space-y-2">
-                  {roomData.allowedSpeakers.map(sid => {
+                  {activeSpeakerIds.map(sid => {
                     const studentData = roomData.attendance.find(a => String(a.student) === sid);
 
                     return (
