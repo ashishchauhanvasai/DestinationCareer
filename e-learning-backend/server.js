@@ -3930,32 +3930,53 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       cls.status = 'live';
       await cls.save();
     }
+    const canSpeak = onlineClass.allowedSpeakers.includes(String(req.user._id));
 
-    const canSpeak = isHost || cls.allowedSpeakers.includes(String(user._id));
 
     // Generate LiveKit Token if configured
     let lkToken = null;
+
     if (process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
-      const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
-        identity: String(user._id),
-        name: `${user.name} (${isHost ? 'Trainer' : 'Student'})`,
-        metadata: JSON.stringify({ role: isHost ? 'host' : 'student', email: user.email })
-      });
+      const at = new AccessToken(
+        process.env.LIVEKIT_API_KEY,
+        process.env.LIVEKIT_API_SECRET,
+        {
+          identity: String(user._id),
+          name: `${user.name} (${isHost ? 'Trainer' : 'Student'})`,
+          metadata: JSON.stringify({
+            role: isHost ? 'host' : 'student',
+            email: user.email
+          })
+        }
+      );
+
       at.addGrant({
         roomJoin: true,
-        room: cls.batchCode,
-        canPublish: canSpeak,        // Only Trainer or permitted students can turn on Mic/Cam
-        canSubscribe: true,          // All 3000 students can watch/listen
+        room: onlineClass.batchCode,
+
+        // Allows Mic, Camera, AND Screen Share when true
+        canPublish: isHost || canSpeak,
+
+        // All students can watch/listen
+        canSubscribe: true,
+
         canPublishData: true
       });
+
       lkToken = await at.toJwt();
     }
+
 
     res.json({
       classData: cls,
       isHost,
       canSpeak,
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
       livekitToken: lkToken,
       livekitUrl: process.env.LIVEKIT_URL || ''
     });
@@ -3964,29 +3985,54 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
   }
 });
 
+
 // 6. Real-Time Classroom State Polling (Chat, Polls, Raised Hands, Permissions)
 app.get('/api/online-classes/:batchCode/state', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() })
+    const cls = await OnlineClass.findOne({
+      batchCode: req.params.batchCode.toUpperCase()
+    })
       .populate('trainer', 'name email')
       .lean();
+
     if (!cls) return res.status(404).json({ message: 'Not found' });
+
     res.json(cls);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
 
+
 // 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic & Cam
 app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const cls = await OnlineClass.findOne({
+      batchCode: req.params.batchCode.toUpperCase()
+    });
+
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
-    const isHost = ['admin', 'superadmin'].includes(req.user.role) || String(cls.trainer) === String(req.user.id);
-    if (!isHost) return res.status(403).json({ message: 'Only Trainer/Admin can change classroom controls' });
 
-    const { action, studentId, chatEnabled, pinnedAnnouncement, status } = req.body;
+    const isHost =
+      ['admin', 'superadmin'].includes(req.user.role) ||
+      String(cls.trainer) === String(req.user.id);
+
+    if (!isHost) {
+      return res.status(403).json({
+        message: 'Only Trainer/Admin can change classroom controls'
+      });
+    }
+
+
+    const {
+      action,
+      studentId,
+      chatEnabled,
+      pinnedAnnouncement,
+      status
+    } = req.body;
+
 
     if (action === 'toggle-chat') {
       cls.chatEnabled = chatEnabled;
@@ -3995,37 +4041,51 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
     } else if (action === 'status') {
       cls.status = status;
     } else if (action === 'allow-speaker' && studentId) {
-      if (!cls.allowedSpeakers.includes(studentId)) cls.allowedSpeakers.push(studentId);
+      if (!cls.allowedSpeakers.includes(studentId)) {
+        cls.allowedSpeakers.push(studentId);
+      }
+
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== studentId);
-      
+
       // Dynamically update LiveKit permission in real-time
       const lk = getLiveKitClient();
+
       if (lk) {
         lk.updateParticipant(cls.batchCode, studentId, undefined, {
-          canPublish: true, canSubscribe: true, canPublishData: true
+          canPublish: true,
+          canSubscribe: true,
+          canPublishData: true
         }).catch(() => {});
       }
     } else if (action === 'revoke-speaker' && studentId) {
       cls.allowedSpeakers = cls.allowedSpeakers.filter(id => id !== studentId);
-      
+
       const lk = getLiveKitClient();
+
       if (lk) {
         lk.updateParticipant(cls.batchCode, studentId, undefined, {
-          canPublish: false, canSubscribe: true, canPublishData: true
+          canPublish: false,
+          canSubscribe: true,
+          canPublishData: true
         }).catch(() => {});
       }
     } else if (action === 'revoke-all-speakers') {
       const prevSpeakers = [...cls.allowedSpeakers];
       cls.allowedSpeakers = [];
+
       const lk = getLiveKitClient();
+
       if (lk) {
         prevSpeakers.forEach(sId => {
           lk.updateParticipant(cls.batchCode, sId, undefined, {
-            canPublish: false, canSubscribe: true, canPublishData: true
+            canPublish: false,
+            canSubscribe: true,
+            canPublishData: true
           }).catch(() => {});
         });
       }
     }
+
 
     await cls.save();
     res.json(cls);
@@ -4034,19 +4094,31 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
   }
 });
 
+
 // 8. Student Raise / Lower Hand
 app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const cls = await OnlineClass.findOne({
+      batchCode: req.params.batchCode.toUpperCase()
+    });
+
     const user = await User.findById(req.user.id).lean();
     const uId = String(user._id);
 
+
     const exists = cls.raisedHands.some(h => h.userId === uId);
+
     if (exists) {
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== uId);
     } else {
-      cls.raisedHands.push({ userId: uId, name: user.name, email: user.email });
+      cls.raisedHands.push({
+        userId: uId,
+        name: user.name,
+        email: user.email
+      });
     }
+
+
     await cls.save();
     res.json({ raisedHands: cls.raisedHands });
   } catch (e) {
@@ -4054,16 +4126,27 @@ app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) =>
   }
 });
 
+
 // 9. Send Chat Message
 app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const cls = await OnlineClass.findOne({
+      batchCode: req.params.batchCode.toUpperCase()
+    });
+
     const user = await User.findById(req.user.id).lean();
-    const isHost = ['admin', 'superadmin'].includes(user.role) || String(cls.trainer) === String(user._id);
+
+    const isHost =
+      ['admin', 'superadmin'].includes(user.role) ||
+      String(cls.trainer) === String(user._id);
+
 
     if (!cls.chatEnabled && !isHost) {
-      return res.status(403).json({ message: 'Chat is currently disabled by the Trainer.' });
+      return res.status(403).json({
+        message: 'Chat is currently disabled by the Trainer.'
+      });
     }
+
 
     cls.messages.push({
       senderId: String(user._id),
@@ -4072,7 +4155,12 @@ app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) =>
       text: req.body.text
     });
 
-    if (cls.messages.length > 200) cls.messages = cls.messages.slice(-200);
+
+    if (cls.messages.length > 200) {
+      cls.messages = cls.messages.slice(-200);
+    }
+
+
     await cls.save();
     res.json(cls.messages);
   } catch (e) {
@@ -4080,39 +4168,69 @@ app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) =>
   }
 });
 
+
 // 10. Create Poll & Vote on Poll
 app.post('/api/online-classes/:batchCode/polls', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const cls = await OnlineClass.findOne({
+      batchCode: req.params.batchCode.toUpperCase()
+    });
+
     const { question, options } = req.body;
-    cls.polls.forEach(p => { p.isActive = false; }); // close previous polls
-    cls.polls.push({ question, options, votes: [], isActive: true });
+
+    cls.polls.forEach(p => {
+      p.isActive = false;
+    });
+
+    cls.polls.push({
+      question,
+      options,
+      votes: [],
+      isActive: true
+    });
+
+
     await cls.save();
     res.json(cls.polls);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
+
 
 app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
+    const cls = await OnlineClass.findOne({
+      batchCode: req.params.batchCode.toUpperCase()
+    });
+
     const poll = cls.polls.id(req.params.pollId);
-    if (!poll || !poll.isActive) return res.status(400).json({ message: 'Poll is closed' });
+
+    if (!poll || !poll.isActive) {
+      return res.status(400).json({ message: 'Poll is closed' });
+    }
+
 
     const uId = String(req.user.id);
     const existingVote = poll.votes.find(v => v.userId === uId);
+
     if (existingVote) {
       existingVote.optionIndex = req.body.optionIndex;
     } else {
-      poll.votes.push({ userId: uId, optionIndex: req.body.optionIndex });
+      poll.votes.push({
+        userId: uId,
+        optionIndex: req.body.optionIndex
+      });
     }
+
+
     await cls.save();
     res.json(cls.polls);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);
