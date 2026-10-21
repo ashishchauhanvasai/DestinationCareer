@@ -228,8 +228,23 @@ const LiveClassroom = () => {
           </div>
         </div>
 
-{/* LiveKit Video Container */}
+            {/* LiveKit Video Container */}
         <div className="flex-1 relative bg-black">
+          
+          {/* YEH NAYA STYLE TAG ADD KARNA HAI */}
+          <style>{`
+            /* 1. Duplicate Chat aur Leave button hide karne ke liye */
+            .lk-chat-toggle, .lk-disconnect-button, .lk-button[title="Chat"], .lk-button[title="Leave"] { 
+              display: none !important; 
+            }
+            
+            /* 2. Students ke liye Pinch-to-Zoom aur un-cropped video allow karne ke liye */
+            .lk-participant-tile video {
+              touch-action: pan-x pan-y pinch-zoom !important;
+              object-fit: contain !important;
+            }
+          `}</style>
+
           <LiveKitRoom
             video={isHost || canSpeak}
             audio={isHost || canSpeak}
@@ -249,16 +264,9 @@ const LiveClassroom = () => {
             <VideoConference />
             <RoomAudioRenderer />
             
-            {/* YEH NAYA CODE ADD KARNA HAI: Isse sirf zaroori controls dikhenge */}
-            {(isHost || canSpeak) && (
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-900/90 rounded-xl border border-gray-700 shadow-2xl p-1 z-50">
-                 <ControlBar controls={{ camera: true, microphone: true, screenShare: true, chat: false, leave: false }} />
-              </div>
-            )}
-            
           </LiveKitRoom>
         </div>
-        
+
       </div>
 
       {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (Slide-up on Mobile, Fixed on Desktop) */}
