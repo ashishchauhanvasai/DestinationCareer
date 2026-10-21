@@ -4,8 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   LiveKitRoom,
   VideoConference,
-  ControlBar, 
   RoomAudioRenderer,
+  ControlBar
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import {
@@ -162,52 +162,81 @@ const LiveClassroom = () => {
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans relative">
       
-      
+      {/* MASTER CSS FIX: 
+          1. Hide ONLY the control bar inside VideoConference (.lk-video-conference .lk-control-bar)
+          2. Keep our dedicated bottom ControlBar always visible on top! 
+      */}
+      <style>{`
+        .lk-video-conference .lk-control-bar,
+        .lk-video-conference .lk-chat {
+          display: none !important;
+        }
+        .lk-video-conference {
+          height: 100% !important;
+          width: 100% !important;
+        }
+        .lk-video-container, .lk-participant-tile {
+          touch-action: pan-x pan-y pinch-zoom !important;
+        }
+        .lk-participant-tile video {
+          touch-action: pan-x pan-y pinch-zoom !important;
+          pointer-events: auto !important;
+          object-fit: contain !important;
+        }
+        /* Style our custom bottom control bar cleanly */
+        .custom-control-dock .lk-control-bar {
+          display: flex !important;
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+      `}</style>
 
       {/* LEFT/TOP: LIVEKIT VIDEO ENGINE */}
-      <div className="flex-1 flex flex-col relative w-full h-full">
+      <div className="flex-1 flex flex-col relative w-full h-full min-h-0 overflow-hidden">
         
         {/* Top Navbar */}
-        <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-3 md:px-4 z-10 shrink-0">
+        <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-3 md:px-4 z-20 shrink-0">
           <div className="flex items-center gap-2 md:gap-3">
             <span className="flex h-2 w-2 md:h-3 md:w-3 relative">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 md:h-3 md:w-3 bg-red-500"></span>
             </span>
             <h1 className="font-bold text-white tracking-wide text-sm md:text-base truncate max-w-[100px] md:max-w-sm">
-              {roomData.title}
+              {roomData?.title}
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-3">
             
             {/* MOBILE ONLY: Open Chat/Panel Button */}
             <button 
               onClick={() => setShowMobileSidebar(true)} 
-              className="md:hidden flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-md transition"
+              className="md:hidden flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-white shadow-md transition"
             >
               <FiMessageSquare /> Chat
             </button>
 
             {/* RECORDING CONTROLS (TRAINER ONLY) */}
             {isHost && (
-              <div className="flex items-center bg-gray-800 rounded-lg p-1">
+              <div className="flex items-center bg-gray-800 rounded-lg p-1 border border-gray-700">
                 {!isRecording ? (
-                  <button onClick={startRecording} className="flex items-center gap-1.5 text-xs font-bold px-2 py-1.5 rounded hover:bg-gray-700 text-gray-300 transition">
+                  <button onClick={startRecording} className="flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded hover:bg-gray-700 text-gray-200 transition">
                     <FiCircle className="text-red-500 fill-current" /> <span className="hidden md:inline">Record Session</span>
                   </button>
                 ) : (
                   <>
                     {isPaused ? (
-                      <button onClick={resumeRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-500 transition mr-1">
+                      <button onClick={resumeRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-500 transition mr-1">
                         <FiPlay /> <span className="hidden sm:inline">Resume</span>
                       </button>
                     ) : (
-                      <button onClick={pauseRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-500 transition mr-1">
+                      <button onClick={pauseRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-500 transition mr-1">
                         <FiPause /> <span className="hidden sm:inline">Pause</span>
                       </button>
                     )}
-                    <button onClick={stopRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1.5 rounded bg-red-600 text-white hover:bg-red-500 transition">
+                    <button onClick={stopRecording} className="flex items-center gap-1 text-xs font-bold px-2 py-1 rounded bg-red-600 text-white hover:bg-red-500 transition">
                       <FiDownload /> <span className="hidden sm:inline">Save</span>
                     </button>
                     <span className="hidden md:inline text-xs text-red-500 animate-pulse ml-2 font-bold px-2">● REC</span>
@@ -216,8 +245,8 @@ const LiveClassroom = () => {
               </div>
             )}
 
-            {/* STUDENT ONLY: Raise Hand */}
-            {!isHost && !canSpeak && (
+            {/* STUDENT: RAISE HAND BUTTON (Always visible to students, even when unmuted) */}
+            {!isHost && (
               <button 
                 onClick={toggleHandRaise} 
                 className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md transition ${
@@ -227,7 +256,6 @@ const LiveClassroom = () => {
                 }`}
               >
                 <FiBell /> 
-                {/* Text hamesha dikhega, hidden hata diya gaya hai */}
                 <span>{(roomData?.raisedHands || []).some(h => h.userId === user?._id) ? 'Hand Raised' : 'Raise Hand'}</span>
               </button>
             )}
@@ -238,39 +266,15 @@ const LiveClassroom = () => {
           </div>
         </div>
 
-        {/* LiveKit Video Container */}
-        <div className="flex-1 relative bg-black">
-          
-          <style>{`
-            /* 1. Lift the default control bar up so Windows Taskbar doesn't hide it */
-            .lk-control-bar {
-              margin-bottom: 3rem !important; /* Taskbar se 3rem upar push karega */
-              z-index: 50 !important;
-            }
-            
-            /* 2. Hide Duplicate Chat & Leave buttons from LiveKit's default bar */
-            .lk-chat-toggle, .lk-disconnect-button, .lk-button[title="Chat"], .lk-button[title="Leave"] { 
-              display: none !important; 
-            }
-            
-            /* 3. Allow Pinch-to-Zoom for students */
-            .lk-video-container, .lk-participant-tile {
-              touch-action: auto !important;
-            }
-            .lk-participant-tile video {
-              touch-action: auto !important;
-              pointer-events: auto !important;
-              object-fit: contain !important;
-            }
-          `}</style>
-
+        {/* LiveKit Video Container with Dedicated Bottom Control Dock */}
+        <div className="flex-1 relative bg-black flex flex-col min-h-0 overflow-hidden">
           <LiveKitRoom
             video={isHost || canSpeak}
             audio={isHost || canSpeak}
             token={lkToken}
             serverUrl={lkUrl}
             data-lk-theme="default"
-            style={{ height: '100%' }}
+            className="flex-1 flex flex-col min-h-0 w-full h-full overflow-hidden"
             options={{
               adaptiveStream: true,
               dynacast: true,
@@ -280,17 +284,35 @@ const LiveClassroom = () => {
               }
             }}
           >
-            {/* Sirf Default Components, No Manual Control Bar */}
-            <VideoConference />
-            <RoomAudioRenderer />
-            
+            {/* 1. Video Grid Area (Takes available space without covering controls) */}
+            <div className="flex-1 relative min-h-0 w-full overflow-hidden">
+              <VideoConference />
+              <RoomAudioRenderer />
+            </div>
+
+            {/* 2. DEDICATED SOLID BOTTOM CONTROL BAR (Never goes behind video or under taskbar!) */}
+            {(isHost || canSpeak) && (
+              <div className="custom-control-dock h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-center px-4 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+                <ControlBar 
+                  variation="minimal"
+                  controls={{ 
+                    camera: true, 
+                    microphone: true, 
+                    screenShare: isHost, // Sirf Trainer screen share kar sake, ya true rakhna hai toh true kar do
+                    chat: false, 
+                    leave: false,
+                    settings: false
+                  }} 
+                />
+              </div>
+            )}
           </LiveKitRoom>
         </div>
       </div>
 
       {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (Slide-up on Mobile, Fixed on Desktop) */}
       <div className={`
-        fixed bottom-0 left-0 w-full h-[60dvh] z-50 bg-gray-900 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.5)] transform transition-transform duration-300 flex flex-col
+        fixed bottom-0 left-0 w-full h-[65dvh] z-50 bg-gray-900 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.7)] transform transition-transform duration-300 flex flex-col
         md:relative md:w-80 lg:w-96 md:h-full md:rounded-none md:shadow-none md:translate-y-0 md:border-l md:border-gray-800 shrink-0
         ${showMobileSidebar ? 'translate-y-0' : 'translate-y-full'}
       `}>
@@ -307,7 +329,7 @@ const LiveClassroom = () => {
               onClick={() => setActiveTab(t.id)}
               className={`flex-1 flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 rounded-lg text-xs font-bold transition ${activeTab === t.id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'}`}
             >
-              {t.icon} <span className="hidden sm:inline">{t.label}</span>
+              {t.icon} <span>{t.label}</span>
             </button>
           ))}
           
@@ -392,7 +414,7 @@ const LiveClassroom = () => {
               </form>
             )}
 
-            {roomData?.polls?.slice().reverse().map((poll, idx) => {
+            {roomData?.polls?.slice().reverse().map((poll) => {
               const totalVotes = poll.votes.length;
               const myVote = poll.votes.find(v => v.userId === user._id);
               return (
