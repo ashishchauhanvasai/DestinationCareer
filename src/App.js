@@ -14,13 +14,13 @@ import AdminAssignments from "./components/AdminAssignments";
 import AdminCompanies from "./components/AdminCompanies";
 
 import PromoDashboard from "./pages/PromoDashboard";
-// Top imports mein yeh 2 lines add karo (DriveTest ke paas):
+
 import DriveRegister from "./pages/DriveRegister";
 import CampusPortal from "./pages/CampusPortal";
 import DriveTest from "./pages/DriveTest";
 import LiveClassroom from './pages/LiveClassroom';
 
-// Public Pages
+
 import Login from "./pages/Login";
 import MockRatings from "./pages/MockRatings";
 import Register from "./pages/Register";
@@ -29,11 +29,9 @@ import AssignmentBuilder from "./pages/AssignmentBuilder";
 import Tests from "./pages/Tests";
 import TestSolve from "./pages/TestSolve";
 
-// Layout & Navigation Component
 import Layout from "./components/Layout";
 import PrivateRoute from "./PrivateRoute";
 
-// Dashboard & New Architecture Pages
 import Dashboard from "./pages/Dashboard";
 import Courses from "./pages/Courses";
 import CoursePlayer from "./pages/CoursePlayer";
@@ -44,7 +42,6 @@ import Profile from "./pages/Profile";
 import AskTAI from "./pages/AskTAI";
 import MyApplications from "./pages/MyApplications";
 
-// Legacy & Admin Pages
 import About from "./pages/About";
 import AddCourse from "./pages/AddCourse";
 import PostJob from "./pages/PostJob";
@@ -53,8 +50,7 @@ import User from "./pages/User";
 import CompanyQuestionDetail from "./pages/CompanyQuestionDetail";
 import StaffBatchTracker from "./components/StaffBatchTracker";
 
-// SMART ROUTER: Decides which dashboard to show based on Role
-// SMART ROUTER: Decides which dashboard to show based on Role
+
 const HomeRoute = () => {
   const role = localStorage.getItem("role");
 
@@ -67,7 +63,6 @@ const HomeRoute = () => {
   if (role === "promotional") {
     return <Navigate to="/promo-dashboard" replace />;
   }
-  // Restricted Campus Drive Student -> Cannot see main Dashboard!
   if (role === "campus_student") {
     return <Navigate to="/campus-portal" replace />;
   }
@@ -79,11 +74,10 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* SMART ROOT ROUTE */}
         <Route
           path="/"
           element={
@@ -95,13 +89,11 @@ function App() {
           }
         />
 
-        {/* Public Routes */}
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        {/* Special Registration Link for Campus Drive Students */}
         <Route path="/drive-register/:driveCode" element={<DriveRegister />} />
 
-        {/* Restricted Campus Student Portal (No Sidebar / No Main Portal Access) */}
         <Route
           path="/campus-portal"
           element={
@@ -111,7 +103,6 @@ function App() {
           }
         />
 
-        {/* Promotional Team Dashboard */}
         <Route
           path="/promo-dashboard"
           element={
@@ -266,7 +257,6 @@ function App() {
           }
         />
 
-        {/* Primary Shared Routes */}
         <Route
           path="/courses"
           element={
@@ -421,7 +411,6 @@ function App() {
           }
         />
 
-        {/* Admin Only Routes */}
         <Route
           path="/admin"
           element={

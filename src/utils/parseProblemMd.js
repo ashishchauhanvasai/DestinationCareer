@@ -17,12 +17,12 @@ const langId = (s) => LANG_ALIASES[(s || '').trim().toLowerCase()] || null;
 // the only languages students can use
 const ALLOWED_LANGS = ['java', 'python', 'javascript'];
 const FENCE = /^\s*(?:```+|~~~+)\s*(\S*)/;
-// Used to recover when an author forgets to close a code fence.
+
 const KNOWN_H2 =
   /^##\s+(problem statement|statement|description|difficulty|points|marks|time limit|memory limit|test cases?|starter code|constraints|examples?)\s*$/i;
 const LANG_H3 = /^###\s+(java|python|py|javascript|js|c\+\+|cpp|c|c#|csharp)\s*$/i;
 const STARTER_RE = /starter|boilerplate|template/i;
-// ---- function signature helpers ----
+
 const TYPE_ALIASES = {
   int: 'int', integer: 'int', long: 'long', double: 'double', float: 'double',
   boolean: 'boolean', bool: 'boolean', string: 'String',
@@ -30,7 +30,7 @@ const TYPE_ALIASES = {
   'string[]': 'String[]', 'int[][]': 'int[][]',
 };
 const normType = (t) => TYPE_ALIASES[(t || '').replace(/[`\s]/g, '').toLowerCase()] || null;
-/** Reads:   Name: twoSum / Returns: int[] / Parameters: / - nums: int[] / - target: int */
+
 function parseSignature(lines, warnings) {
   const out = { mode: 'function', functionName: '', returnType: '', params: [] };
   let inParams = false;
@@ -68,7 +68,7 @@ const trimBlock = (s) => s.replace(/^\n+|\s+$/g, '');
 const firstLine = (lines) => (lines.find((l) => l.trim()) || '').trim();
 const cleanText = (lines) => lines.join('\n').trim();
 
-/** Split the file into: title (# ...), sections (## ...), and sub-sections (### ...). */
+
 function splitSections(md) {
   const lines = md.replace(/\r\n?/g, '\n').split('\n');
   let title = '';
@@ -80,8 +80,7 @@ function splitSections(md) {
   for (const line of lines) {
     const isFence = FENCE.test(line);
 
-    // An unclosed code fence would swallow the rest of the file; close it when
-    // we clearly reach the next known section / language heading.
+    
     if (
       inFence &&
       !isFence &&
@@ -119,7 +118,7 @@ function splitSections(md) {
   return { title, sections };
 }
 
-/** All fenced code blocks in a set of lines. */
+
 function fencedBlocks(lines) {
   const blocks = [];
   let open = null;
@@ -136,17 +135,16 @@ function fencedBlocks(lines) {
     }
     if (open) open.code.push(l);
   }
-  if (open) blocks.push(open); // unclosed fence: keep what we have
+  if (open) blocks.push(open); 
   return blocks.map((b) => ({ lang: b.lang, code: trimBlock(b.code.join('\n')) }));
 }
 
-/** First fenced block if there is one, otherwise the plain text. */
+
 function codeFrom(lines) {
   const blocks = fencedBlocks(lines);
   return blocks.length ? blocks[0].code : trimBlock(lines.join('\n'));
 }
 
-/** Reads "Input:" / "Output:" (plain or **bold**) from one "### Test Case N" block. */
 function parseTestCase(sub, index) {
   const buf = { input: [], output: [] };
   let mode = null;
@@ -167,7 +165,7 @@ function parseTestCase(sub, index) {
   const expectedOutput = buf.output.join('\n').trim();
   if (!input || !expectedOutput) return null;
 
-  // "### Test Case 3 (hidden)" -> hidden, "### Sample 1" -> visible, default: only the first is visible
+
   const isSample = /hidden/i.test(sub.name) ? false : /sample|example/i.test(sub.name) ? true : index === 0;
   return { input, expectedOutput, isSample };
 }
@@ -192,7 +190,7 @@ export function parseProblemMd(md, fallbackTitle = 'Untitled Question') {
   if (!title) warnings.push('No "# Title" heading found - using the file name.');
 
   let statement = '';
-  const extras = []; // unknown sections (Constraints, Examples...) are appended to the statement
+  const extras = []; 
 
   for (const s of sections) {
     const name = s.name.toLowerCase().replace(/[:*_`]/g, '').trim();
@@ -216,7 +214,6 @@ export function parseProblemMd(md, fallbackTitle = 'Untitled Question') {
     } else if (/^(function(\s*signature)?|method(\s*signature)?)$/.test(name)) {
       Object.assign(result, parseSignature(s.raw, warnings));
     } else if (/^memory\s*limit/.test(name)) {
-      // not editable in the admin form yet - ignored on purpose
     } else if (/^(test\s*cases?|tests)$/.test(name)) {
       let skipped = 0;
       s.subs.forEach((sb, i) => {
@@ -266,8 +263,6 @@ export function parseProblemMd(md, fallbackTitle = 'Untitled Question') {
 
   return { ...result, warnings };
 }
-
-// ---------- downloadable template for admins ----------
 
 export const SAMPLE_MD = [
   '# Two Sum',

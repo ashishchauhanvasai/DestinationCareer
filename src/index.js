@@ -8,7 +8,6 @@ import reportWebVitals from './reportWebVitals';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
-// Auto-logout when the token is expired or invalid
 axios.interceptors.response.use(
   (res) => res,
   (err) => {

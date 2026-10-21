@@ -1,4 +1,4 @@
-// src/pages/User.js
+
 import React from 'react';
 
 const User = () => {

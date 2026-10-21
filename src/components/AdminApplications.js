@@ -1,4 +1,3 @@
-// Save as: src/components/AdminApplications.js   (REPLACES the old file with the same name)
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { FiDownload, FiArrowLeft, FiFileText, FiChevronDown, FiChevronUp, FiClock } from 'react-icons/fi';
@@ -38,7 +37,6 @@ const fetchFileBlob = async (fileId) => {
 
 const safeName = (s) => String(s || 'candidate').replace(/[^a-z0-9]+/gi, '-');
 
-// <img> tags cannot send the login token, so the photo is fetched with axios and shown from a blob.
 const AuthImage = ({ fileId, className }) => {
   const [src, setSrc] = useState('');
   useEffect(() => {
@@ -76,7 +74,6 @@ const CountChips = ({ counts, total }) => (
   </div>
 );
 
-// Big totals across ALL jobs (the admin's running record)
 const OverallTotals = ({ rows }) => {
   const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
   let total = 0;
@@ -104,7 +101,6 @@ const OverallTotals = ({ rows }) => {
   );
 };
 
-// Log of every status change (newest first)
 const HistoryTimeline = ({ history, createdAt }) => {
   const items = (history && history.length
     ? history
@@ -297,7 +293,6 @@ const AdminApplications = () => {
 
   const selectedRow = selectedJobId ? summary.byJob.find((r) => r.job._id === selectedJobId) : null;
 
-  // ----- one job: list of applicants -----
   if (selectedRow) {
     return (
       <div className="space-y-4">
@@ -331,7 +326,6 @@ const AdminApplications = () => {
     );
   }
 
-  // ----- overview -----
   return (
     <div className="space-y-4">
       <div>

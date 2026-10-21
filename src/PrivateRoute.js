@@ -8,17 +8,14 @@ const PrivateRoute = ({ children, role }) => {
 
   if (!token) return <Navigate to="/login" replace />;
 
-  // STRICT LOCK: Campus Drive students can ONLY access /campus-portal
   if (userRole === 'campus_student' && location.pathname !== '/campus-portal') {
     return <Navigate to="/campus-portal" replace />;
   }
 
-  // Regular students cannot open /campus-portal
   if (location.pathname === '/campus-portal' && userRole !== 'campus_student') {
     return <Navigate to="/" replace />;
   }
 
-  // Role-specific guards
   if (role === 'admin' && userRole !== 'admin' && userRole !== 'superadmin') {
     return <Navigate to="/" replace />;
   }

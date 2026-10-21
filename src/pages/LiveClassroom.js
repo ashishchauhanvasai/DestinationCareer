@@ -998,8 +998,6 @@ const LiveClassroom = () => {
 
           </div>
         )}
-
-
       </div>
     </div>
   );

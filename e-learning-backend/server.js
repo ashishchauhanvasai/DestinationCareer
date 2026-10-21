@@ -82,35 +82,60 @@ if (typeof dns.setDefaultResultOrder === 'function') {
   dns.setDefaultResultOrder('ipv4first');
 }
 
-const nodemailer = require('nodemailer');
 const EMAIL_USER = process.env.EMAIL_USER;
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // Port 587 uses STARTTLS
-  requireTLS: true,
-  auth: {
-    user: EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false // <--- ADD THIS FIX
-  },
-  family: 4,
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000
-});
+// Custom HTTPS Transporter using Google Apps Script Webhook (Bypasses Render SMTP block)
+const transporter = {
+  sendMail: async (mailOptions, callback) => {
+    try {
+      if (!process.env.GMAIL_WEBHOOK_URL) {
+        throw new Error("GMAIL_WEBHOOK_URL is missing in Environment Variables");
+      }
 
-// Optional: Test connection on startup (will show in Render logs)
+      const response = await fetch(process.env.GMAIL_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        redirect: 'follow', // Important: Google Apps Script redirects on POST
+        body: JSON.stringify({
+          to: Array.isArray(mailOptions.to) ? mailOptions.to.join(',') : mailOptions.to,
+          subject: mailOptions.subject,
+          html: mailOptions.html || mailOptions.text
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || "Gmail Webhook failed to send email");
+      }
+
+      if (typeof callback === 'function') callback(null, result);
+      return result;
+    } catch (error) {
+      console.error("Email Webhook Error:", error.message);
+      if (typeof callback === 'function') callback(error, null);
+      else throw error;
+    }
+  },
+
+  // Supports existing transporter.verify() calls without crashing
+  verify: (callback) => {
+    if (process.env.GMAIL_WEBHOOK_URL) {
+      if (typeof callback === 'function') callback(null, true);
+    } else {
+      const err = new Error("GMAIL_WEBHOOK_URL is not configured in Render Environment Variables!");
+      if (typeof callback === 'function') callback(err, false);
+    }
+  }
+};
+
+// Test connection on startup (will show in Render logs)
 transporter.verify(function (error, success) {
   if (error) {
-    console.error("Nodemailer SMTP Connection Error:", error);
+    console.error("Email Webhook Setup Error:", error.message);
   } else {
-    console.log("Nodemailer is ready to send emails via Gmail!");
+    console.log("✅ Gmail HTTPS Webhook is ready to send emails!");
   }
-});                  
+});         
 
 
 // 0. DATABASE SCHEMAS
