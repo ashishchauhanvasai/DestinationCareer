@@ -5,17 +5,66 @@ import {
   LiveKitRoom,
   VideoConference,
   RoomAudioRenderer,
-  ControlBar
+  ControlBar,
+  useParticipants,
+  useLocalParticipant
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import {
   FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiBell,
-  FiVideoOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload, FiX
+  FiVideoOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload, FiX, FiMonitor
 } from 'react-icons/fi';
 
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+
+
+// Reports who is CURRENTLY connected to the LiveKit room (real-time presence)
+const PresenceReporter = ({ onChange }) => {
+  const participants = useParticipants();
+  const key = participants.map(p => p.identity).sort().join(',');
+
+  useEffect(() => {
+    onChange(key ? key.split(',') : []);
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+};
+
+// Dedicated screen share button for Trainer / allowed students
+const ScreenShareButton = () => {
+  const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
+
+  const toggle = async () => {
+    const supported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
+    if (!supported) {
+      alert('Screen sharing is not supported on this device/browser. Please use Chrome, Edge or Firefox on a laptop/desktop.');
+      return;
+    }
+    try {
+      await localParticipant.setScreenShareEnabled(!isScreenShareEnabled, { audio: true });
+    } catch (err) {
+      if (err?.name !== 'NotAllowedError') {
+        alert('Could not start screen share. ' + (err?.message || ''));
+      }
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition ${
+        isScreenShareEnabled
+          ? 'bg-blue-600 border-blue-500 text-white'
+          : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
+      }`}
+    >
+      <FiMonitor size={16} />
+      <span className="hidden sm:inline">{isScreenShareEnabled ? 'Stop Sharing' : 'Share Screen'}</span>
+    </button>
+  );
+};
 
 
 const LiveClassroom = () => {
@@ -38,6 +87,9 @@ const LiveClassroom = () => {
   const [chatInput, setChatInput] = useState('');
   const [pollForm, setPollForm] = useState({ question: '', opt1: '', opt2: '', opt3: '' });
   
+  // Live presence (user IDs currently connected to the LiveKit room)
+  const [activeIds, setActiveIds] = useState([]);
+
   // Mobile Panel State
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
@@ -483,23 +535,25 @@ const LiveClassroom = () => {
             <div className="flex-1 relative min-h-0 w-full overflow-hidden">
               <VideoConference />
               <RoomAudioRenderer />
+              <PresenceReporter onChange={setActiveIds} />
             </div>
 
 
             {/* 2. DEDICATED SOLID BOTTOM CONTROL BAR */}
             {(isHost || canSpeak) && (
-              <div className="custom-control-dock h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-center px-4 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+              <div className="custom-control-dock h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-2 px-4 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
                 <ControlBar 
                   variation="minimal"
                   controls={{ 
                     camera: true, 
                     microphone: true, 
-                    screenShare: true, // Allowed students can also share screen
+                    screenShare: false, // handled by our own ScreenShareButton below
                     chat: false, 
                     leave: false,
                     settings: false
                   }} 
                 />
+                <ScreenShareButton />
               </div>
             )}
           </LiveKitRoom>
@@ -778,24 +832,75 @@ const LiveClassroom = () => {
             )}
 
 
-            <div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Audience</p>
+            {(() => {
+              const students = roomData?.attendance || [];
+              const activeStudents = students.filter(a => activeIds.includes(String(a.student)));
+              const inactiveStudents = students.filter(a => !activeIds.includes(String(a.student)));
 
-              <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-xl border border-gray-700">
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-900 rounded-full flex items-center justify-center text-blue-500">
-                  <FiUsers size={16} />
-                </div>
+              return (
+                <>
+                  {/* Counters */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
+                      <p className="text-lg font-bold text-white leading-none">{students.length}</p>
+                      <p className="text-[9px] text-gray-400 uppercase mt-1">Total Joined</p>
+                    </div>
+                    <div className="p-3 bg-gray-800 rounded-xl border border-green-900/60 text-center">
+                      <p className="text-lg font-bold text-green-400 leading-none">{activeStudents.length}</p>
+                      <p className="text-[9px] text-gray-400 uppercase mt-1">Active</p>
+                    </div>
+                    <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
+                      <p className="text-lg font-bold text-gray-400 leading-none">{inactiveStudents.length}</p>
+                      <p className="text-[9px] text-gray-400 uppercase mt-1">Left</p>
+                    </div>
+                  </div>
 
-                <div>
-                  <p className="text-lg md:text-xl font-bold text-white leading-none">
-                    {roomData?.attendance?.length || 1}
-                  </p>
+                  {/* Names are visible to Trainer/Admin only */}
+                  {isHost && (
+                    <>
+                      <div>
+                        <p className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-2">
+                          Active Students ({activeStudents.length})
+                        </p>
+                        <div className="space-y-2">
+                          {activeStudents.length === 0 && (
+                            <p className="text-xs text-gray-500">No students are in the class right now.</p>
+                          )}
+                          {activeStudents.map(a => (
+                            <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800 p-2 rounded">
+                              <span className="h-2 w-2 rounded-full bg-green-500 shrink-0"></span>
+                              <p className="text-xs font-semibold text-gray-200 truncate">{a.name || 'Student'}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
 
-                  <p className="text-[9px] md:text-[10px] text-gray-400 uppercase mt-1">Total Joined</p>
-                </div>
-              </div>
-            </div>
-
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                          Not Active ({inactiveStudents.length})
+                        </p>
+                        <div className="space-y-2">
+                          {inactiveStudents.length === 0 && (
+                            <p className="text-xs text-gray-500">Nobody has left.</p>
+                          )}
+                          {inactiveStudents.map(a => (
+                            <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800/60 p-2 rounded opacity-70">
+                              <span className="h-2 w-2 rounded-full bg-gray-500 shrink-0"></span>
+                              <p className="text-xs font-semibold text-gray-300 truncate">{a.name || 'Student'}</p>
+                              {a.firstJoinedAt && (
+                                <span className="ml-auto text-[9px] text-gray-500 shrink-0">
+                                  Joined {new Date(a.firstJoinedAt).toLocaleTimeString([], { timeStyle: 'short' })}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
 
           </div>
         )}
