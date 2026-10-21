@@ -216,9 +216,19 @@ const LiveClassroom = () => {
               </div>
             )}
 
+            {/* STUDENT ONLY: Raise Hand */}
             {!isHost && !canSpeak && (
-              <button onClick={toggleHandRaise} className={`flex items-center gap-1 md:gap-2 text-xs md:text-sm font-bold px-2 md:px-4 py-1.5 rounded-lg transition ${roomData.raisedHands.some(h => h.userId === user._id) ? 'bg-amber-500 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}>
-                <FiBell /> <span className="hidden md:inline">{roomData.raisedHands.some(h => h.userId === user._id) ? 'Hand Raised' : 'Raise Hand'}</span>
+              <button 
+                onClick={toggleHandRaise} 
+                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md transition ${
+                  (roomData?.raisedHands || []).some(h => h.userId === user?._id) 
+                    ? 'bg-amber-500 text-white animate-pulse' 
+                    : 'bg-blue-600 hover:bg-blue-500 text-white'
+                }`}
+              >
+                <FiBell /> 
+                {/* Text hamesha dikhega, hidden hata diya gaya hai */}
+                <span>{(roomData?.raisedHands || []).some(h => h.userId === user?._id) ? 'Hand Raised' : 'Raise Hand'}</span>
               </button>
             )}
 
@@ -228,20 +238,24 @@ const LiveClassroom = () => {
           </div>
         </div>
 
-            {/* LiveKit Video Container */}
-        {/* MOBILE FIX: Added pb-20 (padding-bottom) so video is fully visible above taskbar */}
-        <div className="flex-1 relative bg-black pb-20 md:pb-0">
+        {/* LiveKit Video Container */}
+        <div className="flex-1 relative bg-black">
           
           <style>{`
-            /* 1. Duplicate Chat aur Leave button hide karne ke liye */
+            /* 1. Lift the default control bar up so Windows Taskbar doesn't hide it */
+            .lk-control-bar {
+              margin-bottom: 3rem !important; /* Taskbar se 3rem upar push karega */
+              z-index: 50 !important;
+            }
+            
+            /* 2. Hide Duplicate Chat & Leave buttons from LiveKit's default bar */
             .lk-chat-toggle, .lk-disconnect-button, .lk-button[title="Chat"], .lk-button[title="Leave"] { 
               display: none !important; 
             }
             
-            /* 2. Students ke liye Pinch-to-Zoom Allow karna */
+            /* 3. Allow Pinch-to-Zoom for students */
             .lk-video-container, .lk-participant-tile {
               touch-action: auto !important;
-              overflow: visible !important;
             }
             .lk-participant-tile video {
               touch-action: auto !important;
@@ -266,21 +280,12 @@ const LiveClassroom = () => {
               }
             }}
           >
+            {/* Sirf Default Components, No Manual Control Bar */}
             <VideoConference />
             <RoomAudioRenderer />
             
-            {/* YEH WALI LINE CHANGE KI HAI */}
-            {/* Mobile pe 'bottom-24' rahega (taskbar se upar), aur laptop pe 'md:bottom-4' */}
-            {(isHost || canSpeak) && (
-              <div className="absolute bottom-24 md:bottom-4 left-1/2 -translate-x-1/2 bg-gray-900/90 rounded-xl border border-gray-700 shadow-2xl p-1 z-50">
-                 <ControlBar controls={{ camera: true, microphone: true, screenShare: true, chat: false, leave: false }} />
-              </div>
-            )}
-            
           </LiveKitRoom>
         </div>
-
-
       </div>
 
       {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (Slide-up on Mobile, Fixed on Desktop) */}
