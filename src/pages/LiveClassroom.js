@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   LiveKitRoom,
   VideoConference,
+  ControlBar, 
   RoomAudioRenderer,
 } from '@livekit/components-react';
 import '@livekit/components-styles';
@@ -161,10 +162,7 @@ const LiveClassroom = () => {
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans relative">
       
-      {/* CSS injection to completely hide LiveKit's default duplicate UI bars */}
-      <style>{`
-        .lk-control-bar, .lk-chat { display: none !important; }
-      `}</style>
+      
 
       {/* LEFT/TOP: LIVEKIT VIDEO ENGINE */}
       <div className="flex-1 flex flex-col relative w-full h-full">
@@ -230,31 +228,37 @@ const LiveClassroom = () => {
           </div>
         </div>
 
-        {/* LiveKit Video Container */}
+{/* LiveKit Video Container */}
         <div className="flex-1 relative bg-black">
-          
           <LiveKitRoom
-          video={isHost || canSpeak}
-          audio={isHost || canSpeak}
-          token={lkToken}
-          serverUrl={lkUrl}
-          data-lk-theme="default"
-          style={{ height: '100%' }}
-          // YEH NAYE PERFORMANCE OPTIONS ADD KIYE HAIN 👇
-          options={{
-            adaptiveStream: true, // Student ki network speed ke hisaab se quality adjust karega
-            dynacast: true,       // Faltu ka data bhejna band karega
-            publishDefaults: {
-              videoSimulcast: true, // High, Med, Low quality ki streams banayega
-              screenShareSimulcast: true,
-            }
-          }}
-        >
-          <VideoConference />
-          <RoomAudioRenderer />
-        </LiveKitRoom>
-           
+            video={isHost || canSpeak}
+            audio={isHost || canSpeak}
+            token={lkToken}
+            serverUrl={lkUrl}
+            data-lk-theme="default"
+            style={{ height: '100%' }}
+            options={{
+              adaptiveStream: true,
+              dynacast: true,
+              publishDefaults: {
+                videoSimulcast: true,
+                screenShareSimulcast: true,
+              }
+            }}
+          >
+            <VideoConference />
+            <RoomAudioRenderer />
+            
+            {/* YEH NAYA CODE ADD KARNA HAI: Isse sirf zaroori controls dikhenge */}
+            {(isHost || canSpeak) && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-gray-900/90 rounded-xl border border-gray-700 shadow-2xl p-1 z-50">
+                 <ControlBar controls={{ camera: true, microphone: true, screenShare: true, chat: false, leave: false }} />
+              </div>
+            )}
+            
+          </LiveKitRoom>
         </div>
+        
       </div>
 
       {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (Slide-up on Mobile, Fixed on Desktop) */}
