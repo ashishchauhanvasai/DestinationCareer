@@ -4000,6 +4000,7 @@ app.delete('/api/online-classes/:id', verifyToken, async (req, res) => {
   }
 });
 
+
 // 5. Join Class & Generate LiveKit Token (Logs Student Attendance Automatically)
 app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) => {
   try {
@@ -4026,7 +4027,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       serverTime: now.toISOString()
     };
 
-    // Students: block if class is closed or hasn't started yet
+    // STRICT TIME GATE: Students cannot enter before the scheduled start time
     if (!isHost) {
       if (isOver) {
         if (cls.status !== 'ended') {
@@ -4034,14 +4035,13 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
         }
         return res.status(410).json({ code: 'ENDED', message: 'This session is closed.', ...gateInfo });
       }
-      if (cls.status !== 'live' && now < start) {
+      if (now < start) {
         return res.status(403).json({ code: 'NOT_STARTED', message: 'Class will start soon.', ...gateInfo });
       }
     }
 
     // Log Attendance if Student
     if (!isHost) {
-      // Fresh start on (re)join: drop any stale raised hand from a previous visit
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== String(user._id));
 
       const existingAtt = cls.attendance.find(a => String(a.student) === String(user._id));
@@ -4057,15 +4057,14 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
         });
       }
       await cls.save();
-    } else if (cls.status === 'scheduled' && !isOver) {
-      // Auto mark live when Trainer/Admin joins
+    } else if (cls.status === 'scheduled' && !isOver && now >= start) {
       cls.status = 'live';
       await cls.save();
     }
 
     const canSpeak = (cls.allowedSpeakers || []).includes(String(user._id));
 
-    // Generate LiveKit Token if configured
+    // Generate LiveKit Token with explicit publication source grants
     let lkToken = null;
 
     if (process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
@@ -4085,13 +4084,11 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       at.addGrant({
         roomJoin: true,
         room: cls.batchCode,
-
-        // Allows Mic, Camera, AND Screen Share when true
         canPublish: isHost || canSpeak,
-
-        // All students can watch/listen
+        canPublishSources: (isHost || canSpeak) 
+          ? ['camera', 'microphone', 'screen_share', 'screen_share_audio'] 
+          : [],
         canSubscribe: true,
-
         canPublishData: true
       });
 
@@ -4141,7 +4138,6 @@ app.get('/api/online-classes/:batchCode/state', verifyToken, async (req, res) =>
 });
 
 
-// 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic & Cam
 app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
   try {
     const cls = await OnlineClass.findOne({
@@ -4149,7 +4145,6 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
     });
 
     if (!cls) return res.status(404).json({ message: 'Class not found' });
-
 
     const isHost =
       ['admin', 'superadmin'].includes(req.user.role) ||
@@ -4161,7 +4156,6 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
       });
     }
 
-
     const {
       action,
       studentId,
@@ -4169,7 +4163,6 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
       pinnedAnnouncement,
       status
     } = req.body;
-
 
     if (action === 'toggle-chat') {
       cls.chatEnabled = chatEnabled;
@@ -4196,41 +4189,41 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
 
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== studentId);
 
-      // Dynamically update LiveKit permission in real-time
+      // Dynamically update LiveKit permission in real-time (Mic + Camera + Screen Share)
       const lk = getLiveKitClient();
-
       if (lk) {
         lk.updateParticipant(cls.batchCode, studentId, undefined, {
           canPublish: true,
           canSubscribe: true,
-          canPublishData: true
-        }).catch(() => {});
+          canPublishData: true,
+          canPublishSources: ['camera', 'microphone', 'screen_share', 'screen_share_audio']
+        }).catch((err) => console.error('LiveKit permission update error:', err.message));
       }
     } else if (action === 'revoke-speaker' && studentId) {
       cls.allowedSpeakers = cls.allowedSpeakers.filter(id => id !== studentId);
 
       const lk = getLiveKitClient();
-
       if (lk) {
         lk.updateParticipant(cls.batchCode, studentId, undefined, {
           canPublish: false,
           canSubscribe: true,
-          canPublishData: true
-        }).catch(() => {});
+          canPublishData: true,
+          canPublishSources: []
+        }).catch((err) => console.error('LiveKit permission revoke error:', err.message));
       }
     } else if (action === 'revoke-all-speakers') {
       const prevSpeakers = [...cls.allowedSpeakers];
       cls.allowedSpeakers = [];
 
       const lk = getLiveKitClient();
-
       if (lk) {
         prevSpeakers.forEach(sId => {
           lk.updateParticipant(cls.batchCode, sId, undefined, {
             canPublish: false,
             canSubscribe: true,
-            canPublishData: true
-          }).catch(() => {});
+            canPublishData: true,
+            canPublishSources: []
+          }).catch((err) => console.error('LiveKit permission revoke error:', err.message));
         });
       }
     }

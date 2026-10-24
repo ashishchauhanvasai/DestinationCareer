@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,10 +9,16 @@ import {
 const API = `${process.env.REACT_APP_API_URL}/api/online-classes`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
+// Helper to format a Date object into local YYYY-MM-DDTHH:mm for <input type="datetime-local">
+const toLocalInputString = (dateObj) => {
+  const d = new Date(dateObj);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+};
+
 const OnlineClassesManager = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem('role');
- const isAdmin = ['admin', 'superadmin', 'trainer'].includes(role?.toLowerCase());
+  const isAdmin = ['admin', 'superadmin', 'trainer'].includes(role?.toLowerCase());
 
   const [classes, setClasses] = useState([]);
   const [trainers, setTrainers] = useState([]);
@@ -57,7 +63,8 @@ const OnlineClassesManager = () => {
       batchCode: `LIVE-${Math.floor(1000 + Math.random() * 9000)}`,
       subject: '',
       trainerId: '',
-      scheduledTime: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
+      // FIXED: Uses local timezone (IST) instead of UTC so classes aren't scheduled 5.5 hours in the past!
+      scheduledTime: toLocalInputString(Date.now() + 3600000),
       durationMinutes: 60
     });
     setShowModal(true);
@@ -65,9 +72,7 @@ const OnlineClassesManager = () => {
 
   const openEditModal = (cls) => {
     setEditingClass(cls);
-    const localIso = cls.scheduledTime
-      ? new Date(new Date(cls.scheduledTime).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-      : '';
+    const localIso = cls.scheduledTime ? toLocalInputString(cls.scheduledTime) : '';
     setForm({
       title: cls.title,
       batchCode: cls.batchCode,
@@ -82,19 +87,19 @@ const OnlineClassesManager = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...form,
+        scheduledTime: new Date(form.scheduledTime).toISOString()
+      };
+
       if (editingClass) {
-        await axios.put(`${API}/${editingClass._id}`, {
-          ...form,
-          scheduledTime: new Date(form.scheduledTime).toISOString()
-        }, cfg());
+        const res = await axios.put(`${API}/${editingClass._id}`, payload, cfg());
+        setClasses(classes.map(c => c._id === editingClass._id ? res.data : c));
       } else {
-        await axios.post(API, {
-          ...form,
-          scheduledTime: new Date(form.scheduledTime).toISOString()
-        }, cfg());
+        const res = await axios.post(API, payload, cfg());
+        setClasses([res.data, ...classes]);
       }
       setShowModal(false);
-      fetchClasses();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to save online class');
     }
@@ -104,7 +109,7 @@ const OnlineClassesManager = () => {
     if (!window.confirm('Delete this online batch/class?')) return;
     try {
       await axios.delete(`${API}/${id}`, cfg());
-      fetchClasses();
+      setClasses(classes.filter(c => c._id !== id)); // Optimistic instant removal
     } catch (err) {
       alert('Failed to delete class');
     }
@@ -243,7 +248,7 @@ const OnlineClassesManager = () => {
         </div>
       )}
 
-      {/* CREATE / EDIT MODAL (SUPER ADMIN) */}
+      {/* CREATE / EDIT MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <form onSubmit={handleSave} className="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl">

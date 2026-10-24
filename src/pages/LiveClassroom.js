@@ -5,27 +5,22 @@ import {
   LiveKitRoom,
   VideoConference,
   RoomAudioRenderer,
-  ControlBar,
   useParticipants,
   useLocalParticipant
 } from '@livekit/components-react';
 import '@livekit/components-styles';
 import {
   FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiBell,
-  FiVideoOff, FiLock, FiUnlock, FiCircle, FiPause, FiPlay, FiDownload, FiX, FiMonitor
+  FiVideo, FiVideoOff, FiMic, FiMicOff, FiLock, FiUnlock,
+  FiCircle, FiPause, FiPlay, FiDownload, FiX, FiMonitor
 } from 'react-icons/fi';
-
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-
-// Recording quality - tune these two numbers to trade size vs sharpness.
-// ~1.5 hr class (max size):  500 kbps ~ 340 MB | 800 kbps ~ 540 MB | 1500 kbps ~ 1 GB
 const REC_VIDEO_BPS = 800000;
 const REC_FPS = 15;
 
-// Stable options object (a new object every render makes LiveKit re-evaluate its config)
 const LK_OPTIONS = {
   adaptiveStream: true,
   dynacast: true,
@@ -55,45 +50,121 @@ const PresenceReporter = ({ onChange }) => {
   return null;
 };
 
-// Screen share button for Trainer / allowed students.
-// Only shown on browsers that support screen capture (desktop/laptop).
-// Mobile browsers do not provide screen capture, so nothing is shown there.
-const ScreenShareButton = () => {
-  const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
-  const supported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getDisplayMedia;
+// ============================================================================
+// RELIABLE MEDIA CONTROLS (Mic + Camera + Desktop/Laptop Screen Share)
+// Works identically for Trainer AND Students granted permission!
+// ============================================================================
+const PublisherControls = () => {
+  const {
+    localParticipant,
+    isMicrophoneEnabled,
+    isCameraEnabled,
+    isScreenShareEnabled
+  } = useLocalParticipant();
 
-  if (!supported) return null;
+  const [busyMic, setBusyMic] = useState(false);
+  const [busyCam, setBusyCam] = useState(false);
+  const [busyScreen, setBusyScreen] = useState(false);
+
+  // Desktop/Laptop browsers support getDisplayMedia; mobile browsers hide screen share automatically
+  const isDesktopScreenShareSupported =
+    typeof navigator !== 'undefined' &&
+    !!navigator.mediaDevices?.getDisplayMedia &&
+    !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  const toggleMic = async () => {
+    if (!localParticipant || busyMic) return;
+    setBusyMic(true);
+    try {
+      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    } catch (err) {
+      alert('Microphone error: Please allow microphone permission in your browser. ' + (err?.message || ''));
+    } finally {
+      setBusyMic(false);
+    }
+  };
+
+  const toggleCam = async () => {
+    if (!localParticipant || busyCam) return;
+    setBusyCam(true);
+    try {
+      await localParticipant.setCameraEnabled(!isCameraEnabled);
+    } catch (err) {
+      alert('Camera error: Please allow camera permission in your browser. ' + (err?.message || ''));
+    } finally {
+      setBusyCam(false);
+    }
+  };
 
   const toggleScreen = async () => {
+    if (!localParticipant || busyScreen) return;
+    setBusyScreen(true);
     try {
       await localParticipant.setScreenShareEnabled(!isScreenShareEnabled, { audio: true });
     } catch (err) {
       if (err?.name !== 'NotAllowedError') {
-        alert('Could not start screen share. ' + (err?.message || ''));
+        alert('Could not start screen share: ' + (err?.message || ''));
       }
+    } finally {
+      setBusyScreen(false);
     }
   };
 
   return (
-    <button
-      onClick={toggleScreen}
-      className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border transition ${
-        isScreenShareEnabled
-          ? 'bg-blue-600 border-blue-500 text-white'
-          : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
-      }`}
-    >
-      <FiMonitor size={16} />
-      <span className="hidden sm:inline">{isScreenShareEnabled ? 'Stop Sharing' : 'Share Screen'}</span>
-    </button>
+    <div className="h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-3 px-4 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+      {/* MICROPHONE BUTTON */}
+      <button
+        type="button"
+        onClick={toggleMic}
+        disabled={busyMic}
+        className={`flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl border transition ${
+          isMicrophoneEnabled
+            ? 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'
+            : 'bg-red-600/20 border-red-500/50 text-red-400 hover:bg-red-600/30'
+        }`}
+      >
+        {isMicrophoneEnabled ? <FiMic size={16} className="text-green-400" /> : <FiMicOff size={16} />}
+        <span>{isMicrophoneEnabled ? 'Mute Mic' : 'Unmute Mic'}</span>
+      </button>
+
+      {/* CAMERA BUTTON */}
+      <button
+        type="button"
+        onClick={toggleCam}
+        disabled={busyCam}
+        className={`flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl border transition ${
+          isCameraEnabled
+            ? 'bg-gray-800 border-gray-700 text-white hover:bg-gray-700'
+            : 'bg-red-600/20 border-red-500/50 text-red-400 hover:bg-red-600/30'
+        }`}
+      >
+        {isCameraEnabled ? <FiVideo size={16} className="text-green-400" /> : <FiVideoOff size={16} />}
+        <span>{isCameraEnabled ? 'Stop Cam' : 'Start Cam'}</span>
+      </button>
+
+      {/* SCREEN SHARE BUTTON (Laptop/Desktop for both Trainer & Allowed Student) */}
+      {isDesktopScreenShareSupported && (
+        <button
+          type="button"
+          onClick={toggleScreen}
+          disabled={busyScreen}
+          className={`flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl border transition ${
+            isScreenShareEnabled
+              ? 'bg-blue-600 border-blue-500 text-white'
+              : 'bg-gray-800 border-gray-700 text-gray-200 hover:bg-gray-700'
+          }`}
+        >
+          <FiMonitor size={16} />
+          <span className="hidden sm:inline">{isScreenShareEnabled ? 'Stop Sharing' : 'Share Screen'}</span>
+        </button>
+      )}
+    </div>
   );
 };
-
 
 const LiveClassroom = () => {
   const { batchCode } = useParams();
   const navigate = useNavigate();
-
 
   // Core State
   const [lkToken, setLkToken] = useState('');
@@ -104,35 +175,31 @@ const LiveClassroom = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-
   // UI State
-  const [activeTab, setActiveTab] = useState('chat'); 
+  const [activeTab, setActiveTab] = useState('chat');
   const [chatInput, setChatInput] = useState('');
   const [pollForm, setPollForm] = useState({ question: '', opt1: '', opt2: '', opt3: '' });
-  
+
   // Live presence (user IDs currently connected to the LiveKit room)
   const [activeIds, setActiveIds] = useState([]);
 
   // Mobile Panel State
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
-
   // Recorder State
   const [recorder, setRecorder] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const recordedChunks = useRef([]);
-  const recStreamsRef = useRef([]); // every stream opened for recording (stopped on finish)
+  const recStreamsRef = useRef([]);
   const recAudioCtxRef = useRef(null);
 
-
   // Gate state (before start / after end)
-  const [gate, setGate] = useState(null); // { type: 'NOT_STARTED' | 'ENDED', ...info }
+  const [gate, setGate] = useState(null);
   const [tick, setTick] = useState(Date.now());
-  const serverOffset = useRef(0); // serverTime - clientTime, avoids wrong device clocks
+  const serverOffset = useRef(0);
   const retryLock = useRef(false);
-  const joinedStatus = useRef(''); // class status when we joined
-
+  const joinedStatus = useRef('');
 
   // 1. Initial Join & Token Generation
   const joinClass = useCallback(async () => {
@@ -155,7 +222,7 @@ const LiveClassroom = () => {
         setLoading(false);
         return;
       }
-      alert(data?.message || "Failed to join class. Ensure you are logged in.");
+      alert(data?.message || 'Failed to join class. Ensure you are logged in.');
       navigate('/login');
     }
   }, [batchCode, navigate]);
@@ -164,14 +231,12 @@ const LiveClassroom = () => {
     joinClass();
   }, [joinClass]);
 
-
   // Countdown ticker (only while waiting for class to start)
   useEffect(() => {
     if (gate?.type !== 'NOT_STARTED') return;
     const t = setInterval(() => setTick(Date.now()), 1000);
     return () => clearInterval(t);
   }, [gate]);
-
 
   // When countdown hits zero, try joining automatically
   useEffect(() => {
@@ -183,14 +248,12 @@ const LiveClassroom = () => {
     }
   }, [tick, gate, joinClass]);
 
-
-  // 2. Fast Poll Room Data (1s latency) & Dynamic Permission Upgrade
+  // 2. Fast Poll Room Data & Dynamic Permission Upgrade
   const fetchRoomState = async () => {
     if (!user) return;
 
     try {
       const res = await axios.get(`${API}/online-classes/${batchCode}/state`, cfg());
-      // Class was closed while we were inside -> show Session Closed screen
       if (res.data.status === 'ended' && joinedStatus.current !== 'ended') {
         setGate({
           type: 'ENDED',
@@ -198,26 +261,20 @@ const LiveClassroom = () => {
           subject: res.data.subject,
           scheduledTime: res.data.scheduledTime
         });
-        setUser(null); // stops polling
+        setUser(null);
         return;
       }
 
       setRoomData(res.data);
 
       if (!isHost) {
-        const isNowAllowed = res.data.allowedSpeakers.includes(user._id);
+        const isNowAllowed = (res.data.allowedSpeakers || []).includes(String(user._id));
 
-        // If trainer just granted or revoked permission, fetch a fresh LiveKit token
+        // If trainer just granted or revoked permission, fetch a fresh LiveKit token with publish rights
         if (isNowAllowed !== canSpeak) {
-          setCanSpeak(isNowAllowed);
-
-          const joinRes = await axios.post(
-            `${API}/online-classes/${batchCode}/join`,
-            {},
-            cfg()
-          );
-
+          const joinRes = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
           setLkToken(joinRes.data.livekitToken);
+          setCanSpeak(isNowAllowed);
         }
       }
     } catch (e) {
@@ -225,15 +282,11 @@ const LiveClassroom = () => {
     }
   };
 
-
   useEffect(() => {
     if (!user) return;
-
-    const interval = setInterval(fetchRoomState, 1000); // 1-second sync for instant chat/polls
-
+    const interval = setInterval(fetchRoomState, 1500);
     return () => clearInterval(interval);
   }, [batchCode, user, isHost, canSpeak]); // eslint-disable-line react-hooks/exhaustive-deps
-
 
   // RECORDING CONTROLS (TRAINER ONLY)
   const cleanupRecording = () => {
@@ -247,7 +300,6 @@ const LiveClassroom = () => {
 
   const startRecording = async () => {
     try {
-      // 1. Screen (+ computer/tab audio if the trainer ticks "share audio" in the popup)
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           width: { ideal: 1920 },
@@ -258,11 +310,9 @@ const LiveClassroom = () => {
       });
       recStreamsRef.current = [displayStream];
 
-      // Tell the encoder this is screen content (slides/text) so it keeps text sharp
       const screenTrack = displayStream.getVideoTracks()[0];
       if (screenTrack && 'contentHint' in screenTrack) screenTrack.contentHint = 'detail';
 
-      // 2. Trainer's microphone (getDisplayMedia never includes the mic)
       let micStream = null;
       try {
         micStream = await navigator.mediaDevices.getUserMedia({
@@ -273,7 +323,6 @@ const LiveClassroom = () => {
         alert('Microphone not available - recording will have no trainer voice.');
       }
 
-      // 3. Mix mic + screen audio into ONE audio track
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       recAudioCtxRef.current = audioCtx;
       const dest = audioCtx.createMediaStreamDestination();
@@ -290,14 +339,13 @@ const LiveClassroom = () => {
         ...dest.stream.getAudioTracks()
       ]);
 
-      // Best available codec: VP9 (sharper at the same size) -> VP8 -> default
       const mimeType = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']
         .find(t => MediaRecorder.isTypeSupported(t));
 
       const mediaRecorder = new MediaRecorder(mixedStream, {
         mimeType,
         videoBitsPerSecond: REC_VIDEO_BPS,
-        audioBitsPerSecond: 64000 // clear voice, small size
+        audioBitsPerSecond: 64000
       });
 
       mediaRecorder.ondataavailable = (e) => {
@@ -317,50 +365,47 @@ const LiveClassroom = () => {
         setIsPaused(false);
       };
 
-      // Trainer pressed the browser's "Stop sharing" button
       displayStream.getVideoTracks()[0].onended = () => {
         if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
       };
 
-      mediaRecorder.start(1000); // save a chunk every second
+      mediaRecorder.start(1000);
       setRecorder(mediaRecorder);
       setIsRecording(true);
       setIsPaused(false);
     } catch (err) {
       cleanupRecording();
-      alert("Failed to start recording. Please allow permissions.");
+      alert('Failed to start recording. Please allow permissions.');
     }
   };
 
-
   const pauseRecording = () => {
-    if (recorder && recorder.state === "recording") {
+    if (recorder && recorder.state === 'recording') {
       recorder.pause();
       setIsPaused(true);
     }
   };
 
   const resumeRecording = () => {
-    if (recorder && recorder.state === "paused") {
+    if (recorder && recorder.state === 'paused') {
       recorder.resume();
       setIsPaused(false);
     }
   };
 
   const stopRecording = () => {
-    if (recorder && (recorder.state === "recording" || recorder.state === "paused")) {
-      recorder.stop(); // onstop saves the file and stops all streams
+    if (recorder && (recorder.state === 'recording' || recorder.state === 'paused')) {
+      recorder.stop();
     }
   };
 
-
-  // API ACTIONS (With instant local refresh)
+  // API ACTIONS
   const sendChat = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
 
     const msgText = chatInput;
-    setChatInput(''); // Clear input immediately for snappy feel
+    setChatInput('');
 
     try {
       await axios.post(`${API}/online-classes/${batchCode}/chat`, { text: msgText }, cfg());
@@ -372,21 +417,18 @@ const LiveClassroom = () => {
 
   const toggleChatStatus = async () => {
     if (!isHost) return;
-
     try {
       await axios.post(
         `${API}/online-classes/${batchCode}/controls`,
         { action: 'toggle-chat', chatEnabled: !roomData.chatEnabled },
         cfg()
       );
-
       fetchRoomState();
     } catch (e) {}
   };
 
   const createPoll = async (e) => {
     e.preventDefault();
-
     const opts = [pollForm.opt1, pollForm.opt2, pollForm.opt3].filter(o => o.trim() !== '');
     if (opts.length < 2) return alert('Provide at least 2 options');
 
@@ -396,10 +438,9 @@ const LiveClassroom = () => {
         { question: pollForm.question, options: opts },
         cfg()
       );
-
       setPollForm({ question: '', opt1: '', opt2: '', opt3: '' });
       fetchRoomState();
-      alert("Poll launched!");
+      alert('Poll launched!');
     } catch (e) {
       alert('Failed to create poll');
     }
@@ -412,7 +453,6 @@ const LiveClassroom = () => {
         { optionIndex },
         cfg()
       );
-
       fetchRoomState();
     } catch (e) {
       alert('Failed to cast vote');
@@ -433,13 +473,11 @@ const LiveClassroom = () => {
         { action: actionType, studentId },
         cfg()
       );
-
       fetchRoomState();
     } catch (e) {
       alert('Action failed');
     }
   };
-
 
   // GATE SCREEN: "Class will start soon" countdown / "Session Closed"
   if (gate) {
@@ -492,23 +530,14 @@ const LiveClassroom = () => {
     );
   }
 
-
   if (loading) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-white font-bold">Joining Live Classroom...</div>;
   if (!lkToken || !lkUrl) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-red-500 font-bold">Connection Failed.</div>;
 
-
-  // Only people currently in the room can have a raised hand / show as active speaker
   const activeHands = (roomData?.raisedHands || []).filter(h => activeIds.includes(String(h.userId)));
   const activeSpeakerIds = (roomData?.allowedSpeakers || []).filter(id => activeIds.includes(String(id)));
 
-
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans relative">
-      
-      {/* MASTER CSS FIX: 
-          1. Hide ONLY the control bar inside VideoConference (.lk-video-conference .lk-control-bar)
-          2. Keep our dedicated bottom ControlBar always visible on top! 
-      */}
       <style>{`
         .lk-video-conference .lk-control-bar,
         .lk-video-conference .lk-chat {
@@ -526,16 +555,7 @@ const LiveClassroom = () => {
           pointer-events: auto !important;
           object-fit: contain !important;
         }
-        /* Style our custom bottom control bar cleanly */
-        .custom-control-dock .lk-control-bar {
-          display: flex !important;
-          background: transparent !important;
-          border: none !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
       `}</style>
-
 
       {/* LEFT/TOP: LIVEKIT VIDEO ENGINE */}
       <div className="flex-1 flex flex-col relative w-full h-full min-h-0 overflow-hidden">
@@ -553,17 +573,13 @@ const LiveClassroom = () => {
             </h1>
           </div>
 
-
           <div className="flex items-center gap-2 md:gap-3">
-            
-            {/* MOBILE ONLY: Open Chat/Panel Button */}
-            <button 
-              onClick={() => setShowMobileSidebar(true)} 
+            <button
+              onClick={() => setShowMobileSidebar(true)}
               className="md:hidden flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-white shadow-md transition"
             >
               <FiMessageSquare /> Chat
             </button>
-
 
             {/* RECORDING CONTROLS (TRAINER ONLY) */}
             {isHost && (
@@ -594,24 +610,22 @@ const LiveClassroom = () => {
               </div>
             )}
 
-
-            {/* STUDENT: RAISE HAND BUTTON (Always visible to students, even when unmuted) */}
+            {/* STUDENT: RAISE HAND BUTTON */}
             {!isHost && (
-              <button 
-                onClick={toggleHandRaise} 
+              <button
+                onClick={toggleHandRaise}
                 className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg shadow-md transition ${
-                  (roomData?.raisedHands || []).some(h => h.userId === user?._id) 
-                    ? 'bg-amber-500 text-white animate-pulse' 
+                  (roomData?.raisedHands || []).some(h => h.userId === user?._id)
+                    ? 'bg-amber-500 text-white animate-pulse'
                     : 'bg-blue-600 hover:bg-blue-500 text-white'
                 }`}
               >
-                <FiBell /> 
+                <FiBell />
                 <span>
                   {(roomData?.raisedHands || []).some(h => h.userId === user?._id) ? 'Hand Raised' : 'Raise Hand'}
                 </span>
               </button>
             )}
-
 
             <button onClick={() => navigate('/tests')} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold shadow-md transition">
               Leave
@@ -619,11 +633,12 @@ const LiveClassroom = () => {
           </div>
         </div>
 
-
         {/* LiveKit Video Container with Dedicated Bottom Control Dock */}
         <div className="flex-1 relative bg-black flex flex-col min-h-0 overflow-hidden">
           <LiveKitRoom
-            video={isHost || canSpeak}
+            // CRITICAL FIX: Changing key when canSpeak changes forces LiveKitRoom to apply the new publisher token immediately!
+            key={isHost ? 'host' : canSpeak ? 'speaker' : 'viewer'}
+            video={isHost}
             audio={isHost || canSpeak}
             token={lkToken}
             serverUrl={lkUrl}
@@ -631,43 +646,24 @@ const LiveClassroom = () => {
             className="flex-1 flex flex-col min-h-0 w-full h-full overflow-hidden"
             options={LK_OPTIONS}
           >
-            {/* 1. Video Grid Area (Takes available space without covering controls) */}
+            {/* 1. Video Grid Area */}
             <div className="flex-1 relative min-h-0 w-full overflow-hidden">
               <VideoStage />
               <PresenceReporter onChange={setActiveIds} />
             </div>
 
-
-            {/* 2. DEDICATED SOLID BOTTOM CONTROL BAR */}
-            {(isHost || canSpeak) && (
-              <div className="custom-control-dock h-16 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-2 px-4 shrink-0 z-30 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
-                <ControlBar 
-                  variation="minimal"
-                  controls={{ 
-                    camera: true, 
-                    microphone: true, 
-                    screenShare: false, // handled by our own ScreenShareButton below
-                    chat: false, 
-                    leave: false,
-                    settings: false
-                  }} 
-                />
-                <ScreenShareButton />
-              </div>
-            )}
+            {/* 2. DEDICATED SOLID BOTTOM CONTROL BAR (Mic, Cam, and Laptop Screen Share) */}
+            {(isHost || canSpeak) && <PublisherControls />}
           </LiveKitRoom>
         </div>
       </div>
 
-
-      {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (Slide-up on Mobile, Fixed on Desktop) */}
+      {/* RIGHT/BOTTOM: CUSTOM SIDEBAR */}
       <div className={`
         fixed bottom-0 left-0 w-full h-[65dvh] z-50 bg-gray-900 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.7)] transform transition-transform duration-300 flex flex-col
         md:relative md:w-80 lg:w-96 md:h-full md:rounded-none md:shadow-none md:translate-y-0 md:border-l md:border-gray-800 shrink-0
         ${showMobileSidebar ? 'translate-y-0' : 'translate-y-full'}
       `}>
-        
-        {/* Sidebar Tabs */}
         <div className="flex border-b border-gray-800 p-2 gap-1 shrink-0 items-center">
           {[
             { id: 'chat', icon: <FiMessageSquare />, label: 'Chat' },
@@ -682,16 +678,14 @@ const LiveClassroom = () => {
               {t.icon} <span>{t.label}</span>
             </button>
           ))}
-          
-          {/* Mobile Only: Close Button */}
-          <button 
-            onClick={() => setShowMobileSidebar(false)} 
+
+          <button
+            onClick={() => setShowMobileSidebar(false)}
             className="md:hidden p-2 text-gray-400 hover:text-white ml-2 rounded-lg bg-gray-800"
           >
             <FiX size={18} />
           </button>
         </div>
-
 
         {/* ---------------- CHAT TAB ---------------- */}
         {activeTab === 'chat' && (
@@ -702,7 +696,6 @@ const LiveClassroom = () => {
                 <p className="text-sm text-blue-100 leading-snug">{roomData.pinnedAnnouncement}</p>
               </div>
             )}
-
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {roomData?.messages?.map((msg, i) => {
@@ -729,14 +722,13 @@ const LiveClassroom = () => {
               })}
             </div>
 
-
             <div className="p-3 md:p-4 bg-gray-900 border-t border-gray-800 shrink-0">
               {isHost && (
                 <button onClick={toggleChatStatus} className="text-xs text-gray-400 hover:text-white mb-2 flex items-center gap-1 font-semibold">
-                  {roomData?.chatEnabled ? <><FiUnlock/> Lock Chat</> : <><FiLock/> Unlock Chat</>}
+                  {roomData?.chatEnabled ? <><FiUnlock /> Lock Chat</> : <><FiLock /> Unlock Chat</>}
                 </button>
               )}
-              
+
               {roomData?.chatEnabled || isHost ? (
                 <form onSubmit={sendChat} className="relative">
                   <input
@@ -762,7 +754,6 @@ const LiveClassroom = () => {
             </div>
           </div>
         )}
-
 
         {/* ---------------- POLLS TAB ---------------- */}
         {activeTab === 'polls' && (
@@ -808,21 +799,19 @@ const LiveClassroom = () => {
               </form>
             )}
 
-
             {roomData?.polls?.slice().reverse().map((poll) => {
               const totalVotes = poll.votes.length;
               const myVote = poll.votes.find(v => v.userId === user._id);
 
-              return ( 
-              <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ?'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
+              return (
+                <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ? 'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
                   <div className="flex justify-between items-start mb-3">
                     <p className="font-bold text-sm text-white">{poll.question}</p>
-
                     <span className="text-[10px] px-2 py-0.5 rounded bg-gray-700 text-gray-300">
                       {poll.isActive ? 'Live' : 'Closed'}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2">
                     {poll.options.map((opt, oIdx) => {
                       const votesForOpt = poll.votes.filter(v => v.optionIndex === oIdx).length;
@@ -854,11 +843,9 @@ const LiveClassroom = () => {
           </div>
         )}
 
-
         {/* ---------------- PEOPLE / HANDS TAB ---------------- */}
         {activeTab === 'people' && (
           <div className="flex-1 overflow-y-auto p-4 space-y-4 md:space-y-6">
-            
             {isHost && activeHands.length > 0 && (
               <div className="bg-amber-900/20 border border-amber-900/50 rounded-xl p-3">
                 <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-2">
@@ -874,16 +861,15 @@ const LiveClassroom = () => {
 
                       <button
                         onClick={() => handleSpeaker(h.userId, 'allow-speaker')}
-                        className="text-[10px] font-bold bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded shrink-0 transition"
+                        className="text-[10px] font-bold bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded shrink-0 transition"
                       >
-                        Allow Mic
+                        Allow Mic / Cam / Screen
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
 
             {activeSpeakerIds.length > 0 && (
               <div>
@@ -925,7 +911,6 @@ const LiveClassroom = () => {
               </div>
             )}
 
-
             {(() => {
               const students = roomData?.attendance || [];
               const activeStudents = students.filter(a => activeIds.includes(String(a.student)));
@@ -933,7 +918,6 @@ const LiveClassroom = () => {
 
               return (
                 <>
-                  {/* Counters */}
                   <div className="grid grid-cols-3 gap-2">
                     <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
                       <p className="text-lg font-bold text-white leading-none">{students.length}</p>
@@ -949,7 +933,6 @@ const LiveClassroom = () => {
                     </div>
                   </div>
 
-                  {/* Names are visible to Trainer/Admin only */}
                   {isHost && (
                     <>
                       <div>
@@ -995,13 +978,11 @@ const LiveClassroom = () => {
                 </>
               );
             })()}
-
           </div>
         )}
       </div>
     </div>
   );
 };
-
 
 export default LiveClassroom;
