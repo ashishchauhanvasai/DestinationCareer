@@ -4008,7 +4008,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       .populate('trainer', 'name email');
     if (!cls) return res.status(404).json({ message: 'Online Class not found' });
 
-    const user = await User.findById(req.user.id).lean();
+    const user = await User.findById(req.user.id).select('-profilePic').lean();
     if (!user) return res.status(401).json({ message: 'User not found' });
 
     const isHost = ['admin', 'superadmin'].includes(user.role) ||
@@ -4027,7 +4027,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       serverTime: now.toISOString()
     };
 
-    // STRICT TIME GATE: Students cannot enter before the scheduled start time
+    // STRICT TIME GATE: students cannot enter before the scheduled start time
     if (!isHost) {
       if (isOver) {
         if (cls.status !== 'ended') {
@@ -4040,31 +4040,38 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       }
     }
 
-    // Log Attendance if Student
-    if (!isHost) {
-      cls.raisedHands = cls.raisedHands.filter(h => h.userId !== String(user._id));
+    const uid = String(user._id);
 
-      const existingAtt = cls.attendance.find(a => String(a.student) === String(user._id));
-      if (existingAtt) {
-        existingAtt.lastSeenAt = new Date();
-      } else {
-        cls.attendance.push({
-          student: user._id,
-          name: user.name,
-          email: user.email,
-          firstJoinedAt: new Date(),
-          lastSeenAt: new Date()
-        });
+    if (!isHost) {
+      // Atomic updates (no cls.save) -> safe with hundreds of students joining at once
+      await OnlineClass.updateOne({ _id: cls._id }, { $pull: { raisedHands: { userId: uid } } });
+
+      const seen = await OnlineClass.updateOne(
+        { _id: cls._id, 'attendance.student': user._id },
+        { $set: { 'attendance.$.lastSeenAt': new Date() } }
+      );
+      if (!seen.matchedCount) {
+        await OnlineClass.updateOne(
+          { _id: cls._id, 'attendance.student': { $ne: user._id } },
+          { $push: { attendance: {
+              student: user._id,
+              name: user.name,
+              email: user.email,
+              firstJoinedAt: new Date(),
+              lastSeenAt: new Date()
+          } } }
+        );
       }
-      await cls.save();
     } else if (cls.status === 'scheduled' && !isOver && now >= start) {
+      // Only auto-mark live once the scheduled start time has arrived
+      await OnlineClass.updateOne({ _id: cls._id }, { $set: { status: 'live' } });
       cls.status = 'live';
-      await cls.save();
     }
 
-    const canSpeak = (cls.allowedSpeakers || []).includes(String(user._id));
+    const canSpeak = (cls.allowedSpeakers || []).includes(uid);
+    const canPublish = isHost || canSpeak;
 
-    // Generate LiveKit Token with explicit publication source grants
+    // Generate LiveKit Token (canPublish=true allows Mic + Camera + Screen Share)
     let lkToken = null;
 
     if (process.env.LIVEKIT_API_KEY && process.env.LIVEKIT_API_SECRET) {
@@ -4072,7 +4079,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
         process.env.LIVEKIT_API_KEY,
         process.env.LIVEKIT_API_SECRET,
         {
-          identity: String(user._id),
+          identity: uid,
           name: `${user.name} (${isHost ? 'Trainer' : 'Student'})`,
           metadata: JSON.stringify({
             role: isHost ? 'host' : 'student',
@@ -4084,10 +4091,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       at.addGrant({
         roomJoin: true,
         room: cls.batchCode,
-        canPublish: isHost || canSpeak,
-        canPublishSources: (isHost || canSpeak) 
-          ? ['camera', 'microphone', 'screen_share', 'screen_share_audio'] 
-          : [],
+        canPublish,
         canSubscribe: true,
         canPublishData: true
       });
@@ -4109,6 +4113,7 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
       livekitUrl: process.env.LIVEKIT_URL || ''
     });
   } catch (e) {
+    console.error('JOIN ERROR:', e);
     res.status(500).json({ message: e.message });
   }
 });
@@ -4138,6 +4143,22 @@ app.get('/api/online-classes/:batchCode/state', verifyToken, async (req, res) =>
 });
 
 
+// Safely update a participant's publish permission in LiveKit (never throws)
+const setSpeakerPermission = async (room, identity, allow) => {
+  const lk = getLiveKitClient();
+  if (!lk) return;
+  try {
+    await lk.updateParticipant(room, String(identity), undefined, {
+      canPublish: allow,
+      canSubscribe: true,
+      canPublishData: true
+    });
+  } catch (err) {
+    console.error('LiveKit permission update error:', err.message);
+  }
+};
+
+// 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic, Cam & Screen Share
 app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
   try {
     const cls = await OnlineClass.findOne({
@@ -4189,47 +4210,22 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
 
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== studentId);
 
-      // FIX: Use explicit string arrays recognized by LiveKit server SDK
-      const lk = getLiveKitClient();
-      if (lk) {
-        lk.updateParticipant(cls.batchCode, studentId, undefined, {
-          canPublish: true,
-          canSubscribe: true,
-          canPublishData: true,
-          canPublishSources: ['camera', 'microphone', 'screen_share', 'screen_share_audio']
-        }).catch((err) => console.error('LiveKit permission update error:', err.message));
-      }
+      setSpeakerPermission(cls.batchCode, studentId, true);
     } else if (action === 'revoke-speaker' && studentId) {
       cls.allowedSpeakers = cls.allowedSpeakers.filter(id => id !== studentId);
 
-      const lk = getLiveKitClient();
-      if (lk) {
-        lk.updateParticipant(cls.batchCode, studentId, undefined, {
-          canPublish: false,
-          canSubscribe: true,
-          canPublishData: true,
-          canPublishSources: []
-        }).catch((err) => console.error('LiveKit permission revoke error:', err.message));
-      }
+      setSpeakerPermission(cls.batchCode, studentId, false);
     } else if (action === 'revoke-all-speakers') {
       const prevSpeakers = [...cls.allowedSpeakers];
       cls.allowedSpeakers = [];
 
-      const lk = getLiveKitClient();
-      if (lk) {
-        prevSpeakers.forEach(sId => {
-          lk.updateParticipant(cls.batchCode, sId, undefined, {
-            canPublish: false,
-            canSubscribe: true,
-            canPublishData: true,
-            canPublishSources: []
-          }).catch((err) => console.error('LiveKit permission revoke error:', err.message));
-        });
-      }
+      prevSpeakers.forEach(sId => setSpeakerPermission(cls.batchCode, sId, false));
     }
+
     await cls.save();
     res.json(cls);
   } catch (e) {
+    console.error('CONTROLS ERROR:', e);
     res.status(500).json({ message: e.message });
   }
 });
