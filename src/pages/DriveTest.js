@@ -336,13 +336,43 @@ const DriveTest = () => {
     });
   };
 
+  // 🚀 SPEED BOOST: Compress 5MB+ phone photos down to ~15KB (300x300px JPEG)
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setRegForm({ ...regForm, profilePic: reader.result });
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 300;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+        setRegForm((prev) => ({ ...prev, profilePic: compressedBase64 }));
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleRegister = async (e) => {
@@ -787,7 +817,10 @@ const DriveTest = () => {
 
           <button
             onClick={() => {
-              localStorage.clear();
+              // FIXED: Do NOT call localStorage.clear() or it deletes dc_permanent_device_id!
+              localStorage.removeItem('token');
+              localStorage.removeItem('role');
+              localStorage.removeItem('isLoggedIn');
               navigate('/login');
             }}
             className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition shadow-md"

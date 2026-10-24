@@ -9,17 +9,14 @@ const crypto = require('crypto');
 const app = express();
 const port = process.env.PORT || 5000;
 const axios = require('axios');
-
-
 const multer = require('multer');
-const PHOTO_MAX = 1 * 1024 * 1024;  // 1 MB
-const RESUME_MAX = 2 * 1024 * 1024; // 2 MB
+const PHOTO_MAX = 1 * 1024 * 1024;  
+const RESUME_MAX = 2 * 1024 * 1024; 
 const looksLikeJpgOrPng = (b) => b.length > 8 && ((b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) || (b[0] === 0x89 && b.slice(1, 4).toString() === 'PNG'));
 const looksLikePdf = (b) => b.length > 5 && b.slice(0, 5).toString() === '%PDF-';
 const emailOk = (v) => /^\S+@\S+\.\S+$/.test(v || '');
 const phoneOk = (v) => /^\d{10}$/.test(v || '');
 const urlOn = (value, domain) => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && (u.hostname === domain || u.hostname.endsWith('.' + domain)); } catch { return false; } };
-
 
 
 // FIX: the JWT secret now comes from .env (falls back to the old value so logged-in users are not kicked out)
@@ -219,6 +216,10 @@ userSchema.pre('save', async function () {
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
 });
+
+// 🚀 SPEED BOOST: Index frequently queried fields
+userSchema.index({ role: 1, status: 1 });
+userSchema.index({ registeredDrive: 1, status: 1 });
 
 const User = mongoose.model('User', userSchema);
 
@@ -467,7 +468,8 @@ app.post('/api/login', async (req, res) => {
   try {
     const { email, password, deviceId, deviceType } = req.body;
 
-    const user = await User.findOne({ email });
+    // 🚀 SPEED BOOST: Exclude heavy profilePic during login check
+    const user = await User.findOne({ email }).select('-profilePic');
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -1669,7 +1671,8 @@ app.get('/api/users', verifyToken, async (req, res) => {
       { email: { $regex: search, $options: 'i' } }
     ];
   }
-  res.json(await User.find(filter).select('-password').sort({ createdAt: -1 }));
+  // 🚀 SPEED BOOST: Exclude heavy Base64 profilePic on bulk table loads + use .lean()
+  res.json(await User.find(filter).select('-password -profilePic').sort({ createdAt: -1 }).lean());
 });
 
 app.delete('/api/users/:id', verifyToken, async (req, res) => {
@@ -2062,19 +2065,6 @@ const appUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: RESUME_MAX, files: 2 }
 }).fields([{ name: 'photo', maxCount: 1 }, { name: 'resume', maxCount: 1 }]);
-
-// const checkJobEligibility = (j, p) => {
-//   const reasons = [];
-//   if (!p.highestQualification || !p.highestQualification.toLowerCase().includes(String(j.reqQualification).toLowerCase())) {
-//     reasons.push(`Qualification mismatch. Required: ${j.reqQualification}`);
-//   }
-//   if (String(p.passingYear) !== String(j.reqPassingYear)) reasons.push(`Passing year mismatch. Required: ${j.reqPassingYear}`);
-//   if (!(Number(p.percentage) >= Number(j.reqMinPercentage))) reasons.push(`Percentage too low. Required: ${j.reqMinPercentage}%`);
-//   if (Number(p.employabilityScore || 0) < Number(j.reqEmployabilityScore)) reasons.push(`Employability score too low. Required: ${j.reqEmployabilityScore}`);
-//   if (Number(p.backlogs || 0) > Number(j.reqMaxBacklogs)) reasons.push(`Too many active backlogs. Allowed: ${j.reqMaxBacklogs}`);
-//   if (Number(p.educationGap || 0) > Number(j.reqMaxEducationGap)) reasons.push(`Education gap too large. Allowed: ${j.reqMaxEducationGap} years`);
-//   return reasons;
-// };
 
 const checkJobEligibility = (j, p) => {
   const reasons = [];
@@ -3071,6 +3061,9 @@ const proctorCaptureSchema = new mongoose.Schema({
   image: { type: String, required: true }
 }, { timestamps: true });
 
+// 🚀 SPEED BOOST: Index proctor lookup by drive and student
+proctorCaptureSchema.index({ drive: 1, student: 1 });
+
 const ProctorCapture = mongoose.model('ProctorCapture', proctorCaptureSchema);
 
 // 2. Drive Submission / Test Result Schema
@@ -3095,6 +3088,10 @@ const driveSubmissionSchema = new mongoose.Schema({
   autoSubmitted: { type: Boolean, default: false },
   submittedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+// 🚀 SPEED BOOST: Index submission lookups used by drive dashboards
+driveSubmissionSchema.index({ drive: 1, status: 1 });
+driveSubmissionSchema.index({ drive: 1, student: 1 });
 
 const DriveSubmission = mongoose.model('DriveSubmission', driveSubmissionSchema);
 
@@ -3129,7 +3126,7 @@ app.post('/api/drives', verifyToken, async (req, res) => {
     res.status(500).json({ message: e.code === 11000 ? 'Drive code already exists!' : e.message });
   }
 });
-// 2. Get All Drives (For Promo Dashboard with Registration & Cutoff Stats)
+// 2. Get All Drives (ULTRA-FAST AGGREGATION - No N+1 loops!)
 app.get('/api/drives', verifyToken, async (req, res) => {
   if (!['admin', 'superadmin', 'promotional'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied' });
@@ -3140,19 +3137,42 @@ app.get('/api/drives', verifyToken, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const driveIds = drives.map(d => d._id);
+
+    // Run 2 fast aggregations in parallel instead of 4 queries per drive!
+    const [regCounts, subCounts] = await Promise.all([
+      User.aggregate([
+        { $match: { registeredDrive: { $in: driveIds } } },
+        { $group: {
+            _id: '$registeredDrive',
+            totalRegistered: { $sum: 1 },
+            pendingApprovals: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
+            approvedStudents: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } }
+        }}
+      ]),
+      DriveSubmission.aggregate([
+        { $match: { drive: { $in: driveIds } } },
+        { $group: {
+            _id: '$drive',
+            totalAppeared: { $sum: 1 },
+            totalSelected: { $sum: { $cond: [{ $eq: ['$status', 'Selected'] }, 1, 0] } },
+            totalRejected: { $sum: { $cond: [{ $eq: ['$status', 'Rejected'] }, 1, 0] } }
+        }}
+      ])
+    ]);
+
+    const regMap = Object.fromEntries(regCounts.map(r => [String(r._id), r]));
+    const subMap = Object.fromEntries(subCounts.map(s => [String(s._id), s]));
+
     for (let drive of drives) {
-      const [subs, totalReg, pendingReg, approvedReg] = await Promise.all([
-        DriveSubmission.find({ drive: drive._id }).lean(),
-        User.countDocuments({ registeredDrive: drive._id }),
-        User.countDocuments({ registeredDrive: drive._id, status: 'pending' }),
-        User.countDocuments({ registeredDrive: drive._id, status: 'approved' })
-      ]);
-      drive.totalRegistered = totalReg;
-      drive.pendingApprovals = pendingReg;
-      drive.approvedStudents = approvedReg;
-      drive.totalAppeared = subs.length;
-      drive.totalSelected = subs.filter(s => s.status === 'Selected').length;
-      drive.totalRejected = subs.filter(s => s.status === 'Rejected').length;
+      const r = regMap[String(drive._id)] || {};
+      const s = subMap[String(drive._id)] || {};
+      drive.totalRegistered = r.totalRegistered || 0;
+      drive.pendingApprovals = r.pendingApprovals || 0;
+      drive.approvedStudents = r.approvedStudents || 0;
+      drive.totalAppeared = s.totalAppeared || 0;
+      drive.totalSelected = s.totalSelected || 0;
+      drive.totalRejected = s.totalRejected || 0;
     }
     res.json(drives);
   } catch (e) {
@@ -3481,6 +3501,7 @@ app.get('/api/drives/:id/submissions', verifyToken, async (req, res) => {
   }
   try {
     const submissions = await DriveSubmission.find({ drive: req.params.id })
+      .select('-answers') // 🚀 SPEED BOOST: Don't send huge code/MCQ answer arrays for summary table
       .populate('student', 'name email contactNumber highestQualification passingYear percentage profilePic')
       .sort({ percentage: -1, timeTakenSeconds: 1 })
       .lean();
@@ -3588,13 +3609,10 @@ app.get('/api/promo/resources', verifyToken, async (req, res) => {
     return res.status(403).json({ message: 'Access denied' });
   }
   try {
-    // Fetch only assignments that have at least one MCQ question
-    const assignments = await Assignment.find({ "topics.questions.qType": "MCQ" }).lean();
-    
-    // Fetch all Coding Problems (Assuming your coding model is named 'Problem')
-    const ProblemModel = mongoose.model('Problem');
-    const problems = await ProblemModel.find().lean();
-    
+    const [assignments, problems] = await Promise.all([
+      Assignment.find({ "topics.questions.qType": "MCQ" }).select('_id title level').lean(),
+      Problem.find().select('_id title difficulty points').lean()
+    ]);
     res.json({ assignments, problems });
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -3614,22 +3632,6 @@ app.put('/api/drives/:id/questions', verifyToken, async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
-
-
-// ============================================================================
-// ASSIGN / MOVE STUDENTS BETWEEN BATCHES  +  SAFE DELETE
-//
-// This is the backend the "Assign Batch / Change Batch / Bulk / Delete" screen needs.
-//
-// HOW TO USE
-//  1. In server.js, search for   /api/staff/batches/change-student
-//     - If it already exists, you do NOT need the two "move" routes below.
-//       (But still do steps 2, 3 and 4.)
-//  2. Delete the OLD delete-user route (the exact text is in my chat message).
-//  3. In the staff-tracking block, delete the single line   backfillBatchMembers();
-//     (reason is in my chat message: it would undo moved students after a restart)
-//  4. Paste this whole file just ABOVE   app.listen(...)   and restart the backend.
-// ============================================================================
 
 const ZERO_ID = '000000000000000000000000';
 
@@ -3687,8 +3689,6 @@ app.put('/api/staff/batches/bulk-change-student', verifyToken, async (req, res) 
 });
 
 // ---------- delete a user (REPLACES the old DELETE /api/users/:id) ----------
-// admin + super admin can delete STUDENTS. Only the super admin can delete admins / trainers / staff.
-// Deleting a student also removes everything that belonged to them, so no orphan records are left.
 const removeStudentData = async (u) => {
   const apps = await Application.find({ student: u._id }).select('photoFileId resumeFileId');
   for (const a of apps) {
@@ -4234,15 +4234,12 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
         });
       }
     }
-
-
     await cls.save();
     res.json(cls);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
-
 
 // 8. Student Raise / Lower Hand
 app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) => {
@@ -4253,7 +4250,6 @@ app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) =>
 
     const user = await User.findById(req.user.id).lean();
     const uId = String(user._id);
-
 
     const exists = cls.raisedHands.some(h => h.userId === uId);
 
@@ -4267,14 +4263,12 @@ app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) =>
       });
     }
 
-
     await cls.save();
     res.json({ raisedHands: cls.raisedHands });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
-
 
 // 9. Send Chat Message
 app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) => {
@@ -4289,13 +4283,11 @@ app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) =>
       ['admin', 'superadmin'].includes(user.role) ||
       String(cls.trainer) === String(user._id);
 
-
     if (!cls.chatEnabled && !isHost) {
       return res.status(403).json({
         message: 'Chat is currently disabled by the Trainer.'
       });
     }
-
 
     cls.messages.push({
       senderId: String(user._id),
@@ -4304,11 +4296,9 @@ app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) =>
       text: req.body.text
     });
 
-
     if (cls.messages.length > 200) {
       cls.messages = cls.messages.slice(-200);
     }
-
 
     await cls.save();
     res.json(cls.messages);
@@ -4316,7 +4306,6 @@ app.post('/api/online-classes/:batchCode/chat', verifyToken, async (req, res) =>
     res.status(500).json({ message: e.message });
   }
 });
-
 
 // 10. Create Poll & Vote on Poll
 app.post('/api/online-classes/:batchCode/polls', verifyToken, async (req, res) => {
@@ -4346,7 +4335,6 @@ app.post('/api/online-classes/:batchCode/polls', verifyToken, async (req, res) =
   }
 });
 
-
 app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async (req, res) => {
   try {
     const cls = await OnlineClass.findOne({
@@ -4359,7 +4347,6 @@ app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async
       return res.status(400).json({ message: 'Poll is closed' });
     }
 
-
     const uId = String(req.user.id);
     const existingVote = poll.votes.find(v => v.userId === uId);
 
@@ -4371,8 +4358,6 @@ app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async
         optionIndex: req.body.optionIndex
       });
     }
-
-
     await cls.save();
     res.json(cls.polls);
   } catch (e) {
@@ -4380,11 +4365,9 @@ app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async
   }
 });
 
-
 // Close expired classes (and delete their chat/polls) every minute
 sweepExpiredClasses();
 setInterval(sweepExpiredClasses, 60 * 1000);
-
 
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);

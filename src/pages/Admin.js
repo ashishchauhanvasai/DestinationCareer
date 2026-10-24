@@ -89,45 +89,31 @@ const Admin = () => {
     },
   };
 
+ // 🚀 SPEED BOOST: Only fetch the data needed for the currently active tab!
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchTabData(activeTab);
+  }, [activeTab]);
 
-  const fetchData = async () => {
+  const fetchTabData = async (tab) => {
     try {
-      const [crsRes, testRes, pendingRes, jobsRes, studentsRes] =
-        await Promise.all([
-          axios
-            .get(`${process.env.REACT_APP_API_URL}/api/courses`, config)
-            .catch(() => ({ data: [] })),
-
-          axios
-            .get(`${process.env.REACT_APP_API_URL}/api/testimonials`)
-            .catch(() => ({ data: [] })),
-
-          axios
-            .get(`${process.env.REACT_APP_API_URL}/api/users/pending`, config)
-            .catch(() => ({ data: [] })),
-
-          axios
-            .get(`${process.env.REACT_APP_API_URL}/api/jobs`, config)
-            .catch(() => ({ data: [] })),
-
-          axios
-            .get(
-              `${process.env.REACT_APP_API_URL}/api/users?role=student`,
-              config
-            )
-            .catch(() => ({ data: [] })),
-        ]);
-
-      setCourses(crsRes.data);
-      setTestimonials(testRes.data);
-      setPendingUsers(pendingRes.data);
-      setJobs(jobsRes.data);
-      setStudents(studentsRes.data);
+      if (tab === 'Courses' && courses.length === 0) {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/courses`, config);
+        setCourses(res.data || []);
+      } else if (tab === 'Testimonials' && testimonials.length === 0) {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/testimonials`);
+        setTestimonials(res.data || []);
+      } else if (tab === 'Approvals') {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/users/pending`, config);
+        setPendingUsers(res.data || []);
+      } else if (tab === 'Jobs' && jobs.length === 0) {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/jobs`, config);
+        setJobs(res.data || []);
+      } else if (tab === 'Student Profiles' && students.length === 0) {
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/users?role=student`, config);
+        setStudents(res.data || []);
+      }
     } catch (error) {
-      console.error('Failed to fetch data', error);
+      console.error('Failed to fetch tab data', error);
     }
   };
 
