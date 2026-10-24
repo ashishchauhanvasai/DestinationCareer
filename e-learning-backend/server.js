@@ -4189,7 +4189,7 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
 
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== studentId);
 
-      // Dynamically update LiveKit permission in real-time (Mic + Camera + Screen Share)
+      // FIX: Use explicit string arrays recognized by LiveKit server SDK
       const lk = getLiveKitClient();
       if (lk) {
         lk.updateParticipant(cls.batchCode, studentId, undefined, {
