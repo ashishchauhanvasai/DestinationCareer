@@ -3814,11 +3814,13 @@ const endedFields = () => ({
   pinnedAnnouncement: ''
 });
 
-// Auto-close every class whose time is over and delete its in-class history
+// Auto-close classes whose time is over AND that never went live.
+// NEW: a class that is LIVE is never closed by the clock. Only the trainer/admin can end it
+// (the trainer gets a time-over warning on screen and can extend or end the class).
 const sweepExpiredClasses = async () => {
   try {
     const expired = await OnlineClass.find({
-      status: { $ne: 'ended' },
+      status: 'scheduled',
       $expr: {
         $lt: [
           { $add: ['$scheduledTime', { $multiply: [{ $ifNull: ['$durationMinutes', 60] }, 60000] }] },
@@ -3851,11 +3853,11 @@ app.get('/api/online-classes', verifyToken, async (req, res) => {
       .sort({ scheduledTime: -1 })
       .lean();
 
-    // Auto-close sessions whose time is over
+    // Auto-close sessions whose time is over (NEW: never a class that is live)
     const now = new Date();
     const expiredIds = [];
     classes.forEach(c => {
-      if (c.status !== 'ended' && getClassEnd(c) < now) {
+      if (c.status === 'scheduled' && getClassEnd(c) < now) {
         c.status = 'ended';
         expiredIds.push(c._id);
       }
@@ -4017,7 +4019,8 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
     const now = new Date();
     const start = new Date(cls.scheduledTime);
     const end = getClassEnd(cls);
-    const isOver = cls.status === 'ended' || now > end;
+    // NEW: a LIVE class stays open past its scheduled end until the trainer/admin ends it
+    const isOver = cls.status === 'ended' || (cls.status !== 'live' && now > end);
 
     const gateInfo = {
       title: cls.title,
@@ -4110,7 +4113,8 @@ app.post('/api/online-classes/:batchCode/join', verifyToken, async (req, res) =>
         role: user.role
       },
       livekitToken: lkToken,
-      livekitUrl: process.env.LIVEKIT_URL || ''
+      livekitUrl: process.env.LIVEKIT_URL || '',
+      serverTime: now.toISOString() // NEW: lets the browser show an accurate time-left countdown
     });
   } catch (e) {
     console.error('JOIN ERROR:', e);
@@ -4130,12 +4134,14 @@ app.get('/api/online-classes/:batchCode/state', verifyToken, async (req, res) =>
 
     if (!cls) return res.status(404).json({ message: 'Not found' });
 
-    // Time is over -> close and wipe history
-    if (cls.status !== 'ended' && getClassEnd(cls) < new Date()) {
+    // Time is over and the class never went live -> close and wipe history
+    // NEW: a LIVE class is never closed by the clock, only by the trainer/admin
+    if (cls.status === 'scheduled' && getClassEnd(cls) < new Date()) {
       await OnlineClass.updateOne({ _id: cls._id }, { $set: endedFields() });
       Object.assign(cls, endedFields());
     }
 
+    cls.serverTime = new Date().toISOString(); // NEW
     res.json(cls);
   } catch (e) {
     res.status(500).json({ message: e.message });
@@ -4158,7 +4164,8 @@ const setSpeakerPermission = async (room, identity, allow) => {
   }
 };
 
-// 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic, Cam & Screen Share
+// 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic, Cam & Screen Share,
+//    NEW: Extend class time
 app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
   try {
     const cls = await OnlineClass.findOne({
@@ -4182,7 +4189,8 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
       studentId,
       chatEnabled,
       pinnedAnnouncement,
-      status
+      status,
+      minutes
     } = req.body;
 
     if (action === 'toggle-chat') {
@@ -4203,6 +4211,13 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
       } else {
         cls.status = status;
       }
+    } else if (action === 'extend') {
+      // NEW: trainer adds extra minutes when the scheduled time is almost over / over
+      if (cls.status === 'ended') {
+        return res.status(400).json({ message: 'This class has already ended.' });
+      }
+      const extra = Math.max(1, Math.min(Number(minutes) || 15, 240));
+      cls.durationMinutes = (cls.durationMinutes || 60) + extra;
     } else if (action === 'allow-speaker' && studentId) {
       if (!cls.allowedSpeakers.includes(studentId)) {
         cls.allowedSpeakers.push(studentId);
@@ -4354,7 +4369,7 @@ app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async
   }
 });
 
-// Close expired classes (and delete their chat/polls) every minute
+// Close expired never-started classes (and delete their chat/polls) every minute
 sweepExpiredClasses();
 setInterval(sweepExpiredClasses, 60 * 1000);
 

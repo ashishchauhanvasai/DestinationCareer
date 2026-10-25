@@ -12,7 +12,8 @@ import '@livekit/components-styles';
 import {
   FiSend, FiMessageSquare, FiBarChart2, FiUsers, FiBell,
   FiVideo, FiVideoOff, FiMic, FiMicOff, FiLock, FiUnlock,
-  FiCircle, FiPause, FiPlay, FiDownload, FiX, FiMonitor
+  FiCircle, FiPause, FiPlay, FiDownload, FiX, FiMonitor,
+  FiChevronLeft, FiChevronRight, FiAlertTriangle, FiPower
 } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
@@ -20,6 +21,9 @@ const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('t
 
 const REC_VIDEO_BPS = 800000;
 const REC_FPS = 15;
+
+// Show the "class time is ending" warning this long before the scheduled end
+const WARN_BEFORE_MS = 5 * 60 * 1000;
 
 const LK_OPTIONS = {
   adaptiveStream: true,
@@ -48,6 +52,108 @@ const PresenceReporter = ({ onChange }) => {
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
+};
+
+// NEW: true on tablet/desktop widths (used to decide if the chat panel is visible)
+const useIsDesktop = () => {
+  const query = '(min-width: 768px)';
+  const [match, setMatch] = useState(
+    () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia(query).matches
+  );
+
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia(query);
+    const onChange = (e) => setMatch(e.matches);
+    setMatch(mq.matches);
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
+
+  return match;
+};
+
+// ============================================================================
+// NEW: SESSION TIMEOUT WARNING (soft - it NEVER ends the class by itself)
+// Own 1-second timer inside this component so the video grid is not re-rendered.
+// Trainer sees: Extend +15 / +30 / End Class. Students only see a notice.
+// ============================================================================
+const SessionTimer = ({ endMs, offsetRef, isHost, onExtend, onEnd }) => {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!endMs) return null;
+
+  const remaining = endMs - (now + offsetRef.current);
+  if (Number.isNaN(remaining) || remaining > WARN_BEFORE_MS) return null;
+
+  const overtime = remaining <= 0;
+  const abs = Math.abs(remaining);
+  const mm = String(Math.floor(abs / 60000)).padStart(2, '0');
+  const ss = String(Math.floor((abs % 60000) / 1000)).padStart(2, '0');
+
+  return (
+    <div
+      className={`shrink-0 z-20 px-3 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm ${
+        overtime
+          ? 'bg-red-900/40 border-red-800 text-red-100'
+          : 'bg-amber-900/40 border-amber-800 text-amber-100'
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <FiAlertTriangle className={`shrink-0 ${overtime ? 'text-red-400' : 'text-amber-400'}`} />
+        {overtime ? (
+          <span>
+            <b>Scheduled time is over (+{mm}:{ss}).</b>{' '}
+            {isHost
+              ? 'The class stays live until you end it.'
+              : 'The class continues until your trainer ends it.'}
+          </span>
+        ) : (
+          <span>
+            <b>Class time ends in {mm}:{ss}.</b>{' '}
+            {isHost
+              ? 'The class will NOT close by itself. Extend it or end it when you are ready.'
+              : 'Your trainer will decide when to finish.'}
+          </span>
+        )}
+      </div>
+
+      {isHost && (
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => onExtend(15)}
+            className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 border border-gray-600 font-bold text-white transition"
+          >
+            +15 min
+          </button>
+          <button
+            type="button"
+            onClick={() => onExtend(30)}
+            className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 border border-gray-600 font-bold text-white transition"
+          >
+            +30 min
+          </button>
+          <button
+            type="button"
+            onClick={onEnd}
+            className="px-2.5 py-1 rounded bg-red-600 hover:bg-red-500 font-bold text-white transition"
+          >
+            End Class
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 // ============================================================================
@@ -186,6 +292,11 @@ const LiveClassroom = () => {
   // Mobile Panel State
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
+  // NEW: Chat panel minimize (desktop) + unread tracking
+  const isDesktop = useIsDesktop();
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [seenAt, setSeenAt] = useState(0);
+
   // Recorder State
   const [recorder, setRecorder] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -199,12 +310,31 @@ const LiveClassroom = () => {
   const [tick, setTick] = useState(Date.now());
   const serverOffset = useRef(0);
   const retryLock = useRef(false);
+  const rejoinLock = useRef(false);
   const joinedStatus = useRef('');
+
+  // NEW: unread chat badge (counts others' messages arrived while the chat is not visible)
+  const chatMessages = roomData?.messages || [];
+  const lastMsgMs = chatMessages.length
+    ? new Date(chatMessages[chatMessages.length - 1].createdAt).getTime()
+    : 0;
+  const chatVisible = activeTab === 'chat' && (isDesktop ? !chatCollapsed : showMobileSidebar);
+
+  useEffect(() => {
+    if (chatVisible) setSeenAt(lastMsgMs);
+  }, [chatVisible, lastMsgMs]);
+
+  const unread = chatVisible
+    ? 0
+    : chatMessages.filter(
+        m => new Date(m.createdAt).getTime() > seenAt && m.senderId !== user?._id
+      ).length;
 
   // 1. Initial Join & Token Generation
   const joinClass = useCallback(async () => {
     try {
       const res = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
+      if (res.data.serverTime) serverOffset.current = new Date(res.data.serverTime).getTime() - Date.now();
       setGate(null);
       joinedStatus.current = res.data.classData?.status || '';
       setLkToken(res.data.livekitToken);
@@ -254,6 +384,8 @@ const LiveClassroom = () => {
 
     try {
       const res = await axios.get(`${API}/online-classes/${batchCode}/state`, cfg());
+      if (res.data.serverTime) serverOffset.current = new Date(res.data.serverTime).getTime() - Date.now();
+
       if (res.data.status === 'ended' && joinedStatus.current !== 'ended') {
         setGate({
           type: 'ENDED',
@@ -270,11 +402,18 @@ const LiveClassroom = () => {
       if (!isHost) {
         const isNowAllowed = (res.data.allowedSpeakers || []).includes(String(user._id));
 
-        // If trainer just granted or revoked permission, fetch a fresh LiveKit token with publish rights
-        if (isNowAllowed !== canSpeak) {
-          const joinRes = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
-          setLkToken(joinRes.data.livekitToken);
-          setCanSpeak(isNowAllowed);
+        // If trainer just granted or revoked permission, fetch a fresh LiveKit token (once, no hammering)
+        if (isNowAllowed !== canSpeak && !rejoinLock.current) {
+          rejoinLock.current = true;
+          try {
+            const joinRes = await axios.post(`${API}/online-classes/${batchCode}/join`, {}, cfg());
+            setLkToken(joinRes.data.livekitToken);
+            setCanSpeak(isNowAllowed);
+          } catch (err) {
+            console.error('Re-join failed:', err.response?.data?.message || err.message);
+          } finally {
+            setTimeout(() => { rejoinLock.current = false; }, 3000);
+          }
         }
       }
     } catch (e) {
@@ -479,6 +618,35 @@ const LiveClassroom = () => {
     }
   };
 
+  // NEW: TRAINER - add extra time to the class
+  const extendClass = async (minutes) => {
+    try {
+      await axios.post(
+        `${API}/online-classes/${batchCode}/controls`,
+        { action: 'extend', minutes },
+        cfg()
+      );
+      fetchRoomState();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Could not extend the class');
+    }
+  };
+
+  // NEW: TRAINER - end the class for everyone (the ONLY way a live class is closed)
+  const endClass = async () => {
+    if (!window.confirm('End this class for everyone? Students will be disconnected and chat/polls will be cleared.')) return;
+    try {
+      await axios.post(
+        `${API}/online-classes/${batchCode}/controls`,
+        { action: 'status', status: 'ended' },
+        cfg()
+      );
+      fetchRoomState();
+    } catch (e) {
+      alert(e.response?.data?.message || 'Could not end the class');
+    }
+  };
+
   // GATE SCREEN: "Class will start soon" countdown / "Session Closed"
   if (gate) {
     const startMs = new Date(gate.scheduledTime).getTime();
@@ -536,6 +704,11 @@ const LiveClassroom = () => {
   const activeHands = (roomData?.raisedHands || []).filter(h => activeIds.includes(String(h.userId)));
   const activeSpeakerIds = (roomData?.allowedSpeakers || []).filter(id => activeIds.includes(String(id)));
 
+  // NEW: scheduled end time (moves forward when the trainer extends the class)
+  const endMs = roomData?.scheduledTime
+    ? new Date(roomData.scheduledTime).getTime() + (roomData.durationMinutes || 60) * 60000
+    : 0;
+
   return (
     <div className="flex flex-col md:flex-row h-[100dvh] bg-gray-900 text-gray-100 overflow-hidden font-sans relative">
       <style>{`
@@ -559,7 +732,7 @@ const LiveClassroom = () => {
 
       {/* LEFT/TOP: LIVEKIT VIDEO ENGINE */}
       <div className="flex-1 flex flex-col relative w-full h-full min-h-0 overflow-hidden">
-        
+
         {/* Top Navbar */}
         <div className="h-14 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-3 md:px-4 z-20 shrink-0">
           <div className="flex items-center gap-2 md:gap-3">
@@ -576,9 +749,14 @@ const LiveClassroom = () => {
           <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={() => setShowMobileSidebar(true)}
-              className="md:hidden flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-white shadow-md transition"
+              className="md:hidden relative flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-white shadow-md transition"
             >
               <FiMessageSquare /> Chat
+              {unread > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </button>
 
             {/* RECORDING CONTROLS (TRAINER ONLY) */}
@@ -627,11 +805,31 @@ const LiveClassroom = () => {
               </button>
             )}
 
+            {/* NEW: TRAINER - End Class (the only way a live class is closed) */}
+            {isHost && (
+              <button
+                onClick={endClass}
+                title="End class for everyone"
+                className="flex items-center gap-1.5 bg-gray-800 hover:bg-red-700 border border-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold shadow-md transition"
+              >
+                <FiPower /> <span className="hidden md:inline">End Class</span>
+              </button>
+            )}
+
             <button onClick={() => navigate('/tests')} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold shadow-md transition">
               Leave
             </button>
           </div>
         </div>
+
+        {/* NEW: SESSION TIMEOUT WARNING (never closes the class by itself) */}
+        <SessionTimer
+          endMs={endMs}
+          offsetRef={serverOffset}
+          isHost={isHost}
+          onExtend={extendClass}
+          onEnd={endClass}
+        />
 
         {/* LiveKit Video Container with Dedicated Bottom Control Dock */}
         <div className="flex-1 relative bg-black flex flex-col min-h-0 overflow-hidden">
@@ -658,328 +856,371 @@ const LiveClassroom = () => {
         </div>
       </div>
 
-      {/* RIGHT/BOTTOM: CUSTOM SIDEBAR */}
+      {/* RIGHT/BOTTOM: CUSTOM SIDEBAR (NEW: can be minimized on desktop) */}
       <div className={`
         fixed bottom-0 left-0 w-full h-[65dvh] z-50 bg-gray-900 rounded-t-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.7)] transform transition-transform duration-300 flex flex-col
-        md:relative md:w-80 lg:w-96 md:h-full md:rounded-none md:shadow-none md:translate-y-0 md:border-l md:border-gray-800 shrink-0
+        md:relative md:h-full md:rounded-none md:shadow-none md:translate-y-0 md:border-l md:border-gray-800 shrink-0
+        ${chatCollapsed ? 'md:w-12' : 'md:w-80 lg:w-96'}
         ${showMobileSidebar ? 'translate-y-0' : 'translate-y-full'}
       `}>
-        <div className="flex border-b border-gray-800 p-2 gap-1 shrink-0 items-center">
-          {[
-            { id: 'chat', icon: <FiMessageSquare />, label: 'Chat' },
-            { id: 'polls', icon: <FiBarChart2 />, label: 'Polls' },
-            { id: 'people', icon: <FiUsers />, label: isHost && activeHands.length > 0 ? `Hands (${activeHands.length})` : 'People' }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 rounded-lg text-xs font-bold transition ${activeTab === t.id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'}`}
-            >
-              {t.icon} <span>{t.label}</span>
-            </button>
-          ))}
 
+        {/* NEW: minimized strip (desktop only) - click to reopen the chat panel */}
+        {chatCollapsed && (
           <button
-            onClick={() => setShowMobileSidebar(false)}
-            className="md:hidden p-2 text-gray-400 hover:text-white ml-2 rounded-lg bg-gray-800"
+            type="button"
+            onClick={() => setChatCollapsed(false)}
+            title="Open chat panel"
+            className="hidden md:flex flex-col items-center gap-3 py-4 w-full h-full text-gray-300 hover:text-white hover:bg-gray-800/60 transition"
           >
-            <FiX size={18} />
-          </button>
-        </div>
-
-        {/* ---------------- CHAT TAB ---------------- */}
-        {activeTab === 'chat' && (
-          <div className="flex-1 flex flex-col min-h-0">
-            {roomData?.pinnedAnnouncement && (
-              <div className="bg-blue-900/30 border-b border-blue-900/50 p-3 shrink-0">
-                <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">📌 Pinned by Trainer</p>
-                <p className="text-sm text-blue-100 leading-snug">{roomData.pinnedAnnouncement}</p>
-              </div>
+            <FiChevronLeft size={18} />
+            <FiMessageSquare size={18} />
+            {unread > 0 && (
+              <span className="min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {unread > 99 ? '99+' : unread}
+              </span>
             )}
+            {isHost && activeHands.length > 0 && (
+              <span className="min-w-[20px] h-5 px-1 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center animate-pulse" title="Raised hands">
+                ✋{activeHands.length}
+              </span>
+            )}
+          </button>
+        )}
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {roomData?.messages?.map((msg, i) => {
-                const isMe = msg.senderId === user._id;
-                const isT = msg.senderRole === 'Trainer';
+        {/* Panel content (hidden on desktop while minimized, mobile is unaffected) */}
+        <div className={`flex-1 flex flex-col min-h-0 ${chatCollapsed ? 'md:hidden' : ''}`}>
+          <div className="flex border-b border-gray-800 p-2 gap-1 shrink-0 items-center">
+            {[
+              { id: 'chat', icon: <FiMessageSquare />, label: 'Chat' },
+              { id: 'polls', icon: <FiBarChart2 />, label: 'Polls' },
+              { id: 'people', icon: <FiUsers />, label: isHost && activeHands.length > 0 ? `Hands (${activeHands.length})` : 'People' }
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                className={`flex-1 flex items-center justify-center gap-1 md:gap-2 py-2 md:py-2.5 rounded-lg text-xs font-bold transition ${activeTab === t.id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'}`}
+              >
+                {t.icon} <span>{t.label}</span>
+                {t.id === 'chat' && unread > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                )}
+              </button>
+            ))}
+
+            {/* NEW: minimize panel (desktop) */}
+            <button
+              onClick={() => setChatCollapsed(true)}
+              title="Minimize panel"
+              className="hidden md:flex p-2 text-gray-400 hover:text-white ml-1 rounded-lg bg-gray-800"
+            >
+              <FiChevronRight size={18} />
+            </button>
+
+            {/* Close panel (mobile) */}
+            <button
+              onClick={() => setShowMobileSidebar(false)}
+              className="md:hidden p-2 text-gray-400 hover:text-white ml-2 rounded-lg bg-gray-800"
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+
+          {/* ---------------- CHAT TAB ---------------- */}
+          {activeTab === 'chat' && (
+            <div className="flex-1 flex flex-col min-h-0">
+              {roomData?.pinnedAnnouncement && (
+                <div className="bg-blue-900/30 border-b border-blue-900/50 p-3 shrink-0">
+                  <p className="text-[10px] text-blue-400 font-bold uppercase mb-1">📌 Pinned by Trainer</p>
+                  <p className="text-sm text-blue-100 leading-snug">{roomData.pinnedAnnouncement}</p>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {roomData?.messages?.map((msg, i) => {
+                  const isMe = msg.senderId === user._id;
+                  const isT = msg.senderRole === 'Trainer';
+
+                  return (
+                    <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className="flex items-baseline gap-2 mb-1 px-1">
+                        <span className={`text-[10px] font-bold ${isT ? 'text-amber-400' : 'text-gray-400'}`}>
+                          {isMe ? 'You' : msg.senderName} {isT && '(Trainer)'}
+                        </span>
+
+                        <span className="text-[9px] text-gray-600">
+                          {new Date(msg.createdAt).toLocaleTimeString([], { timeStyle: 'short' })}
+                        </span>
+                      </div>
+
+                      <div className={`px-4 py-2 rounded-2xl max-w-[90%] text-sm shadow-sm break-words ${isMe ? 'bg-blue-600 text-white rounded-tr-sm' : isT ? 'bg-gray-700 text-white border border-gray-600 rounded-tl-sm' : 'bg-gray-800 text-gray-200 rounded-tl-sm'}`}>
+                        {msg.text}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-3 md:p-4 bg-gray-900 border-t border-gray-800 shrink-0">
+                {isHost && (
+                  <button onClick={toggleChatStatus} className="text-xs text-gray-400 hover:text-white mb-2 flex items-center gap-1 font-semibold">
+                    {roomData?.chatEnabled ? <><FiUnlock /> Lock Chat</> : <><FiLock /> Unlock Chat</>}
+                  </button>
+                )}
+
+                {roomData?.chatEnabled || isHost ? (
+                  <form onSubmit={sendChat} className="relative">
+                    <input
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      placeholder="Type a message..."
+                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl pl-3 pr-10 py-2.5 md:py-3 text-sm focus:outline-none focus:border-blue-500 transition"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={!chatInput.trim()}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-500 transition"
+                    >
+                      <FiSend size={14} />
+                    </button>
+                  </form>
+                ) : (
+                  <div className="bg-gray-800 text-center py-2.5 rounded-xl border border-gray-700 text-xs text-red-400 flex items-center justify-center gap-2">
+                    <FiLock /> Chat disabled by Trainer
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ---------------- POLLS TAB ---------------- */}
+          {activeTab === 'polls' && (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 md:gap-6">
+              {isHost && (
+                <form onSubmit={createPoll} className="bg-gray-800 p-3 md:p-4 rounded-xl border border-gray-700 space-y-3 shrink-0">
+                  <p className="text-xs font-bold text-gray-400 uppercase">Create Poll</p>
+
+                  <input
+                    required
+                    placeholder="Ask a question..."
+                    value={pollForm.question}
+                    onChange={e => setPollForm({ ...pollForm, question: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
+                  />
+
+                  <input
+                    required
+                    placeholder="Option 1"
+                    value={pollForm.opt1}
+                    onChange={e => setPollForm({ ...pollForm, opt1: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
+                  />
+
+                  <input
+                    required
+                    placeholder="Option 2"
+                    value={pollForm.opt2}
+                    onChange={e => setPollForm({ ...pollForm, opt2: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
+                  />
+
+                  <input
+                    placeholder="Option 3 (Optional)"
+                    value={pollForm.opt3}
+                    onChange={e => setPollForm({ ...pollForm, opt3: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
+                  />
+
+                  <button type="submit" className="w-full bg-blue-600 py-2 rounded text-sm font-bold hover:bg-blue-500 transition">
+                    Launch Poll
+                  </button>
+                </form>
+              )}
+
+              {roomData?.polls?.slice().reverse().map((poll) => {
+                const totalVotes = poll.votes.length;
+                const myVote = poll.votes.find(v => v.userId === user._id);
 
                 return (
-                  <div key={i} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className="flex items-baseline gap-2 mb-1 px-1">
-                      <span className={`text-[10px] font-bold ${isT ? 'text-amber-400' : 'text-gray-400'}`}>
-                        {isMe ? 'You' : msg.senderName} {isT && '(Trainer)'}
-                      </span>
-
-                      <span className="text-[9px] text-gray-600">
-                        {new Date(msg.createdAt).toLocaleTimeString([], { timeStyle: 'short' })}
+                  <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ? 'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
+                    <div className="flex justify-between items-start mb-3">
+                      <p className="font-bold text-sm text-white">{poll.question}</p>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-gray-700 text-gray-300">
+                        {poll.isActive ? 'Live' : 'Closed'}
                       </span>
                     </div>
 
-                    <div className={`px-4 py-2 rounded-2xl max-w-[90%] text-sm shadow-sm break-words ${isMe ? 'bg-blue-600 text-white rounded-tr-sm' : isT ? 'bg-gray-700 text-white border border-gray-600 rounded-tl-sm' : 'bg-gray-800 text-gray-200 rounded-tl-sm'}`}>
-                      {msg.text}
+                    <div className="space-y-2">
+                      {poll.options.map((opt, oIdx) => {
+                        const votesForOpt = poll.votes.filter(v => v.optionIndex === oIdx).length;
+                        const percent = totalVotes > 0 ? Math.round((votesForOpt / totalVotes) * 100) : 0;
+                        const hasVotedThis = myVote?.optionIndex === oIdx;
+                        return (
+                          <button
+                            key={oIdx}
+                            disabled={!poll.isActive || (myVote && !isHost)}
+                            onClick={() => votePoll(poll._id, oIdx)}
+                            className="w-full text-left relative overflow-hidden bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs md:text-sm flex justify-between group disabled:cursor-default"
+                          >
+                            <div
+                              className={`absolute top-0 left-0 h-full transition-all duration-500 ${hasVotedThis ? 'bg-blue-600/30' : 'bg-gray-700/50'}`}
+                              style={{ width: `${(myVote || isHost || !poll.isActive) ? percent : 0}%` }}
+                            />
+                            <span className="relative z-10 text-gray-200 truncate pr-2">{opt}</span>
+                            {(myVote || isHost || !poll.isActive) && (
+                              <span className="relative z-10 font-bold text-gray-400">{percent}%</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
+                    <p className="text-[10px] text-gray-500 text-right mt-2">{totalVotes} votes</p>
                   </div>
                 );
               })}
             </div>
+          )}
 
-            <div className="p-3 md:p-4 bg-gray-900 border-t border-gray-800 shrink-0">
-              {isHost && (
-                <button onClick={toggleChatStatus} className="text-xs text-gray-400 hover:text-white mb-2 flex items-center gap-1 font-semibold">
-                  {roomData?.chatEnabled ? <><FiUnlock /> Lock Chat</> : <><FiLock /> Unlock Chat</>}
-                </button>
-              )}
+          {/* ---------------- PEOPLE / HANDS TAB ---------------- */}
+          {activeTab === 'people' && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 md:space-y-6">
+              {isHost && activeHands.length > 0 && (
+                <div className="bg-amber-900/20 border border-amber-900/50 rounded-xl p-3">
+                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-2">
+                    Raised Hands ({activeHands.length})
+                  </p>
 
-              {roomData?.chatEnabled || isHost ? (
-                <form onSubmit={sendChat} className="relative">
-                  <input
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    placeholder="Type a message..."
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl pl-3 pr-10 py-2.5 md:py-3 text-sm focus:outline-none focus:border-blue-500 transition"
-                  />
+                  <div className="space-y-2">
+                    {activeHands.map(h => (
+                      <div key={h.userId} className="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-800">
+                        <div className="truncate pr-2">
+                          <p className="text-xs font-bold text-gray-200 truncate">{h.name}</p>
+                        </div>
 
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim()}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 md:p-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-500 transition"
-                  >
-                    <FiSend size={14} />
-                  </button>
-                </form>
-              ) : (
-                <div className="bg-gray-800 text-center py-2.5 rounded-xl border border-gray-700 text-xs text-red-400 flex items-center justify-center gap-2">
-                  <FiLock /> Chat disabled by Trainer
+                        <button
+                          onClick={() => handleSpeaker(h.userId, 'allow-speaker')}
+                          className="text-[10px] font-bold bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded shrink-0 transition"
+                        >
+                          Allow Mic / Cam / Screen
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-            </div>
-          </div>
-        )}
 
-        {/* ---------------- POLLS TAB ---------------- */}
-        {activeTab === 'polls' && (
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 md:gap-6">
-            {isHost && (
-              <form onSubmit={createPoll} className="bg-gray-800 p-3 md:p-4 rounded-xl border border-gray-700 space-y-3 shrink-0">
-                <p className="text-xs font-bold text-gray-400 uppercase">Create Poll</p>
+              {activeSpeakerIds.length > 0 && (
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Active Speakers</p>
 
-                <input
-                  required
-                  placeholder="Ask a question..."
-                  value={pollForm.question}
-                  onChange={e => setPollForm({ ...pollForm, question: e.target.value })}
-                  className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
-                />
-
-                <input
-                  required
-                  placeholder="Option 1"
-                  value={pollForm.opt1}
-                  onChange={e => setPollForm({ ...pollForm, opt1: e.target.value })}
-                  className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
-                />
-
-                <input
-                  required
-                  placeholder="Option 2"
-                  value={pollForm.opt2}
-                  onChange={e => setPollForm({ ...pollForm, opt2: e.target.value })}
-                  className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
-                />
-
-                <input
-                  placeholder="Option 3 (Optional)"
-                  value={pollForm.opt3}
-                  onChange={e => setPollForm({ ...pollForm, opt3: e.target.value })}
-                  className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
-                />
-
-                <button type="submit" className="w-full bg-blue-600 py-2 rounded text-sm font-bold hover:bg-blue-500 transition">
-                  Launch Poll
-                </button>
-              </form>
-            )}
-
-            {roomData?.polls?.slice().reverse().map((poll) => {
-              const totalVotes = poll.votes.length;
-              const myVote = poll.votes.find(v => v.userId === user._id);
-
-              return (
-                <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ? 'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
-                  <div className="flex justify-between items-start mb-3">
-                    <p className="font-bold text-sm text-white">{poll.question}</p>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-gray-700 text-gray-300">
-                      {poll.isActive ? 'Live' : 'Closed'}
-                    </span>
+                    {isHost && (
+                      <button
+                        onClick={() => handleSpeaker(null, 'revoke-all-speakers')}
+                        className="text-[10px] text-gray-500 hover:text-red-400 underline"
+                      >
+                        Revoke All
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-2">
-                    {poll.options.map((opt, oIdx) => {
-                      const votesForOpt = poll.votes.filter(v => v.optionIndex === oIdx).length;
-                      const percent = totalVotes > 0 ? Math.round((votesForOpt / totalVotes) * 100) : 0;
-                      const hasVotedThis = myVote?.optionIndex === oIdx;
+                    {activeSpeakerIds.map(sid => {
+                      const studentData = roomData.attendance.find(a => String(a.student) === sid);
+
                       return (
-                        <button
-                          key={oIdx}
-                          disabled={!poll.isActive || (myVote && !isHost)}
-                          onClick={() => votePoll(poll._id, oIdx)}
-                          className="w-full text-left relative overflow-hidden bg-gray-900 border border-gray-700 rounded-lg p-2.5 text-xs md:text-sm flex justify-between group disabled:cursor-default"
-                        >
-                          <div
-                            className={`absolute top-0 left-0 h-full transition-all duration-500 ${hasVotedThis ? 'bg-blue-600/30' : 'bg-gray-700/50'}`}
-                            style={{ width: `${(myVote || isHost || !poll.isActive) ? percent : 0}%` }}
-                          />
-                          <span className="relative z-10 text-gray-200 truncate pr-2">{opt}</span>
-                          {(myVote || isHost || !poll.isActive) && (
-                            <span className="relative z-10 font-bold text-gray-400">{percent}%</span>
+                        <div key={sid} className="flex justify-between items-center bg-gray-800 p-2 rounded">
+                          <p className="text-xs font-semibold text-gray-200 truncate">
+                            {studentData?.name || 'Student'}
+                          </p>
+
+                          {isHost && (
+                            <button
+                              onClick={() => handleSpeaker(sid, 'revoke-speaker')}
+                              className="text-gray-500 hover:text-red-400 p-1"
+                            >
+                              <FiVideoOff size={14} />
+                            </button>
                           )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
-                  <p className="text-[10px] text-gray-500 text-right mt-2">{totalVotes} votes</p>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
 
-        {/* ---------------- PEOPLE / HANDS TAB ---------------- */}
-        {activeTab === 'people' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 md:space-y-6">
-            {isHost && activeHands.length > 0 && (
-              <div className="bg-amber-900/20 border border-amber-900/50 rounded-xl p-3">
-                <p className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-2">
-                  Raised Hands ({activeHands.length})
-                </p>
+              {(() => {
+                const students = roomData?.attendance || [];
+                const activeStudents = students.filter(a => activeIds.includes(String(a.student)));
+                const inactiveStudents = students.filter(a => !activeIds.includes(String(a.student)));
 
-                <div className="space-y-2">
-                  {activeHands.map(h => (
-                    <div key={h.userId} className="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-800">
-                      <div className="truncate pr-2">
-                        <p className="text-xs font-bold text-gray-200 truncate">{h.name}</p>
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
+                        <p className="text-lg font-bold text-white leading-none">{students.length}</p>
+                        <p className="text-[9px] text-gray-400 uppercase mt-1">Total Joined</p>
                       </div>
-
-                      <button
-                        onClick={() => handleSpeaker(h.userId, 'allow-speaker')}
-                        className="text-[10px] font-bold bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1 rounded shrink-0 transition"
-                      >
-                        Allow Mic / Cam / Screen
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeSpeakerIds.length > 0 && (
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Active Speakers</p>
-
-                  {isHost && (
-                    <button
-                      onClick={() => handleSpeaker(null, 'revoke-all-speakers')}
-                      className="text-[10px] text-gray-500 hover:text-red-400 underline"
-                    >
-                      Revoke All
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {activeSpeakerIds.map(sid => {
-                    const studentData = roomData.attendance.find(a => String(a.student) === sid);
-
-                    return (
-                      <div key={sid} className="flex justify-between items-center bg-gray-800 p-2 rounded">
-                        <p className="text-xs font-semibold text-gray-200 truncate">
-                          {studentData?.name || 'Student'}
-                        </p>
-
-                        {isHost && (
-                          <button
-                            onClick={() => handleSpeaker(sid, 'revoke-speaker')}
-                            className="text-gray-500 hover:text-red-400 p-1"
-                          >
-                            <FiVideoOff size={14} />
-                          </button>
-                        )}
+                      <div className="p-3 bg-gray-800 rounded-xl border border-green-900/60 text-center">
+                        <p className="text-lg font-bold text-green-400 leading-none">{activeStudents.length}</p>
+                        <p className="text-[9px] text-gray-400 uppercase mt-1">Active</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {(() => {
-              const students = roomData?.attendance || [];
-              const activeStudents = students.filter(a => activeIds.includes(String(a.student)));
-              const inactiveStudents = students.filter(a => !activeIds.includes(String(a.student)));
-
-              return (
-                <>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
-                      <p className="text-lg font-bold text-white leading-none">{students.length}</p>
-                      <p className="text-[9px] text-gray-400 uppercase mt-1">Total Joined</p>
+                      <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
+                        <p className="text-lg font-bold text-gray-400 leading-none">{inactiveStudents.length}</p>
+                        <p className="text-[9px] text-gray-400 uppercase mt-1">Left</p>
+                      </div>
                     </div>
-                    <div className="p-3 bg-gray-800 rounded-xl border border-green-900/60 text-center">
-                      <p className="text-lg font-bold text-green-400 leading-none">{activeStudents.length}</p>
-                      <p className="text-[9px] text-gray-400 uppercase mt-1">Active</p>
-                    </div>
-                    <div className="p-3 bg-gray-800 rounded-xl border border-gray-700 text-center">
-                      <p className="text-lg font-bold text-gray-400 leading-none">{inactiveStudents.length}</p>
-                      <p className="text-[9px] text-gray-400 uppercase mt-1">Left</p>
-                    </div>
-                  </div>
 
-                  {isHost && (
-                    <>
-                      <div>
-                        <p className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-2">
-                          Active Students ({activeStudents.length})
-                        </p>
-                        <div className="space-y-2">
-                          {activeStudents.length === 0 && (
-                            <p className="text-xs text-gray-500">No students are in the class right now.</p>
-                          )}
-                          {activeStudents.map(a => (
-                            <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800 p-2 rounded">
-                              <span className="h-2 w-2 rounded-full bg-green-500 shrink-0"></span>
-                              <p className="text-xs font-semibold text-gray-200 truncate">{a.name || 'Student'}</p>
-                            </div>
-                          ))}
+                    {isHost && (
+                      <>
+                        <div>
+                          <p className="text-[10px] font-bold text-green-500 uppercase tracking-wider mb-2">
+                            Active Students ({activeStudents.length})
+                          </p>
+                          <div className="space-y-2">
+                            {activeStudents.length === 0 && (
+                              <p className="text-xs text-gray-500">No students are in the class right now.</p>
+                            )}
+                            {activeStudents.map(a => (
+                              <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800 p-2 rounded">
+                                <span className="h-2 w-2 rounded-full bg-green-500 shrink-0"></span>
+                                <p className="text-xs font-semibold text-gray-200 truncate">{a.name || 'Student'}</p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
-                          Not Active ({inactiveStudents.length})
-                        </p>
-                        <div className="space-y-2">
-                          {inactiveStudents.length === 0 && (
-                            <p className="text-xs text-gray-500">Nobody has left.</p>
-                          )}
-                          {inactiveStudents.map(a => (
-                            <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800/60 p-2 rounded opacity-70">
-                              <span className="h-2 w-2 rounded-full bg-gray-500 shrink-0"></span>
-                              <p className="text-xs font-semibold text-gray-300 truncate">{a.name || 'Student'}</p>
-                              {a.firstJoinedAt && (
-                                <span className="ml-auto text-[9px] text-gray-500 shrink-0">
-                                  Joined {new Date(a.firstJoinedAt).toLocaleTimeString([], { timeStyle: 'short' })}
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                        <div>
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+                            Not Active ({inactiveStudents.length})
+                          </p>
+                          <div className="space-y-2">
+                            {inactiveStudents.length === 0 && (
+                              <p className="text-xs text-gray-500">Nobody has left.</p>
+                            )}
+                            {inactiveStudents.map(a => (
+                              <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800/60 p-2 rounded opacity-70">
+                                <span className="h-2 w-2 rounded-full bg-gray-500 shrink-0"></span>
+                                <p className="text-xs font-semibold text-gray-300 truncate">{a.name || 'Student'}</p>
+                                {a.firstJoinedAt && (
+                                  <span className="ml-auto text-[9px] text-gray-500 shrink-0">
+                                    Joined {new Date(a.firstJoinedAt).toLocaleTimeString([], { timeStyle: 'short' })}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        )}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
