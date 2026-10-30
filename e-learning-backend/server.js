@@ -5,6 +5,16 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
+// Security middleware
+const {
+  generalLimiter,
+  authLimiter
+} = require('./middleware/rateLimit');
+
+const {
+  validateRegisterInput,
+  validateLoginInput
+} = require('./middleware/inputValidation');
 const crypto = require('crypto');   
 const app = express();
 const port = process.env.PORT || 5000;
@@ -28,6 +38,73 @@ app.use(cors({
     'https://destinationcareer.ashishchauhanvasai.workers.dev'
   ] 
 }));
+
+// ==========================================
+// GENERAL API RATE LIMITING
+// ==========================================
+
+app.use('/api/', generalLimiter);
+
+
+// ==========================================
+// SECURITY HEADERS MIDDLEWARE
+// ==========================================
+
+const securityHeaders = (req, res, next) => {
+
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Legacy browser XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+
+  // Referrer policy
+  res.setHeader(
+    'Referrer-Policy',
+    'strict-origin-when-cross-origin'
+  );
+
+  // HTTP Strict Transport Security
+  // Browsers honour this header when received over HTTPS.
+  res.setHeader(
+    'Strict-Transport-Security',
+    'max-age=31536000'
+  );
+
+  // Content Security Policy
+  res.setHeader(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self'; " +
+    "style-src 'self'; " +
+    "img-src 'self' data: https:; " +
+    "font-src 'self'; " +
+    "connect-src 'self'; " +
+    "frame-ancestors 'none';"
+  );
+
+  // Hide Express technology header
+  res.removeHeader('Server');
+
+  next();
+};
+
+// Disable Express identification header
+app.disable('x-powered-by');
+
+// Apply security headers to all responses
+app.use(securityHeaders);
+
+// ==========================================
+// EXISTING BODY PARSERS (UNCHANGED)
+// ==========================================
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
 // Increase limits to allow image uploads (Base64 strings)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -434,37 +511,57 @@ app.put('/api/drives/:id/status', verifyToken, async (req, res) => {
 });
 
 
-// --- Auth Routes ---
-app.post('/api/register', async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
-    
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+// --- AUTH: REGISTER ---
+app.post(
+  '/api/register',
+  authLimiter,
+  validateRegisterInput,
+  async (req, res) => {
+    try {
+      const { name, email, password } = req.body;
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingUser = await User.findOne({
+        email: normalizedEmail
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          message: 'User already exists'
+        });
+      }
+
+      // Public registration must never create admin accounts.
+      const newUser = new User({
+        name: name.trim(),
+        email: normalizedEmail,
+        password,
+        role: 'student',
+        status: 'pending'
+      });
+
+      await newUser.save();
+
+      res.status(201).json({
+        message: 'Registration submitted. Awaiting approval.'
+      });
+
+    } catch (err) {
+      console.error('Registration Error:', err);
+
+      res.status(500).json({
+        error: 'Registration failed. Please try again.'
+      });
     }
-    
-    const assignedRole = role === 'admin' ? 'admin' : 'student';
-    
-    const newUser = new User({ 
-      name, 
-      email, 
-      password, 
-      role: assignedRole, 
-      status: 'pending' // They must wait for admin approval
-    });
-    
-    await newUser.save();
-    
-    res.status(201).json({ message: 'Registration submitted. Awaiting approval.' });
-  } catch (err) {
-    console.error("Registration Error:", err); 
-    res.status(500).json({ error: err.message });
   }
-});
+);
 
-
-app.post('/api/login', async (req, res) => {
+app.post(
+  '/api/login',
+  authLimiter,
+  validateLoginInput,
+  async (req, res) => {
   try {
     const { email, password, deviceId, deviceType } = req.body;
 

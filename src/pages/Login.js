@@ -105,102 +105,58 @@ const Login = () => {
   // LOGIN
 
   // =========================================================
+// Add this helper function at the top
+const validateLoginInput = (formData) => {
+  const errors = {};
+  
+  // Email validation
+  if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    errors.email = 'Please enter a valid email address';
+  }
+  
+  // Password validation
+  if (!formData.password || formData.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters';
+  } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+    errors.password = 'Password must contain uppercase, lowercase, and numbers';
+  }
+  
+  return errors;
+};
 
-  const handleLogin = async (e) => {
-
-    e.preventDefault();
-
-    setError('');
-
-    setSuccess('');
-
-    setIsPending(false);
-
-    setIsLoading(true);
-
-    try {
-
-      // Get the existing device ID or generate and save one.
-
-      const deviceId = getPermanentDeviceId();
-
-      // Keep the existing login payload and device detection.
-
-      const payload = {
-
-        ...form,
-
-        deviceId,
-
-        deviceType: isMobile ? 'mobile' : 'desktop'
-
-      };
-
-      const res = await axios.post(
-
-        `${process.env.REACT_APP_API_URL}/api/login`,
-
-        payload
-
-      );
-
-      localStorage.setItem('token', res.data.token);
-
-      localStorage.setItem('role', res.data.role);
-
-      localStorage.setItem('isLoggedIn', 'true');
-
-      if (
-
-        res.data.role === 'admin' ||
-
-        res.data.role === 'superadmin'
-
-      ) {
-
-        navigate('/admin');
-
-      } else if (res.data.role === 'trainer') {
-        navigate('/trainer');
-      } else if (res.data.role === 'promotional') {
-        navigate('/promo-dashboard');
-      } else {
-        navigate('/');
-      }
-
-    } catch (err) {
-
-      const errorMessage =
-
-        err.response?.data?.message || 'Login failed';
-
-      if (
-
-        err.response?.status === 403 &&
-
-        (
-
-          errorMessage.toLowerCase().includes('pending') ||
-
-          errorMessage.toLowerCase().includes('device')
-
-        )
-
-      ) {
-
-        setIsPending(true);
-
-      }
-
-      setError(errorMessage);
-
-    } finally {
-
-      setIsLoading(false);
-
-    }
-
-  };
+// Replace the handleLogin function
+const handleLogin = async (e) => {
+  e.preventDefault();
+  
+  // Input validation
+  const validationErrors = validateLoginInput(form);
+  if (Object.keys(validationErrors).length > 0) {
+    setError(Object.values(validationErrors).join(' '));
+    return;
+  }
+  
+  setError(''); // Clear previous errors
+  setSuccess('');
+  
+  try {
+    const deviceId = getPermanentDeviceId();
+    
+    // Sanitize input before sending
+    const sanitizedPayload = {
+      email: form.email.trim().toLowerCase(),
+      password: form.password,
+      deviceId,
+      deviceType: isMobile ? 'mobile' : 'desktop'
+    };
+    
+    const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, sanitizedPayload);
+    
+    // Handle successful login...
+  } catch (err) {
+    const errorMessage = err.response?.data?.message || 'Login failed';
+    setError(errorMessage);
+  }
+};
 
   // =========================================================
 
