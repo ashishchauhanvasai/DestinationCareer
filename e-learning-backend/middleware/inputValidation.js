@@ -1,6 +1,5 @@
 // Secure input validation middleware
 const { body, validationResult } = require('express-validator');
-const { sanitizeBody } = require('express-validator');
 
 // Comprehensive input validation rules
 const validateRegisterInput = [
@@ -30,8 +29,6 @@ const validateRegisterInput = [
     .isIn(['student', 'admin', 'trainer', 'promotional'])
     .withMessage('Invalid role specified'),
 
-  sanitizeBody(),
-
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -58,8 +55,6 @@ const validateLoginInput = [
     .withMessage('Password is required')
     .isLength({ max: 128 }),
 
-  sanitizeBody(),
-
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -80,8 +75,6 @@ const validateForgotPasswordInput = [
     .normalizeEmail()
     .withMessage('Please provide a valid email address')
     .isLength({ max: 254 }),
-
-  sanitizeBody(),
 
   (req, res, next) => {
     const errors = validationResult(req);
@@ -107,8 +100,6 @@ const validateResetPasswordInput = [
     .withMessage('New password must be at least 8 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
              { message: 'New password must contain uppercase, lowercase, number, and special character' }),
-
-  sanitizeBody(),
 
   (req, res, next) => {
     const errors = validationResult(req);
