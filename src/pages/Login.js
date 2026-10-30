@@ -100,11 +100,15 @@ const Login = () => {
       localStorage.setItem('userId', res.data.userId);
 
       if (res.data.role === 'admin' || res.data.role === 'superadmin') {
-        navigate('/admin-dashboard');
+        navigate('/admin');
       } else if (res.data.role === 'trainer') {
-        navigate('/trainer-dashboard');
+        navigate('/trainer');
+      } else if (res.data.role === 'promotional') {
+        navigate('/promo-dashboard');
+      } else if (res.data.role === 'campus_student') {
+        navigate('/campus-portal');
       } else {
-        navigate('/student-dashboard');
+        navigate('/');
       }
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed';
