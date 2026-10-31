@@ -46,26 +46,14 @@ const validateLoginInput = [
   body('email')
     .trim()
     .isEmail()
-    .normalizeEmail()
     .withMessage('Please provide a valid email address')
-    .isLength({ max: 254 }),
-
+    .normalizeEmail(),
+  
   body('password')
     .notEmpty()
     .withMessage('Password is required')
-    .isLength({ max: 128 }),
-
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        message: 'Validation failed',
-        errors: errors.array(),
-        success: false
-      });
-    }
-    next();
-  }
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
 ];
 
 const validateForgotPasswordInput = [

@@ -1012,6 +1012,8 @@ const doubtSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   question: { type: String, required: true },
   isResolved: { type: Boolean, default: false }, // True if a correct answer exists
+  trainerReply: { type: String, default: '' },
+  trainerRepliedAt: { type: Date, default: null },
   replies: [{
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     replyText: { type: String, required: true },
@@ -1025,10 +1027,16 @@ const Doubt = mongoose.model('Doubt', doubtSchema);
 app.get('/api/doubts/:videoId', verifyToken, async (req, res) => {
   try {
     const doubts = await Doubt.find({ videoId: req.params.videoId })
-      .populate('user', 'name role')
+      .populate('user', 'name role profilePic')
       .populate('replies.user', 'name role')
       .sort({ createdAt: -1 });
-    res.json(doubts);
+
+    const enhancedDoubts = doubts.map(doubt => ({
+      ...doubt.toObject(),
+      hasTrainerReply: Boolean(doubt.trainerReply && doubt.trainerReply.trim()),
+      trainerReplyTime: doubt.trainerRepliedAt
+    }));
+    res.json(enhancedDoubts);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1081,6 +1089,64 @@ app.put('/api/doubts/:id/replies/:replyId/correct', verifyToken, async (req, res
     await doubt.populate('user', 'name role');
     await doubt.populate('replies.user', 'name role');
     res.json(doubt);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Trainer/admin reply to a doubt without creating a student reply entry.
+app.post('/api/doubts/:id/trainer-reply', verifyToken, async (req, res) => {
+  try {
+    if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Only trainers or admins can reply to doubts.' });
+    }
+
+    const replyText = String(req.body.replyText || '').trim();
+    if (!replyText) {
+      return res.status(400).json({ message: 'Reply text is required.' });
+    }
+
+    const doubt = await Doubt.findById(req.params.id);
+    if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
+
+    doubt.trainerReply = replyText;
+    doubt.trainerRepliedAt = new Date();
+    doubt.isResolved = true;
+    await doubt.save();
+
+    await doubt.populate('user', 'name role profilePic');
+    await doubt.populate('replies.user', 'name role');
+    res.json(doubt);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// A user may delete their own reply; trainers/admins may moderate any reply.
+app.delete('/api/doubts/:doubtId/replies/:replyId', verifyToken, async (req, res) => {
+  try {
+    const { doubtId, replyId } = req.params;
+    const doubt = await Doubt.findById(doubtId);
+    if (!doubt) return res.status(404).json({ message: 'Doubt not found' });
+
+    const reply = doubt.replies.id(replyId);
+    if (!reply) return res.status(404).json({ message: 'Reply not found' });
+
+    const isModerator = ['trainer', 'admin', 'superadmin'].includes(req.user.role);
+    if (String(reply.user) !== String(req.user.id) && !isModerator) {
+      return res.status(403).json({ message: 'You can only delete your own replies.' });
+    }
+
+    doubt.replies.pull(replyId);
+    if (doubt.replies.length === 0 && !doubt.trainerReply) {
+      doubt.isResolved = false;
+    }
+
+    await doubt.save();
+    await doubt.populate('user', 'name role profilePic');
+    await doubt.populate('replies.user', 'name role');
+
+    res.json({ message: 'Reply deleted successfully', doubt });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -1360,9 +1426,11 @@ const classSessionSchema = new mongoose.Schema({
   batch: { type: mongoose.Schema.Types.ObjectId, ref: 'Batch', required: true },
   trainer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   dateKey: { type: String, required: true },         // 'YYYY-MM-DD'
-  checkInTime: { type: Date, required: true },
+  scheduledTime: { type: Date, default: null },
+  checkInTime: { type: Date, default: null },
   checkOutTime: { type: Date, default: null },
-  status: { type: String, enum: ['open', 'closed'], default: 'open' },
+  durationMinutes: { type: Number, default: 60 },
+  status: { type: String, enum: ['scheduled', 'open', 'closed'], default: 'open' },
   currentToken: { type: String, default: '' },       // rotates while open
   tokenIssuedAt: { type: Date, default: null }
 }, { timestamps: true });
@@ -1575,14 +1643,34 @@ app.post('/api/sessions/checkin', verifyToken, async (req, res) => {
     if (String(batch.trainer) !== req.user.id) return res.status(403).json({ message: 'This batch is not assigned to you' });
 
     const today = dateKeyOf();
-    if (await ClassSession.findOne({ batch: batch._id, dateKey: today, status: 'open' })) {
+    const alreadyOpen = await ClassSession.findOne({ batch: batch._id, dateKey: today, status: 'open' });
+    if (alreadyOpen) {
       return res.status(400).json({ message: 'A session for this batch is already open today' });
     }
-    const session = await ClassSession.create({
-      batch: batch._id, trainer: req.user.id, dateKey: today,
-      checkInTime: new Date(), status: 'open',
-      currentToken: crypto.randomBytes(8).toString('hex'), tokenIssuedAt: new Date()
+
+    const now = new Date();
+    let session = await ClassSession.findOne({
+      batch: batch._id,
+      trainer: req.user.id,
+      dateKey: today,
+      status: 'scheduled'
     });
+
+    if (session) {
+      session.checkInTime = now;
+      session.status = 'open';
+      session.durationMinutes = batch.durationMinutes || 60;
+      session.currentToken = crypto.randomBytes(8).toString('hex');
+      session.tokenIssuedAt = now;
+      await session.save();
+    } else {
+      session = await ClassSession.create({
+        batch: batch._id, trainer: req.user.id, dateKey: today,
+        checkInTime: now, status: 'open',
+        durationMinutes: batch.durationMinutes || 60,
+        currentToken: crypto.randomBytes(8).toString('hex'), tokenIssuedAt: now
+      });
+    }
     res.json({ message: `Checked in for ${batch.subject}`, sessionId: session._id });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -1905,8 +1993,8 @@ async function judgeBatch(problem, code, language, cases) {
   }
   const tokens = created.map((c) => c.token).join(',');
 
-  for (let i = 0; i < 60; i++) {
-    await sleep(i < 5 ? 500 : 1000);
+  for (let i = 0; i < 30; i++) {
+    await sleep(1000);
     const { data } = await axios.get(`${JUDGE0_URL}/submissions/batch`, {
       headers: judge0Headers,
       params: { tokens, base64_encoded: true, fields: 'token,status,time,memory,stdout,stderr,compile_output' }
@@ -1955,10 +2043,14 @@ const functionFields = (body, testCases) => {
   return { fields: { mode: 'function', ...spec, starterCode: EMPTY_STARTER } };
 };
 
+const BATCH_SIZE = 50;
+
 const runCases = (problem, code, language, cases) =>
   withSlot(async () => {
     const out = [];
-    for (let i = 0; i < cases.length; i += 20) out.push(...(await judgeBatch(problem, code, language, cases.slice(i, i + 20))));
+    for (let i = 0; i < cases.length; i += BATCH_SIZE) {
+      out.push(...(await judgeBatch(problem, code, language, cases.slice(i, i + BATCH_SIZE))));
+    }
     return out;
   });
 
@@ -2070,6 +2162,7 @@ app.put('/api/problems/:id', verifyToken, async (req, res) => {
     const p = await Problem.findByIdAndUpdate(req.params.id,
       { title, difficulty, points: Number(points) || 100, timeLimit: Number(timeLimit) || 2, statementMd, testCases, starterCode, ...fn.fields },
       { returnDocument: 'after', runValidators: true });
+    problemCache.clear();
     res.json(p);
   } catch (e) { res.status(400).json({ message: e.message }); }
 });
@@ -2077,6 +2170,7 @@ app.put('/api/problems/:id', verifyToken, async (req, res) => {
 app.delete('/api/problems/:id', verifyToken, async (req, res) => {
   if (!isAdminOrSuper(req)) return res.status(403).json({ message: 'Access denied' });
   await Problem.findByIdAndDelete(req.params.id);
+  problemCache.clear();
   res.json({ message: 'Deleted' });
 });
 
@@ -2104,13 +2198,36 @@ app.get('/api/problems/me/submissions', verifyToken, async (req, res) => {
   res.json(subs);
 });
 
+const problemCache = new Map();
+const PROBLEM_CACHE_TTL = 5 * 60 * 1000;
+
 app.get('/api/problems/:slug', verifyToken, async (req, res) => {
-  const p = await Problem.findOne({ slug: req.params.slug });
-  if (!p) return res.status(404).json({ message: 'Not found' });
-  const obj = p.toObject();
-  obj.testCases = obj.testCases.filter((t) => t.isSample);
-  if (p.mode === 'function') obj.starterCode = harness.starterCode(harness.specOf(p));
-  res.json(obj);
+  try {
+    const cacheKey = req.params.slug;
+    const cached = problemCache.get(cacheKey);
+
+    if (cached && cached.expiresAt > Date.now()) {
+      return res.json(cached.data);
+    }
+
+    if (cached) problemCache.delete(cacheKey);
+
+    const p = await Problem.findOne({ slug: cacheKey });
+    if (!p) return res.status(404).json({ message: 'Not found' });
+
+    const obj = p.toObject();
+    obj.testCases = obj.testCases.filter((t) => t.isSample);
+    if (p.mode === 'function') obj.starterCode = harness.starterCode(harness.specOf(p));
+
+    problemCache.set(cacheKey, {
+      data: obj,
+      expiresAt: Date.now() + PROBLEM_CACHE_TTL
+    });
+
+    res.json(obj);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 app.post('/api/problems/:slug/run', verifyToken, cooldown(3000), async (req, res) => {
@@ -3047,6 +3164,66 @@ app.get('/api/staff/students/:id/history', verifyToken, async (req, res) => {
 // =========================================================
 // BULK ACTIONS (Device Approval & Batch Changes)
 // =========================================================
+
+// Bulk approve selected user accounts and send each approved user an email.
+app.put('/api/users/bulk-approve', verifyToken, async (req, res) => {
+  try {
+    if (!['admin', 'superadmin'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'No users selected for approval' });
+    }
+
+    const validIds = [...new Set(userIds.map(id => String(id)).filter(id => mongoose.isValidObjectId(id)))];
+    if (validIds.length === 0) {
+      return res.status(400).json({ message: 'No valid users selected for approval' });
+    }
+
+    const usersToApprove = await User.find({ _id: { $in: validIds } });
+    if (usersToApprove.length === 0) {
+      return res.status(404).json({ message: 'No matching users found' });
+    }
+
+    await User.updateMany(
+      { _id: { $in: usersToApprove.map(user => user._id) } },
+      { $set: { status: 'approved' } }
+    );
+
+    const emailResults = await Promise.allSettled(usersToApprove.map(user => transporter.sendMail({
+      from: `"Destination Career" <${EMAIL_USER}>`,
+      to: user.email,
+      subject: 'Your Destination Career Account Has Been Approved',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
+          <h2 style="color: #2563eb;">Welcome to Destination Career!</h2>
+          <p>Hi <strong>${String(user.name || 'Student').replace(/[&<>"']/g, '')}</strong>,</p>
+          <p>Your registration has been reviewed and approved by our administrative team.</p>
+          <p>You can now log in to your dashboard to access your courses, mock tests, and placement resources.</p>
+          <a href="https://destinationcareer.pages.dev/login" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
+        </div>
+      `
+    })));
+
+    const emailSentCount = emailResults.filter(result => result.status === 'fulfilled').length;
+    emailResults.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`Approval email failed for ${usersToApprove[index].email}:`, result.reason?.message || result.reason);
+      }
+    });
+
+    res.json({
+      message: `Successfully approved ${usersToApprove.length} user(s)`,
+      approvedCount: usersToApprove.length,
+      emailSentCount
+    });
+  } catch (error) {
+    console.error('Bulk approval error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // 1. Bulk Approve Device Changes
 app.put('/api/users/bulk-approve-device', verifyToken, async (req, res) => {
@@ -4265,10 +4442,8 @@ const setSpeakerPermission = async (room, identity, allow) => {
 //    NEW: Extend class time
 app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({
-      batchCode: req.params.batchCode.toUpperCase()
-    });
-
+    const batchCode = req.params.batchCode.toUpperCase();
+    const cls = await OnlineClass.findOne({ batchCode });
     if (!cls) return res.status(404).json({ message: 'Class not found' });
 
     const isHost =
@@ -4276,22 +4451,15 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
       String(cls.trainer) === String(req.user.id);
 
     if (!isHost) {
-      return res.status(403).json({
-        message: 'Only Trainer/Admin can change classroom controls'
-      });
+      return res.status(403).json({ message: 'Only Trainer/Admin can change classroom controls' });
     }
 
-    const {
-      action,
-      studentId,
-      chatEnabled,
-      pinnedAnnouncement,
-      status,
-      minutes
-    } = req.body;
+    const { action, studentId, chatEnabled, pinnedAnnouncement, status, minutes } = req.body;
+    let nextSession = null;
+    let sessionEnded = null;
 
     if (action === 'toggle-chat') {
-      cls.chatEnabled = chatEnabled;
+      cls.chatEnabled = Boolean(chatEnabled);
     } else if (action === 'pin') {
       cls.pinnedAnnouncement = pinnedAnnouncement || '';
     } else if (action === 'status') {
@@ -4303,39 +4471,82 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
         cls.allowedSpeakers = [];
         cls.pinnedAnnouncement = '';
 
+        // Close today's attendance session but keep the Batch itself active.
+        const batch = await Batch.findOne({ batchCode });
+        if (batch) {
+          sessionEnded = await ClassSession.findOne({ batch: batch._id, status: 'open' }).sort({ createdAt: -1 });
+          if (sessionEnded) {
+            sessionEnded.checkOutTime = new Date();
+            sessionEnded.status = 'closed';
+            await sessionEnded.save();
+          }
+
+          // At/after 11 PM, prepare tomorrow's session. The trainer activates it at check-in.
+          const now = new Date();
+          if (now.getHours() >= 23) {
+            const nextDay = new Date(now);
+            nextDay.setDate(nextDay.getDate() + 1);
+            const nextDateKey = dateKeyOf(nextDay);
+            const alreadyCreated = await ClassSession.findOne({ batch: batch._id, dateKey: nextDateKey });
+
+            if (!alreadyCreated) {
+              const scheduledTime = new Date(nextDay);
+              const nextStart = await ClassSession.create({
+                batch: batch._id,
+                trainer: batch.trainer,
+                dateKey: nextDateKey,
+                scheduledTime,
+                checkInTime: null,
+                checkOutTime: null,
+                status: 'scheduled',
+                durationMinutes: batch.durationMinutes || 60,
+                currentToken: '',
+                tokenIssuedAt: null
+              });
+              nextSession = nextStart;
+            } else if (alreadyCreated.status === 'scheduled') {
+              nextSession = alreadyCreated;
+            }
+          }
+        }
+
         const lk = getLiveKitClient();
         if (lk) lk.deleteRoom(cls.batchCode).catch(() => {});
-      } else {
+      } else if (status) {
+        if (!['scheduled', 'live', 'ended'].includes(status)) {
+          return res.status(400).json({ message: 'Invalid class status' });
+        }
         cls.status = status;
       }
     } else if (action === 'extend') {
-      // NEW: trainer adds extra minutes when the scheduled time is almost over / over
       if (cls.status === 'ended') {
         return res.status(400).json({ message: 'This class has already ended.' });
       }
       const extra = Math.max(1, Math.min(Number(minutes) || 15, 240));
       cls.durationMinutes = (cls.durationMinutes || 60) + extra;
     } else if (action === 'allow-speaker' && studentId) {
-      if (!cls.allowedSpeakers.includes(studentId)) {
-        cls.allowedSpeakers.push(studentId);
-      }
-
+      if (!cls.allowedSpeakers.includes(studentId)) cls.allowedSpeakers.push(studentId);
       cls.raisedHands = cls.raisedHands.filter(h => h.userId !== studentId);
-
-      setSpeakerPermission(cls.batchCode, studentId, true);
+      await setSpeakerPermission(cls.batchCode, studentId, true);
     } else if (action === 'revoke-speaker' && studentId) {
       cls.allowedSpeakers = cls.allowedSpeakers.filter(id => id !== studentId);
-
-      setSpeakerPermission(cls.batchCode, studentId, false);
+      await setSpeakerPermission(cls.batchCode, studentId, false);
     } else if (action === 'revoke-all-speakers') {
-      const prevSpeakers = [...cls.allowedSpeakers];
+      const previousSpeakers = [...cls.allowedSpeakers];
       cls.allowedSpeakers = [];
-
-      prevSpeakers.forEach(sId => setSpeakerPermission(cls.batchCode, sId, false));
+      await Promise.all(previousSpeakers.map(id => setSpeakerPermission(cls.batchCode, id, false)));
+    } else {
+      return res.status(400).json({ message: 'Unsupported classroom control action' });
     }
 
     await cls.save();
-    res.json(cls);
+    res.json({
+      ...cls.toObject(),
+      message: action === 'status' && status === 'ended' ? 'Class ended successfully' : undefined,
+      sessionEnded,
+      nextSessionScheduled: Boolean(nextSession),
+      nextSession
+    });
   } catch (e) {
     console.error('CONTROLS ERROR:', e);
     res.status(500).json({ message: e.message });
@@ -4439,29 +4650,44 @@ app.post('/api/online-classes/:batchCode/polls', verifyToken, async (req, res) =
 
 app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async (req, res) => {
   try {
-    const cls = await OnlineClass.findOne({
-      batchCode: req.params.batchCode.toUpperCase()
-    });
+    const { batchCode, pollId } = req.params;
+    const { optionIndex, changeVote = false } = req.body;
 
-    const poll = cls.polls.id(req.params.pollId);
+    const cls = await OnlineClass.findOne({ batchCode: batchCode.toUpperCase() });
+    if (!cls) return res.status(404).json({ message: 'Class not found' });
 
+    const poll = cls.polls.id(pollId);
     if (!poll || !poll.isActive) {
-      return res.status(400).json({ message: 'Poll is closed' });
+      return res.status(404).json({ message: 'Poll not found or inactive' });
     }
 
-    const uId = String(req.user.id);
-    const existingVote = poll.votes.find(v => v.userId === uId);
+    const selectedOption = Number(optionIndex);
+    if (!Number.isInteger(selectedOption) || selectedOption < 0 || selectedOption >= poll.options.length) {
+      return res.status(400).json({ message: 'Please select a valid poll option' });
+    }
 
-    if (existingVote) {
-      existingVote.optionIndex = req.body.optionIndex;
-    } else {
-      poll.votes.push({
-        userId: uId,
-        optionIndex: req.body.optionIndex
+    const userId = String(req.user.id);
+    const existingVote = poll.votes.find(vote => String(vote.userId) === userId);
+
+    if (existingVote && !changeVote) {
+      return res.status(400).json({
+        message: 'You have already voted on this poll',
+        alreadyVoted: true
       });
     }
+
+    if (existingVote && changeVote) {
+      existingVote.optionIndex = selectedOption;
+    } else {
+      poll.votes.push({ userId, optionIndex: selectedOption });
+    }
+
     await cls.save();
-    res.json(cls.polls);
+    res.json({
+      message: existingVote ? 'Vote updated successfully' : 'Vote cast successfully',
+      poll,
+      polls: cls.polls
+    });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
