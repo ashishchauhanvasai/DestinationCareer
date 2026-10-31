@@ -268,8 +268,9 @@ const LiveClassroom = () => {
   
   // DYNAMIC POLLS STATE
   const [pollForm, setPollForm] = useState({ question: '', opt1: '', opt2: '', opt3: '' });
-  const [pollOptions, setPollOptions] = useState(['opt1', 'opt2', 'opt3']);
-  const [busyHand, setBusyHand] = useState(false); // Used to deduplicate rapid hand raise clicks
+  const [pollOptions, setPollOptions] = useState(['opt1', 'opt2']);
+  
+  const [busyHand, setBusyHand] = useState(false); 
 
   const [activeIds, setActiveIds] = useState([]);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -535,42 +536,34 @@ const LiveClassroom = () => {
     } catch (e) {}
   };
 
-  const addPollOption = () => {
-    const newIndex = pollOptions.length + 1;
-    setPollOptions([...pollOptions, `opt${newIndex}`]);
-  };
-
-  const removePollOption = (indexToRemove) => {
-    if (pollOptions.length <= 2) {
-      alert('Poll must have at least 2 options');
-      return;
-    }
-    setPollOptions(pollOptions.filter((_, index) => index !== indexToRemove));
-  };
-
   const createPoll = async (e) => {
     e.preventDefault();
-    const validOptions = pollOptions
-      .map(optKey => pollForm[optKey])
-      .filter(val => val && val.trim() !== '');
+    const validOptions = pollOptions.map(key => pollForm[key]).filter(val => val && val.trim() !== '');
 
-    if (validOptions.length < 2) {
-      return alert('Provide at least 2 options');
-    }
+    if (validOptions.length < 2) return alert('Provide at least 2 options');
 
     try {
-      await axios.post(
-        `${API}/online-classes/${batchCode}/polls`,
-        { question: pollForm.question, options: validOptions },
-        cfg()
-      );
-      setPollForm({ question: '', opt1: '', opt2: '', opt3: '' });
-      setPollOptions(['opt1', 'opt2', 'opt3']);
+      await axios.post(`${API}/online-classes/${batchCode}/polls`, { 
+        question: pollForm.question, 
+        options: validOptions 
+      }, cfg());
+      
+      setPollForm({ question: '', opt1: '', opt2: '' });
+      setPollOptions(['opt1', 'opt2']);
       fetchRoomState();
       alert('Poll launched!');
     } catch (e) {
       alert('Failed to create poll');
     }
+  };
+
+  const addPollOption = () => {
+    setPollOptions([...pollOptions, `opt${pollOptions.length + 1}`]);
+  };
+
+  const removePollOption = (indexToRemove) => {
+    if (pollOptions.length <= 2) return alert('Minimum 2 options required.');
+    setPollOptions(pollOptions.filter((_, i) => i !== indexToRemove));
   };
 
   const votePoll = async (pollId, optionIndex) => {
@@ -598,7 +591,7 @@ const LiveClassroom = () => {
     try {
       const response = await axios.post(`${API}/online-classes/${batchCode}/hand`, {}, cfg());
       if (response.data?.alreadyRaised) {
-        // Ignored or handle specific ui cue if needed
+        
       }
       fetchRoomState();
     } catch (e) {
@@ -1010,40 +1003,37 @@ const LiveClassroom = () => {
                     onChange={e => setPollForm({ ...pollForm, question: e.target.value })}
                     className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
                   />
-
-                  <div className="space-y-3">
+                  
+                  <div className="space-y-2">
                     {pollOptions.map((optKey, index) => (
                       <div key={index} className="flex gap-2">
                         <input
                           required={index < 2}
                           placeholder={`Option ${index + 1}`}
                           value={pollForm[optKey] || ''}
-                          onChange={(e) => setPollForm({
-                            ...pollForm,
-                            [optKey]: e.target.value
-                          })}
+                          onChange={(e) => setPollForm({ ...pollForm, [optKey]: e.target.value })}
                           className="flex-1 p-2 border border-gray-700 rounded bg-gray-900 text-white text-sm"
                         />
                         {index >= 2 && (
                           <button
                             type="button"
                             onClick={() => removePollOption(index)}
-                            className="px-3 py-2 bg-red-600/20 text-red-400 border border-red-500/50 rounded hover:bg-red-600 hover:text-white transition text-xs font-bold"
+                            className="px-3 bg-red-600/20 text-red-400 border border-red-500/50 rounded hover:bg-red-600 hover:text-white transition text-xs font-bold"
                           >
-                            Remove
+                            X
                           </button>
                         )}
                       </div>
                     ))}
-                    
-                    <button
-                      type="button"
-                      onClick={addPollOption}
-                      className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded hover:bg-gray-600 transition text-sm font-bold"
-                    >
-                      + Add Option
-                    </button>
                   </div>
+                  
+                  <button
+                    type="button"
+                    onClick={addPollOption}
+                    className="w-full p-2 bg-gray-700 text-gray-200 border border-gray-600 rounded hover:bg-gray-600 transition text-sm font-bold"
+                  >
+                    + Add Another Option
+                  </button>
 
                   <button type="submit" className="w-full bg-blue-600 py-2 rounded text-sm font-bold hover:bg-blue-500 transition text-white mt-2">
                     Launch Poll

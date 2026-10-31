@@ -173,6 +173,28 @@ const AdminUsers = () => {
     );
   };
 
+  // --- NEW: BULK APPROVE USERS ACCOUNTS ---
+  const handleBulkApprove = async () => {
+    if (!window.confirm(`Approve ${selectedUserIds.length} users? Approval emails will be sent to all of them.`)) {
+      return;
+    }
+    try {
+      const response = await axios.put(
+        `${API}/users/bulk-approve`,
+        { userIds: selectedUserIds },
+        cfg()
+      );
+      
+      alert(`✅ Successfully approved ${response.data.approvedCount} users! Approval emails have been sent.`);
+      setSelectedUserIds([]);
+      await loadUsers();
+      await loadStats();
+    } catch (error) {
+      console.error('Bulk approval failed:', error);
+      alert(error.response?.data?.message || 'Failed to approve users. Please try again.');
+    }
+  };
+
   const handleBulkApproveDevices = async () => {
     if (!window.confirm(`Approve new devices for ${selectedUserIds.length} students?`)) return;
     try {
@@ -276,25 +298,36 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      {/* BULK ACTIONS BAR */}
-      {tab === "student" && selectedUserIds.length > 0 && (
-        <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-center justify-between shadow-sm animate-pulse">
+      {/* BULK ACTIONS BAR - Visible across all tabs when selections are made */}
+      {selectedUserIds.length > 0 && (
+        <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex flex-wrap items-center justify-between shadow-sm animate-pulse gap-3">
           <span className="text-blue-800 font-bold text-sm">
-            {selectedUserIds.length} student(s) selected
+            {selectedUserIds.length} user(s) selected
           </span>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setMovingStudent("BULK")}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
+              onClick={handleBulkApprove}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
             >
-              Move Selected to Batch
+              Approve Accounts
             </button>
-            <button
-              onClick={handleBulkApproveDevices}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
-            >
-              Approve Devices
-            </button>
+            
+            {tab === "student" && (
+              <>
+                <button
+                  onClick={() => setMovingStudent("BULK")}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
+                >
+                  Move Selected to Batch
+                </button>
+                <button
+                  onClick={handleBulkApproveDevices}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition"
+                >
+                  Approve Devices
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -305,16 +338,15 @@ const AdminUsers = () => {
           <table className="w-full text-sm whitespace-nowrap">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {tab === "student" && (
-                  <th className="px-5 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
-                      checked={users.length > 0 && selectedUserIds.length === users.length}
-                      onChange={handleSelectAll}
-                    />
-                  </th>
-                )}
+                {/* CHECKBOX NOW VISIBLE FOR ALL TABS */}
+                <th className="px-5 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                    checked={users.length > 0 && selectedUserIds.length === users.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="text-left px-5 py-3 font-bold text-gray-600">User</th>
                 <th className="text-left px-5 py-3 font-bold text-gray-600">Email</th>
                 {tab === "student" && <th className="text-left px-5 py-3 font-bold text-gray-600">Profile</th>}
@@ -326,7 +358,7 @@ const AdminUsers = () => {
             <tbody className="divide-y">
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={tab === "student" ? 7 : 5} className="text-center py-10 text-gray-500">
+                  <td colSpan={tab === "student" ? 7 : 6} className="text-center py-10 text-gray-500">
                     No {tab}s found.
                   </td>
                 </tr>
@@ -334,16 +366,15 @@ const AdminUsers = () => {
                 users.map((u) => (
                   <tr key={u._id} className="hover:bg-gray-50 transition-colors">
                     
-                    {tab === "student" && (
-                      <td className="px-5 py-4">
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
-                          checked={selectedUserIds.includes(u._id)}
-                          onChange={() => handleSelectUser(u._id)}
-                        />
-                      </td>
-                    )}
+                    {/* CHECKBOX ALWAYS RENDERED */}
+                    <td className="px-5 py-4">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                        checked={selectedUserIds.includes(u._id)}
+                        onChange={() => handleSelectUser(u._id)}
+                      />
+                    </td>
 
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
@@ -386,7 +417,6 @@ const AdminUsers = () => {
                       </span>
                     </td>
 
-                    {/* NAYA: STATIC ROLE BADGE (NO DROPDOWN) */}
                     <td className="px-5 py-4 text-center">
                       <span className={`px-3 py-1 rounded text-xs font-bold ${
                         u.role === 'superadmin' ? 'bg-purple-50 text-purple-700' :

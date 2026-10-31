@@ -144,6 +144,7 @@ const Layout = ({ children }) => {
               <>
                 <SidebarItem onClick={closeMobileSidebar} icon={FiGrid} text="My Batches" to="/trainer" isActive={location.pathname === '/trainer'} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiUsers} text="My Students" to="/trainer/students" isActive={location.pathname === '/trainer/students'} />
+                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiBookOpen} text="Courses & Doubts" to="/courses" isActive={location.pathname === '/courses'} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiClipboard} text="Assignments" to="/trainer/assignments" isActive={location.pathname.includes('assignment')} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiHelpCircle} text="Company Questions" to="/trainer/company-questions" isActive={location.pathname === '/trainer/company-questions'} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiAward} text="Top Performers" to="/trainer/performers" isActive={location.pathname === '/trainer/performers'} />

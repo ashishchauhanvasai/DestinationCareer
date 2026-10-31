@@ -5,3 +5,11 @@
 body {
   background-color: #F8FAFC; 
 }
+
+/* GLOBAL BUTTON & LINK ANIMATION */
+button, a {
+  transition: transform 0.15s ease-in-out, opacity 0.15s ease-in-out !important;
+}
+button:active, a:active {
+  transform: scale(0.95) !important;
+}
