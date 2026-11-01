@@ -864,7 +864,9 @@ const endClass = async () => {
               setUser(null); // Yeh video components ko turant screen se hata dega
             }}
             /* NAYA EVENT END 👆 */
-          ></LiveKitRoom>
+          >
+            <VideoConference />
+          </LiveKitRoom>
         </div>
       </div>
 
