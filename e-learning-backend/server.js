@@ -456,6 +456,8 @@ const createSuperAdmin = async () => {
 };
 createSuperAdmin();
 
+
+
 // 3. AUTH MIDDLEWARE
 const verifyToken = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -474,6 +476,18 @@ const verifyToken = async (req, res, next) => {
     res.status(400).json({ message: 'Invalid token' });
   }
 };
+
+
+// GET TOP PERFORMERS (To prevent 404 on Student Dashboard)
+app.get('/api/performers', verifyToken, async (req, res) => {
+  try {
+    // Agar tumhare paas "MockRating" ya "Test" ka model hai toh uske basis par data bhej sakte ho.
+    // Abhi ke liye hum empty array bhej rahe hain taaki frontend ka error 100% khatam ho jaye.
+    res.json([]); 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 
 // Delete a College Drive

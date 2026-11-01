@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiHome, FiBookOpen, FiFileText, FiBriefcase, FiSun, FiMoon, FiLogOut, FiUser,
@@ -10,16 +11,16 @@ import ChangeCredentialsModal from './ChangeCredentialsModal';
 
 const SidebarItem = ({ icon: Icon, text, to, isActive, onClick }) => (
   <Link
-    to={to}
+    to={to} 
     onClick={onClick}
-    className={`flex items-center gap-4 px-6 py-3 my-1 rounded-r-full font-medium transition-colors ${
-      isActive
-        ? 'bg-blue-50 dark:bg-slate-700/50 text-blue-600 dark:text-blue-400 border-l-4 border-blue-600 dark:border-blue-400'
-        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 border-l-4 border-transparent'
+    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
+      isActive 
+        ? 'bg-blue-600 text-white' 
+        : 'text-gray-400 hover:text-white hover:bg-gray-800'
     }`}
   >
-    <Icon size={20} className="shrink-0" />
-    <span className="truncate whitespace-nowrap">{text}</span>
+    <Icon size={18} />
+    {text}
   </Link>
 );
 
@@ -144,7 +145,10 @@ const Layout = ({ children }) => {
               <>
                 <SidebarItem onClick={closeMobileSidebar} icon={FiGrid} text="My Batches" to="/trainer" isActive={location.pathname === '/trainer'} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiUsers} text="My Students" to="/trainer/students" isActive={location.pathname === '/trainer/students'} />
-                <SidebarItem onClick={() => setIsMobileMenuOpen(false)} icon={FiBookOpen} text="Courses & Doubts" to="/courses" isActive={location.pathname === '/courses'} />
+                
+                {/* FIX: onClick updated to match others */}
+                <SidebarItem onClick={closeMobileSidebar} icon={FiBookOpen} text="Courses & Doubts" to="/courses" isActive={location.pathname === '/courses'} />
+                
                 <SidebarItem onClick={closeMobileSidebar} icon={FiClipboard} text="Assignments" to="/trainer/assignments" isActive={location.pathname.includes('assignment')} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiHelpCircle} text="Company Questions" to="/trainer/company-questions" isActive={location.pathname === '/trainer/company-questions'} />
                 <SidebarItem onClick={closeMobileSidebar} icon={FiAward} text="Top Performers" to="/trainer/performers" isActive={location.pathname === '/trainer/performers'} />
