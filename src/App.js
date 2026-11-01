@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,7 +19,6 @@ import DriveRegister from "./pages/DriveRegister";
 import CampusPortal from "./pages/CampusPortal";
 import DriveTest from "./pages/DriveTest";
 import LiveClassroom from './pages/LiveClassroom';
-
 
 import Login from "./pages/Login";
 import MockRatings from "./pages/MockRatings";
@@ -50,7 +49,6 @@ import User from "./pages/User";
 import CompanyQuestionDetail from "./pages/CompanyQuestionDetail";
 import StaffBatchTracker from "./components/StaffBatchTracker";
 
-
 const HomeRoute = () => {
   const role = localStorage.getItem("role");
 
@@ -71,10 +69,39 @@ const HomeRoute = () => {
 };
 
 function App() {
+
+  // ==========================================
+  // ANTI-INSPECT & DEVTOOLS BLOCKER
+  // ==========================================
+  useEffect(() => {
+    // 1. Block Right Click
+    const handleContextMenu = (e) => e.preventDefault();
+    
+    // 2. Block Inspect Element Keyboard Shortcuts
+    const handleKeyDown = (e) => {
+      if (
+        e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
+        (e.ctrlKey && e.key === 'U') || 
+        (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'J' || e.key === 'U'))
+      ) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+  // ==========================================
+
   return (
     <Router>
       <Routes>
-
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
@@ -88,7 +115,6 @@ function App() {
             </PrivateRoute>
           }
         />
-
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -114,7 +140,6 @@ function App() {
           }
         />
         <Route path="/live-class/:batchCode" element={<LiveClassroom />} />
-
         
         <Route path="/drive/:driveCode" element={<DriveTest />} />
 
@@ -362,17 +387,6 @@ function App() {
             <PrivateRoute role="user">
               <Layout>
                 <User />
-              </Layout>
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/profile"
-          element={
-            <PrivateRoute>
-              <Layout>
-                <Profile />
               </Layout>
             </PrivateRoute>
           }

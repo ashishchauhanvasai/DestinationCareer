@@ -354,20 +354,27 @@ const LiveClassroom = () => {
     }
   }, [tick, gate, joinClass]);
 
-  const fetchRoomState = async () => {
+const fetchRoomState = async () => {
     if (!user) return;
     try {
       const res = await axios.get(`${API}/online-classes/${batchCode}/state`, cfg());
       if (res.data.serverTime) serverOffset.current = new Date(res.data.serverTime).getTime() - Date.now();
 
-      if (res.data.status === 'ended' && joinedStatus.current !== 'ended') {
+      const prevStatus = joinedStatus.current;
+      joinedStatus.current = res.data.status; // Update tracking
+
+      // FIX: Detect if class was forcefully ended OR rolled over to tomorrow ('live' -> 'scheduled')
+      if (
+        res.data.status === 'ended' || 
+        (prevStatus === 'live' && res.data.status === 'scheduled')
+      ) {
         setGate({
           type: 'ENDED',
           title: res.data.title,
           subject: res.data.subject,
           scheduledTime: res.data.scheduledTime
         });
-        setUser(null);
+        setUser(null); // Unmounts video components immediately
         return;
       }
 
@@ -392,7 +399,6 @@ const LiveClassroom = () => {
       console.error(e);
     }
   };
-
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(fetchRoomState, 1500);

@@ -4438,8 +4438,8 @@ const setSpeakerPermission = async (room, identity, allow) => {
   }
 };
 
-// 7. Trainer Controls: Toggle Chat, Pin Announcement, Allow/Revoke Student Mic, Cam & Screen Share,
-//    NEW: Extend class time
+
+// 1. TRAINER CONTROLS: END CLASS REUSES BATCH FOR TOMORROW
 app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res) => {
   try {
     const batchCode = req.params.batchCode.toUpperCase();
@@ -4449,14 +4449,23 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
     const { action, studentId, chatEnabled, pinnedAnnouncement, status, minutes } = req.body;
 
     if (action === 'status' && status === 'ended') {
-      // Clear today's live data
+      // 1. KICK EVERYONE OUT OF VIDEO/AUDIO IMMEDIATELY
+      const { RoomServiceClient } = require('livekit-server-sdk');
+      const lkUrl = process.env.LIVEKIT_URL ? process.env.LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://') : null;
+      if (lkUrl && process.env.LIVEKIT_API_KEY) {
+        const lk = new RoomServiceClient(lkUrl, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+        // This forcefully kicks everyone out of the video room!
+        lk.deleteRoom(cls.batchCode).catch(e => console.error("LiveKit room deletion error:", e.message));
+      }
+
+      // 2. Clear today's live data
       cls.messages = [];
       cls.polls = [];
       cls.raisedHands = [];
       cls.allowedSpeakers = [];
       cls.pinnedAnnouncement = '';
 
-      // SHIFT SCHEDULE TO TOMORROW SO THE BATCH IS REUSABLE
+      // 3. Shift schedule to tomorrow so the batch is reusable
       const nextDate = new Date(cls.scheduledTime);
       nextDate.setDate(nextDate.getDate() + 1); // Add 1 day
       cls.scheduledTime = nextDate;
