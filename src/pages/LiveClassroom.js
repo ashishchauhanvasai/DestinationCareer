@@ -73,80 +73,6 @@ const useIsDesktop = () => {
   return match;
 };
 
-const SessionTimer = ({ endMs, offsetRef, isHost, onExtend, onEnd }) => {
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  if (!endMs) return null;
-
-  const remaining = endMs - (now + offsetRef.current);
-  if (Number.isNaN(remaining) || remaining > WARN_BEFORE_MS) return null;
-
-  const overtime = remaining <= 0;
-  const abs = Math.abs(remaining);
-  const mm = String(Math.floor(abs / 60000)).padStart(2, '0');
-  const ss = String(Math.floor((abs % 60000) / 1000)).padStart(2, '0');
-
-  return (
-    <div
-      className={`shrink-0 z-20 px-3 py-2 border-b flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm ${
-        overtime
-          ? 'bg-red-900/40 border-red-800 text-red-100'
-          : 'bg-amber-900/40 border-amber-800 text-amber-100'
-      }`}
-    >
-      <div className="flex items-center gap-2 min-w-0">
-        <FiAlertTriangle className={`shrink-0 ${overtime ? 'text-red-400' : 'text-amber-400'}`} />
-        {overtime ? (
-          <span>
-            <b>Scheduled time is over (+{mm}:{ss}).</b>{' '}
-            {isHost
-              ? 'The class stays live until you end it.'
-              : 'The class continues until your trainer ends it.'}
-          </span>
-        ) : (
-          <span>
-            <b>Class time ends in {mm}:{ss}.</b>{' '}
-            {isHost
-              ? 'The class will NOT close by itself. Extend it or end it when you are ready.'
-              : 'Your trainer will decide when to finish.'}
-          </span>
-        )}
-      </div>
-
-      {isHost && (
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => onExtend(15)}
-            className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 border border-gray-600 font-bold text-white transition"
-          >
-            +15 min
-          </button>
-          <button
-            type="button"
-            onClick={() => onExtend(30)}
-            className="px-2.5 py-1 rounded bg-gray-800 hover:bg-gray-700 border border-gray-600 font-bold text-white transition"
-          >
-            +30 min
-          </button>
-          <button
-            type="button"
-            onClick={onEnd}
-            className="px-2.5 py-1 rounded bg-red-600 hover:bg-red-500 font-bold text-white transition"
-          >
-            End Class
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const PublisherControls = () => {
   const {
     localParticipant,
@@ -265,11 +191,11 @@ const LiveClassroom = () => {
 
   const [activeTab, setActiveTab] = useState('chat');
   const [chatInput, setChatInput] = useState('');
-  
+
   // DYNAMIC POLLS STATE
   const [pollForm, setPollForm] = useState({ question: '', opt1: '', opt2: '', opt3: '' });
   const [pollOptions, setPollOptions] = useState(['opt1', 'opt2']);
-  
+
   const [busyHand, setBusyHand] = useState(false); 
 
   const [activeIds, setActiveIds] = useState([]);
@@ -354,16 +280,15 @@ const LiveClassroom = () => {
     }
   }, [tick, gate, joinClass]);
 
-const fetchRoomState = async () => {
+  const fetchRoomState = async () => {
     if (!user) return;
     try {
       const res = await axios.get(`${API}/online-classes/${batchCode}/state`, cfg());
       if (res.data.serverTime) serverOffset.current = new Date(res.data.serverTime).getTime() - Date.now();
 
       const prevStatus = joinedStatus.current;
-      joinedStatus.current = res.data.status; // Update tracking
+      joinedStatus.current = res.data.status; 
 
-      // FIX: Detect if class was forcefully ended OR rolled over to tomorrow ('live' -> 'scheduled')
       if (
         res.data.status === 'ended' || 
         (prevStatus === 'live' && res.data.status === 'scheduled')
@@ -374,7 +299,7 @@ const fetchRoomState = async () => {
           subject: res.data.subject,
           scheduledTime: res.data.scheduledTime
         });
-        setUser(null); // Unmounts video components immediately
+        setUser(null); 
         return;
       }
 
@@ -399,6 +324,7 @@ const fetchRoomState = async () => {
       console.error(e);
     }
   };
+
   useEffect(() => {
     if (!user) return;
     const interval = setInterval(fetchRoomState, 1500);
@@ -417,11 +343,7 @@ const fetchRoomState = async () => {
   const startRecording = async () => {
     try {
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: REC_FPS, max: REC_FPS }
-        },
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: REC_FPS, max: REC_FPS } },
         audio: true
       });
       recStreamsRef.current = [displayStream];
@@ -518,10 +440,8 @@ const fetchRoomState = async () => {
   const sendChat = async (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-
     const msgText = chatInput;
     setChatInput('');
-
     try {
       await axios.post(`${API}/online-classes/${batchCode}/chat`, { text: msgText }, cfg());
       fetchRoomState();
@@ -553,7 +473,7 @@ const fetchRoomState = async () => {
         question: pollForm.question, 
         options: validOptions 
       }, cfg());
-      
+
       setPollForm({ question: '', opt1: '', opt2: '' });
       setPollOptions(['opt1', 'opt2']);
       fetchRoomState();
@@ -595,15 +515,12 @@ const fetchRoomState = async () => {
     if (busyHand) return; 
     setBusyHand(true);
     try {
-      const response = await axios.post(`${API}/online-classes/${batchCode}/hand`, {}, cfg());
-      if (response.data?.alreadyRaised) {
-        
-      }
+      await axios.post(`${API}/online-classes/${batchCode}/hand`, {}, cfg());
       fetchRoomState();
     } catch (e) {
       console.error('Failed to toggle hand raise:', e);
     } finally {
-      setBusyHand(false);
+      setTimeout(() => setBusyHand(false), 2000);
     }
   };
 
@@ -620,13 +537,12 @@ const fetchRoomState = async () => {
     }
   };
 
-  // KICK STUDENT FEATURE
   const kickStudent = async (studentId) => {
     if (!window.confirm("Are you sure you want to remove this student from the class?")) return;
     try {
       await axios.post(`${API}/online-classes/${batchCode}/kick`, { participantIdentity: studentId }, cfg());
       alert("Student removed successfully.");
-      fetchRoomState(); // Instantly refreshes the UI
+      fetchRoomState(); 
     } catch (err) {
       console.error("Failed to remove student", err);
       alert("Could not remove student.");
@@ -645,38 +561,30 @@ const fetchRoomState = async () => {
       alert(e.response?.data?.message || 'Could not extend the class');
     }
   };
-const endClass = async () => {
+
+  const endClass = async () => {
     if (!isHost) return;
-    
+
     const currentHour = new Date().getHours();
     const isLateNight = currentHour >= 20;
-    
+
     let message = 'End this class for everyone? Students will be disconnected instantly.';
     if (isLateNight) {
       message += '\n\nThe batch will be preserved and available for tomorrow\'s session.';
     }
-    
+
     if (!window.confirm(message)) return;
-    
+
     try {
-      // Backend ko call karo jisse wo LiveKit server se room delete kar de
       await axios.post(
         `${API}/online-classes/${batchCode}/controls`,
-        { 
-          action: 'status', 
-          status: 'ended',
-          preserveBatch: isLateNight 
-        },
+        { action: 'status', status: 'ended', preserveBatch: isLateNight },
         cfg()
       );
-      
-      // Note: Yahan se user(null) karne ki zarurat nahi hai. 
-      // Jaise hi server room delete karega, LiveKit apne aap sabko disconnect karega.
     } catch (e) {
       alert(e.response?.data?.message || 'Failed to end class');
     }
   };
-
 
   if (gate) {
     const startMs = new Date(gate.scheduledTime).getTime();
@@ -714,12 +622,16 @@ const endClass = async () => {
         ) : (
           <>
             <p className="text-red-400 font-bold text-lg mb-2">Session Closed</p>
-            <p className="text-sm text-gray-400">This class has ended. Please contact your trainer for the next session.</p>
+            <p className="text-sm text-gray-400">
+              {/* FIX: Conditional text based on role */}
+              {isHost ? "You have ended this class." : "This class has ended. Please contact your trainer for the next session."}
+            </p>
           </>
         )}
 
         <button
-          onClick={() => navigate('/tests')}
+          // FIX: Student goes to '/' (Dashboard), Trainer goes to '/trainer'
+          onClick={() => navigate(isHost ? '/trainer' : '/')}
           className="mt-8 bg-gray-800 hover:bg-gray-700 border border-gray-700 px-4 py-2 rounded-lg text-sm font-bold"
         >
           Go Back
@@ -731,7 +643,7 @@ const endClass = async () => {
   if (loading) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-white font-bold">Joining Live Classroom...</div>;
   if (!lkToken || !lkUrl) return <div className="h-[100dvh] flex items-center justify-center bg-gray-900 text-red-500 font-bold">Connection Failed.</div>;
 
-  const isHandRaised = (roomData?.raisedHands || []).some(h => h.userId === user?._id);
+  const isHandRaised = (roomData?.raisedHands || []).some(h => String(h.userId) === String(user?._id));
   const activeHands = (roomData?.raisedHands || []).filter(h => activeIds.includes(String(h.userId)));
   const activeSpeakerIds = (roomData?.allowedSpeakers || []).filter(id => activeIds.includes(String(id)));
 
@@ -831,32 +743,28 @@ const endClass = async () => {
               </button>
             )}
 
-            {isHost && (
-              <button
-                onClick={endClass}
-                title="End class for everyone"
-                className="flex items-center gap-1.5 bg-gray-800 hover:bg-red-700 border border-red-600 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold shadow-md transition"
-              >
-                <FiPower /> <span className="hidden md:inline">End Class</span>
-              </button>
+            {/* FIX: Moved Extend/End controls inside the top bar */}
+            {isHost && endMs > 0 && (Date.now() + serverOffset.current) > (endMs - WARN_BEFORE_MS) && (
+              <div className="flex items-center gap-1.5 bg-gray-800 px-2 py-1.5 rounded border border-gray-700">
+                <span className="text-[10px] text-amber-400 font-bold mr-1 animate-pulse hidden md:inline">Ending Soon</span>
+                <button onClick={() => extendClass(15)} className="text-[10px] font-bold bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white">+15m</button>
+                <button onClick={endClass} className="text-[10px] font-bold bg-red-600 hover:bg-red-500 px-2 py-1 rounded text-white flex items-center gap-1">
+                  <FiPower /> End
+                </button>
+              </div>
             )}
 
-            <button 
-  onClick={() => navigate(isHost ? '/trainer' : '/dashboard')} 
-  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
->
-  Leave
-</button>
+            <button
+              // FIX: Navigate to '/' for students
+              onClick={() => navigate(isHost ? '/trainer' : '/')}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-1.5 rounded-md text-sm font-medium transition-colors"
+            >
+              Leave
+            </button>
           </div>
         </div>
 
-        <SessionTimer
-          endMs={endMs}
-          offsetRef={serverOffset}
-          isHost={isHost}
-          onExtend={extendClass}
-          onEnd={endClass}
-        />
+        {/* Removed <SessionTimer/> completely */}
 
         <div className="flex-1 relative bg-black flex flex-col min-h-0 overflow-hidden">
             <LiveKitRoom
@@ -868,20 +776,22 @@ const endClass = async () => {
             data-lk-theme="default"
             className="flex-1 flex flex-col min-h-0 w-full h-full overflow-hidden"
             options={LK_OPTIONS}
-            /* YEH NAYA EVENT ADD KARNA HAI 👇 */
             onDisconnected={() => {
-              // Jaise hi room forcefully close hoga, sabko bahar phek diya jayega
               setGate({
                 type: 'ENDED',
                 title: roomData?.title || 'Class',
                 subject: roomData?.subject || '',
                 scheduledTime: roomData?.scheduledTime
               });
-              setUser(null); // Yeh video components ko turant screen se hata dega
+              setUser(null);
             }}
-            /* NAYA EVENT END 👆 */
           >
-            <VideoConference />
+            <div className="flex-1 relative min-h-0 w-full overflow-hidden">
+              <VideoStage />
+              <PresenceReporter onChange={setActiveIds} />
+            </div>
+            
+            {(isHost || canSpeak) && <PublisherControls />}
           </LiveKitRoom>
         </div>
       </div>
@@ -1029,7 +939,7 @@ const endClass = async () => {
                     onChange={e => setPollForm({ ...pollForm, question: e.target.value })}
                     className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-sm text-white"
                   />
-                  
+
                   <div className="space-y-2">
                     {pollOptions.map((optKey, index) => (
                       <div key={index} className="flex gap-2">
@@ -1052,7 +962,7 @@ const endClass = async () => {
                       </div>
                     ))}
                   </div>
-                  
+
                   <button
                     type="button"
                     onClick={addPollOption}
@@ -1069,7 +979,7 @@ const endClass = async () => {
 
               {roomData?.polls?.slice().reverse().map((poll) => {
                 const totalVotes = poll.votes.length;
-                const myVote = poll.votes.find(v => v.userId === user._id);
+                const myVote = poll.votes.find(v => String(v.userId) === String(user._id));
 
                 return (
                   <div key={poll._id} className={`p-3 md:p-4 rounded-xl border ${poll.isActive ? 'bg-blue-900/20 border-blue-800' : 'bg-gray-800 border-gray-700 opacity-70'}`}>
@@ -1210,11 +1120,11 @@ const endClass = async () => {
                             {activeStudents.length === 0 && (
                               <p className="text-xs text-gray-500">No students are in the class right now.</p>
                             )}
-                           {activeStudents.map(a => (
+                            {activeStudents.map(a => (
                               <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800 p-2 rounded">
                                 <span className="h-2 w-2 rounded-full bg-green-500 shrink-0"></span>
                                 <p className="text-xs font-semibold text-gray-200 truncate flex-1">{a.name || 'Student'}</p>
-                                
+
                                 {/* KICK STUDENT BUTTON FOR TRAINER */}
                                 <button 
                                   onClick={() => kickStudent(String(a.student))}

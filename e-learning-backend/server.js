@@ -4492,19 +4492,20 @@ app.post('/api/online-classes/:batchCode/controls', verifyToken, async (req, res
   }
 });
 
-// 8. Student Raise / Lower Hand
-// 2. HAND RAISE DEDUPLICATION (Point iii)
+// 2. HAND RAISE DEDUPLICATION (Fixed Identity Mismatch)
 app.post('/api/online-classes/:batchCode/hand', verifyToken, async (req, res) => {
   try {
     const uId = String(req.user.id);
     const cls = await OnlineClass.findOne({ batchCode: req.params.batchCode.toUpperCase() });
     
-    const exists = cls.raisedHands.some(h => h.userId === uId);
+    // FIX: Mongoose ObjectIds ko String mein convert karna zaroori hai
+    const exists = cls.raisedHands.some(h => String(h.userId) === uId);
+    
     if (exists) {
-      // If already raised, LOWER the hand
-      cls.raisedHands = cls.raisedHands.filter(h => h.userId !== uId);
+      // Agar pehle se raised hai, toh Lower Hand (Remove) kar do
+      cls.raisedHands = cls.raisedHands.filter(h => String(h.userId) !== uId);
     } else {
-      // Raise the hand
+      // Naya Hand Raise karo
       const user = await User.findById(uId).select('name email');
       cls.raisedHands.push({ userId: uId, name: user.name, email: user.email });
     }
