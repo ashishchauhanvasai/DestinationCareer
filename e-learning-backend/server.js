@@ -4614,6 +4614,30 @@ app.post('/api/online-classes/:batchCode/polls/:pollId/vote', verifyToken, async
 sweepExpiredClasses();
 setInterval(sweepExpiredClasses, 60 * 1000);
 
+app.post('/api/online-classes/:batchCode/kick', verifyToken, async (req, res) => {
+  try {
+    const { batchCode } = req.params;
+    const { participantIdentity } = req.body;
+    
+    // Security check: Only trainers and admins can kick
+    if (req.user.role !== 'trainer' && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { RoomServiceClient } = require('livekit-server-sdk');
+    const lkUrl = process.env.LIVEKIT_URL ? process.env.LIVEKIT_URL.replace('wss://', 'https://').replace('ws://', 'http://') : null;
+    
+    if (lkUrl && process.env.LIVEKIT_API_KEY) {
+      const lk = new RoomServiceClient(lkUrl, process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET);
+      await lk.removeParticipant(batchCode.toUpperCase(), participantIdentity);
+    }
+
+    res.json({ success: true, message: 'Student removed' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`🚀 SERVER VERSION 2.0 RUNNING ON PORT ${port}`);
 });

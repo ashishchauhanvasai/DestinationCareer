@@ -620,6 +620,19 @@ const fetchRoomState = async () => {
     }
   };
 
+  // KICK STUDENT FEATURE
+  const kickStudent = async (studentId) => {
+    if (!window.confirm("Are you sure you want to remove this student from the class?")) return;
+    try {
+      await axios.post(`${API}/online-classes/${batchCode}/kick`, { participantIdentity: studentId }, cfg());
+      alert("Student removed successfully.");
+      fetchRoomState(); // Instantly refreshes the UI
+    } catch (err) {
+      console.error("Failed to remove student", err);
+      alert("Could not remove student.");
+    }
+  };
+
   const extendClass = async (minutes) => {
     try {
       await axios.post(
@@ -828,9 +841,12 @@ const endClass = async () => {
               </button>
             )}
 
-            <button onClick={() => navigate('/tests')} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold shadow-md transition">
-              Leave
-            </button>
+            <button 
+  onClick={() => navigate(isHost ? '/trainer' : '/dashboard')} 
+  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium transition-colors"
+>
+  Leave
+</button>
           </div>
         </div>
 
@@ -1194,10 +1210,19 @@ const endClass = async () => {
                             {activeStudents.length === 0 && (
                               <p className="text-xs text-gray-500">No students are in the class right now.</p>
                             )}
-                            {activeStudents.map(a => (
+                           {activeStudents.map(a => (
                               <div key={String(a.student)} className="flex items-center gap-2 bg-gray-800 p-2 rounded">
                                 <span className="h-2 w-2 rounded-full bg-green-500 shrink-0"></span>
-                                <p className="text-xs font-semibold text-gray-200 truncate">{a.name || 'Student'}</p>
+                                <p className="text-xs font-semibold text-gray-200 truncate flex-1">{a.name || 'Student'}</p>
+                                
+                                {/* KICK STUDENT BUTTON FOR TRAINER */}
+                                <button 
+                                  onClick={() => kickStudent(String(a.student))}
+                                  className="text-red-400 hover:text-red-500 hover:bg-red-400/20 p-1.5 rounded transition"
+                                  title="Remove from class"
+                                >
+                                  <FiX size={14} />
+                                </button>
                               </div>
                             ))}
                           </div>
