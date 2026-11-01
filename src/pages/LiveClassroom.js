@@ -632,14 +632,13 @@ const fetchRoomState = async () => {
       alert(e.response?.data?.message || 'Could not extend the class');
     }
   };
-
-  const endClass = async () => {
+const endClass = async () => {
     if (!isHost) return;
     
     const currentHour = new Date().getHours();
     const isLateNight = currentHour >= 20;
     
-    let message = 'End this class for everyone? Students will be disconnected and chat/polls will be cleared.';
+    let message = 'End this class for everyone? Students will be disconnected instantly.';
     if (isLateNight) {
       message += '\n\nThe batch will be preserved and available for tomorrow\'s session.';
     }
@@ -647,6 +646,7 @@ const fetchRoomState = async () => {
     if (!window.confirm(message)) return;
     
     try {
+      // Backend ko call karo jisse wo LiveKit server se room delete kar de
       await axios.post(
         `${API}/online-classes/${batchCode}/controls`,
         { 
@@ -656,17 +656,14 @@ const fetchRoomState = async () => {
         },
         cfg()
       );
-      fetchRoomState();
       
-      if (isLateNight) {
-        alert('Class ended successfully. The batch has been preserved and will be available for tomorrow\'s session.');
-      } else {
-        alert('Class ended successfully.');
-      }
+      // Note: Yahan se user(null) karne ki zarurat nahi hai. 
+      // Jaise hi server room delete karega, LiveKit apne aap sabko disconnect karega.
     } catch (e) {
       alert(e.response?.data?.message || 'Failed to end class');
     }
   };
+
 
   if (gate) {
     const startMs = new Date(gate.scheduledTime).getTime();
@@ -846,7 +843,7 @@ const fetchRoomState = async () => {
         />
 
         <div className="flex-1 relative bg-black flex flex-col min-h-0 overflow-hidden">
-          <LiveKitRoom
+            <LiveKitRoom
             key={isHost ? 'host' : canSpeak ? 'speaker' : 'viewer'}
             video={isHost}
             audio={isHost || canSpeak}
@@ -855,14 +852,19 @@ const fetchRoomState = async () => {
             data-lk-theme="default"
             className="flex-1 flex flex-col min-h-0 w-full h-full overflow-hidden"
             options={LK_OPTIONS}
-          >
-            <div className="flex-1 relative min-h-0 w-full overflow-hidden">
-              <VideoStage />
-              <PresenceReporter onChange={setActiveIds} />
-            </div>
-
-            {(isHost || canSpeak) && <PublisherControls />}
-          </LiveKitRoom>
+            /* YEH NAYA EVENT ADD KARNA HAI 👇 */
+            onDisconnected={() => {
+              // Jaise hi room forcefully close hoga, sabko bahar phek diya jayega
+              setGate({
+                type: 'ENDED',
+                title: roomData?.title || 'Class',
+                subject: roomData?.subject || '',
+                scheduledTime: roomData?.scheduledTime
+              });
+              setUser(null); // Yeh video components ko turant screen se hata dega
+            }}
+            /* NAYA EVENT END 👆 */
+          ></LiveKitRoom>
         </div>
       </div>
 
