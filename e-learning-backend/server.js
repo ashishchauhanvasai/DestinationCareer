@@ -577,7 +577,6 @@ app.post(
     }
   }
 );
-
 app.post(
   '/api/login',
   authLimiter,
@@ -592,7 +591,31 @@ app.post(
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // ==========================================
+    // 🛠️ FIX: SILENT PASSWORD MIGRATION 
+    // ==========================================
+    let isMatch = false;
+
+    // Check if the stored password is already a bcrypt hash (starts with $2a$ or $2b$)
+    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
+      // Normal secure compare for new/hashed users
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      // Old user with a plaintext password from before the fix
+      if (password === user.password) {
+        isMatch = true;
+        // Instantly hash it and update the database so it's secure for the future!
+        // We use updateOne to safely bypass the pre('save') double-hash hook.
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { password: hashedPassword } }
+        );
+        console.log(`✅ Automatically secured password for user: ${email}`);
+      }
+    }
+
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -708,7 +731,6 @@ app.post(
     res.status(500).json({ error: err.message });
   }
 });
-
 // --- ADMIN APPROVE DEVICE CHANGE ---
 app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
