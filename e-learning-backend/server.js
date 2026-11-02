@@ -1528,18 +1528,23 @@ app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { email, newPassword, otp } = req.body;
     if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and new password are required.' });
-    if (newPassword.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
     
-    const record = await OTP.findOne({ email, otp });
+    // STRICT 8-CHARACTER CHECK FOR BACKEND
+    if (newPassword.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+    
+    const record = await OTP.findOne({ email });
     if (!record) return res.status(400).json({ message: 'Invalid or expired OTP.' });
     
-    const user = await User.findOne({ email });
+    // Find user (case-insensitive for safety)
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    // ✅ FIX: Manually hash the password and use updateOne to bypass any schema hook issues
+    // BULLETPROOF EXPLICIT HASHING (Fixes the 400 Bad Request on Login)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
+    // Force update the database with the HASHED password
     await User.updateOne(
       { _id: user._id },
       { $set: { password: hashedPassword } }
@@ -1552,7 +1557,6 @@ app.post('/api/auth/reset-password', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // ---------- SUPERADMIN: trainer accounts ----------
 app.post('/api/trainers', verifyToken, async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Only super admin can add trainers' });

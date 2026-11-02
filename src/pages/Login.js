@@ -184,6 +184,7 @@ const Login = () => {
       return;
     }
 
+    // STRICT 8-CHARACTER CHECK FOR FRONTEND
     if (newPassword.length < 8) {
       setError('Password must contain at least 8 characters.');
       return;
@@ -198,7 +199,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/reset-password`, {
-        email: resetEmail.trim(),
+        email: resetEmail.trim().toLowerCase(), // Lowercase to match login DB format
         otp,
         newPassword
       });
