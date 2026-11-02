@@ -493,13 +493,11 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-
-// GET TOP PERFORMERS (To prevent 404 on Student Dashboard)
-app.get('/api/performers', verifyToken, async (req, res) => {
+// GET TOP PERFORMERS (Public/Student Dashboard)
+app.get('/api/performers', async (req, res) => {
   try {
-    // Agar tumhare paas "MockRating" ya "Test" ka model hai toh uske basis par data bhej sakte ho.
-    // Abhi ke liye hum empty array bhej rahe hain taaki frontend ka error 100% khatam ho jaye.
-    res.json([]); 
+    const performers = await TopPerformer.find().sort({ createdAt: -1 });
+    res.json(performers);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -983,7 +981,6 @@ app.put('/api/users/:id/status', verifyToken, async (req, res) => {
         else console.log("Approval email sent to:", user.email);
       });
     }
-
     res.json({ message: `User marked as ${status}` });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1011,36 +1008,6 @@ app.get('/api/users/profile', verifyToken, async (req, res) => {
   }
 });
 
-// --- Update Profile (Student - One Time Only) ---
-app.put('/api/users/profile', verifyToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    
-    if (user.profileLocked) {
-      return res.status(403).json({ 
-        message: 'Your profile is locked. Please contact an admin to make changes.' 
-      });
-    }
-
-    const { highestQualification, passingYear, percentage, backlogs, educationGap, readyForRelocation, skillsAcquired } = req.body;
-    
-    user.highestQualification = highestQualification;
-    user.passingYear = passingYear;
-    user.percentage = percentage;
-    user.backlogs = backlogs;
-    user.educationGap = educationGap;
-    user.readyForRelocation = readyForRelocation;
-    user.skillsAcquired = skillsAcquired;
-    user.profileLocked = true; 
-    
-    await user.save();
-    
-    const updatedUser = await User.findById(req.user.id).select('-password');
-    res.json(updatedUser);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // --- ADMIN DELETE JOB ---
 app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
@@ -1051,35 +1018,62 @@ app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// --- Update Profile (Skills Unlocked & Promo Fields) ---
+// --- Update Profile (Skills Always Editable & Promo Fields) ---
 app.put('/api/users/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    const { highestQualification, passingYear, percentage, backlogs, educationGap, readyForRelocation, skillsAcquired, contactNumber, address } = req.body;
-    
-    // Skills can ALWAYS be updated, regardless of lock
-    user.skillsAcquired = skillsAcquired;
 
-    // Allow promo team to save contact details
-    if (user.role === 'promotional') {
-      user.contactNumber = contactNumber;
-      user.address = address;
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    
-    // Only lock other fields for students
-    if (!user.profileLocked && user.role === 'student') {
+
+    const {
+      highestQualification,
+      passingYear,
+      percentage,
+      backlogs,
+      educationGap,
+      readyForRelocation,
+      skillsAcquired,
+      contactNumber,
+      address
+    } = req.body;
+
+    // Skills can ALWAYS be updated, even when profile is locked
+    if (skillsAcquired !== undefined) {
+      user.skillsAcquired = skillsAcquired;
+    }
+
+    // Promotional users can update contact details
+    if (user.role === 'promotional') {
+      if (contactNumber !== undefined) {
+        user.contactNumber = contactNumber;
+      }
+
+      if (address !== undefined) {
+        user.address = address;
+      }
+    }
+
+    // Academic details can only be saved once for students
+    if (user.role === 'student' && !user.profileLocked) {
       user.highestQualification = highestQualification;
       user.passingYear = passingYear;
       user.percentage = percentage;
       user.backlogs = backlogs;
       user.educationGap = educationGap;
       user.readyForRelocation = readyForRelocation;
-      user.profileLocked = true; 
+
+      user.profileLocked = true;
     }
-    
+
     await user.save();
-    const updatedUser = await User.findById(req.user.id).select('-password');
+
+    const updatedUser = await User.findById(req.user.id)
+      .select('-password');
+
     res.json(updatedUser);
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

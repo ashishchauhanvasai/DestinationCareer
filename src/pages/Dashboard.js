@@ -36,8 +36,8 @@ const Dashboard = () => {
         const [crsRes, testRes, perfRes, bannerRes] = await Promise.all([
           axios.get(`${process.env.REACT_APP_API_URL}/api/courses`, config).catch(() => ({ data: [] })),
           axios.get(`${process.env.REACT_APP_API_URL}/api/testimonials`).catch(() => ({ data: [] })),
-          axios.get(`${process.env.REACT_APP_API_URL}/api/performers`).catch(() => ({ data: [] })),
-          axios.get(`${process.env.REACT_APP_API_URL}/api/banner`).catch(() => ({ data: { imageUrl: '' } })) // NEW FETCH
+          axios.get(`${process.env.REACT_APP_API_URL}/api/performers`, config).catch(() => ({ data: [] })), // ✅ Added config here
+          axios.get(`${process.env.REACT_APP_API_URL}/api/banner`).catch(() => ({ data: { imageUrl: '' } }))
         ]);
 
         setCourses(crsRes.data);

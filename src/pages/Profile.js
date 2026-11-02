@@ -575,19 +575,22 @@ const Profile = () => {
                 </>
               )}
 
-              {/* SKILLS ONLY FOR STUDENTS */}
-                  {!isPromo && (
-                    <div className="col-span-1 md:col-span-2">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Technical Skills (Comma separated)</label>
-                     <input 
-  value={form.skillsAcquired} 
-  onChange={(e) => setForm({...form, skillsAcquired: e.target.value})}
-  placeholder="Java, React, SQL..." 
-/>
-                    </div>
-                  )}
+              {/* ✅ FIX: Replaced undefined 'form' with 'profile' and 'handleChange' */}
+              <div className="col-span-1 md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Technical Skills (Comma separated)
+                </label>
+                <input
+                  type="text"
+                  value={profile.skillsAcquired || ""}
+                  onChange={(e) =>
+                    handleChange("skillsAcquired", e.target.value)
+                  }
+                  placeholder="Java, React, SQL..."
+                  className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                />
+              </div>
 
-              
             </div>
 
             {/* SAVE BUTTON AND SUCCESS MESSAGE */}
