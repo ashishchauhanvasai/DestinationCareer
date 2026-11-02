@@ -285,13 +285,20 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password before saving (requires bcryptjs)
-userSchema.pre('save', async function () {
-  // If password is not modified, exit the function (Mongoose continues automatically)
-  if (!this.isModified('password')) return;
+userSchema.pre('save', async function (next) {
+  // Agar password change/set nahi hua hai, toh seedha aage badho
+  if (!this.isModified('password')) {
+    return next();
+  }
   
-  // Hash the password
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  try {
+    // Password hash karo
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next(); // Mongoose ko batao ki kaam ho gaya, ab database mein save karo
+  } catch (err) {
+    next(err); // Agar koi error aaye toh server ko crash hone se bachao
+  }
 });
 
 // 🚀 SPEED BOOST: Index frequently queried fields
@@ -1066,6 +1073,187 @@ app.post('/api/doubts', verifyToken, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+// --- AUTH: REGISTER ---
+app.post(
+  '/api/register',
+  authLimiter,
+  validateRegisterInput,
+  async (req, res) => {
+    try {
+      const { name, email, password } = req.body;
+
+      // 🛡️ CRASH PREVENTION: Agar data miss ho jaye toh server crash na ho
+      if (!name || !email || !password) {
+        return res.status(400).json({ message: 'All fields (name, email, password) are required.' });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingUser = await User.findOne({
+        email: normalizedEmail
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          message: 'An account with this email already exists.'
+        });
+      }
+
+      // Public registration must never create admin accounts.
+      const newUser = new User({
+        name: name.trim(),
+        email: normalizedEmail,
+        password: password,
+        role: 'student',
+        status: 'pending'
+      });
+
+      await newUser.save();
+
+      res.status(201).json({
+        message: 'Registration submitted. Awaiting approval.'
+      });
+
+    } catch (err) {
+      console.error('Registration Error:', err);
+      res.status(500).json({
+        error: 'Registration failed. Please try again.'
+      });
+    }
+  }
+);
+
+
+app.post(
+  '/api/login',
+  authLimiter,
+  validateLoginInput,
+  async (req, res) => {
+  try {
+    const { email, password, deviceId, deviceType } = req.body;
+
+    // 🚀 SPEED BOOST: Exclude heavy profilePic during login check
+    const user = await User.findOne({ email }).select('-profilePic');
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    if (user.status === 'pending') {
+      return res.status(403).json({ message: 'Pending verification.' });
+    }
+
+    if (user.status === 'rejected') {
+      return res.status(403).json({ message: 'Registration declined.' });
+    }
+
+    // Device locking applies only to students.
+    if (user.role === 'student' || user.role === 'campus_student') {
+      if (typeof deviceId !== 'string' || !deviceId.trim()) {
+        return res.status(400).json({
+          message: 'Device identification is missing. Please refresh the page and try again.'
+        });
+      }
+
+      // Support both the explicit deviceType and the MOB- prefix from the frontend ID.
+      const normalizedDeviceType = String(deviceType || '').toLowerCase();
+      const isMobileDevice =
+        normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
+
+      if (normalizedDeviceType && !['mobile', 'desktop'].includes(normalizedDeviceType)) {
+        return res.status(400).json({
+          message: 'Invalid device type. Use desktop or mobile.'
+        });
+      }
+
+      if (isMobileDevice) {
+        // Read the new field first, with fallback to the existing field for old records.
+        const savedMobileId = user.mobileDeviceId || user.allowedMobileId;
+
+        if (!savedMobileId) {
+          // First login or device was reset by an administrator: bind this device.
+          user.mobileDeviceId = deviceId;
+          user.allowedMobileId = deviceId;
+          user.mobileChangeRequested = false;
+          user.pendingMobileDeviceId = null;
+          user.pendingMobileId = null;
+          await user.save();
+        } else if (savedMobileId !== deviceId) {
+          // New device: preserve the existing approved ID and store the request.
+          user.mobileChangeRequested = true;
+          user.pendingMobileDeviceId = deviceId;
+          user.pendingMobileId = deviceId;
+          await user.save();
+
+          return res.status(403).json({
+            message: 'New mobile device detected! Approval request sent to Admin.'
+          });
+        } else if (user.mobileDeviceId !== deviceId || user.allowedMobileId !== deviceId) {
+          // Keep old and new field names synchronized for existing records.
+          user.mobileDeviceId = deviceId;
+          user.allowedMobileId = deviceId;
+          await user.save();
+        }
+      } else {
+        const savedDesktopId = user.desktopDeviceId || user.allowedDesktopId;
+
+        if (!savedDesktopId) {
+          user.desktopDeviceId = deviceId;
+          user.allowedDesktopId = deviceId;
+          user.desktopChangeRequested = false;
+          user.pendingDesktopDeviceId = null;
+          user.pendingDesktopId = null;
+          await user.save();
+        } else if (savedDesktopId !== deviceId) {
+          user.desktopChangeRequested = true;
+          user.pendingDesktopDeviceId = deviceId;
+          user.pendingDesktopId = deviceId;
+          await user.save();
+
+          return res.status(403).json({
+            message: 'New laptop/desktop detected! Approval request sent to Admin.'
+          });
+        } else if (user.desktopDeviceId !== deviceId || user.allowedDesktopId !== deviceId) {
+          user.desktopDeviceId = deviceId;
+          user.allowedDesktopId = deviceId;
+          await user.save();
+        }
+      }
+    }
+
+    // JWT TOKEN GENERATION
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+        version: user.tokenVersion
+      },
+      JWT_SECRET,
+      { expiresIn: '4h' }
+    );
+
+    let driveCode = null;
+    if (user.role === 'campus_student' && user.registeredDrive) {
+      const d = await CollegeDrive.findById(user.registeredDrive).select('driveCode');
+      driveCode = d?.driveCode || null;
+    }
+
+    res.json({
+      message: 'Login successful',
+      role: user.role,
+      token,
+      userId: user._id,
+      driveCode
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.post('/api/doubts/:id/reply', verifyToken, async (req, res) => {
   try {
@@ -1543,7 +1731,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     // BULLETPROOF EXPLICIT HASHING (Fixes the 400 Bad Request on Login)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
-
+  
     // Force update the database with the HASHED password
     await User.updateOne(
       { _id: user._id },
