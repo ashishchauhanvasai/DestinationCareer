@@ -222,22 +222,22 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
-      {/* Dynamic Background elements for Login screen */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/20 dark:bg-blue-500/10 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/20 dark:bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#f6f8fd] dark:bg-slate-900">
+      {/* Light Color Lifter Gradient Blobs */}
+      <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-blue-400/30 dark:bg-blue-600/20 blur-[140px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/30 dark:bg-indigo-600/20 blur-[140px] rounded-full pointer-events-none"></div>
 
-      <div className="w-full max-w-md glass-panel rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative z-10">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-5">
-            <div className="w-16 h-16 bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center border border-blue-500/20 shadow-sm backdrop-blur-md">
-              <FiLock size={28} />
+      <div className="w-full max-w-[420px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_8px_40px_rgba(0,0,0,0.06)] relative z-10">
+        <div className="text-center mb-10">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 text-blue-600 dark:text-blue-400 rounded-[1.5rem] flex items-center justify-center border border-white dark:border-slate-700 shadow-sm shadow-blue-500/10">
+              <FiLock size={32} />
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">
             Destination Career
           </h1>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 leading-relaxed">
             {view === 'login' && 'Welcome back! Please enter your details.'}
             {view === 'request-otp' && 'Enter your email to receive an OTP.'}
             {view === 'verify-otp' && 'Enter the 6-digit OTP sent to your email.'}
@@ -246,22 +246,22 @@ const Login = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm font-bold shadow-sm animate-fade-in">
+          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold shadow-sm animate-fade-in text-center">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-sm font-bold shadow-sm flex items-center gap-2 animate-fade-in">
+          <div className="mb-6 p-4 rounded-2xl bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 text-green-700 dark:text-green-400 text-sm font-bold shadow-sm flex items-center justify-center gap-2 animate-fade-in">
             <FiCheckCircle size={18} />
             <span>{success}</span>
           </div>
         )}
 
         {view === 'login' && (
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Email
               </label>
               <input
@@ -270,12 +270,12 @@ const Login = () => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
                 placeholder="Enter your email"
-                className="apple-input"
+                className="w-full p-4 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Password
               </label>
               <div className="relative">
@@ -285,12 +285,12 @@ const Login = () => {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
                   placeholder="Enter your password"
-                  className="apple-input pr-12"
+                  className="w-full p-4 pr-12 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-[14px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                  className="absolute right-4 top-[18px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-white dark:bg-slate-950 pl-2"
                 >
                   {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
@@ -304,14 +304,14 @@ const Login = () => {
                   setView('request-otp');
                   clearMessages();
                 }}
-                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline transition-all"
+                className="text-[13px] font-extrabold text-blue-600 dark:text-blue-400 hover:underline transition-all pr-1"
               >
                 Forgot Password?
               </button>
             </div>
 
             {isPending && (
-              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm font-bold text-yellow-700 dark:text-yellow-500 shadow-sm">
+              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl text-sm font-bold text-amber-800 dark:text-amber-500 shadow-sm text-center">
                 Your account is currently pending approval.
               </div>
             )}
@@ -319,7 +319,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 mt-4"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 mt-2 text-[15px]"
             >
               {isLoading ? (
                 <>
@@ -334,7 +334,7 @@ const Login = () => {
               )}
             </button>
 
-            <p className="text-center text-sm font-medium text-gray-600 dark:text-gray-400 pt-2">
+            <p className="text-center text-[13px] font-medium text-gray-500 dark:text-gray-400 pt-6">
               Don't have an account?{' '}
               <Link to="/register" className="text-blue-600 dark:text-blue-400 font-extrabold hover:underline">
                 Register
@@ -344,9 +344,9 @@ const Login = () => {
         )}
 
         {view === 'request-otp' && (
-          <form onSubmit={handleRequestOTP} className="space-y-5">
+          <form onSubmit={handleRequestOTP} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Account Email
               </label>
               <input
@@ -355,14 +355,14 @@ const Login = () => {
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
                 placeholder="Enter your registered email"
-                className="apple-input"
+                className="w-full p-4 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 text-[15px]"
             >
               {isLoading ? 'Sending OTP...' : 'Send OTP'}
             </button>
@@ -373,7 +373,7 @@ const Login = () => {
                 setView('login');
                 clearMessages();
               }}
-              className="w-full text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              className="w-full text-[13px] font-extrabold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors mt-4"
             >
               Back to Login
             </button>
@@ -381,9 +381,9 @@ const Login = () => {
         )}
 
         {view === 'verify-otp' && (
-          <form onSubmit={handleVerifyOTP} className="space-y-6">
+          <form onSubmit={handleVerifyOTP} className="space-y-8">
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest text-center">
                 Enter 6-digit OTP
               </label>
               <input
@@ -394,19 +394,19 @@ const Login = () => {
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
                 placeholder="------"
-                className="apple-input text-center tracking-[1em] font-extrabold text-2xl h-16"
+                className="w-full p-4 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm text-center tracking-[1em] font-extrabold text-3xl h-20"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 text-[15px]"
             >
               {isLoading ? 'Verifying...' : 'Verify OTP'}
             </button>
 
-            <div className="flex justify-between items-center pt-2">
+            <div className="flex justify-between items-center px-2">
               <button
                 type="button"
                 onClick={() => {
@@ -414,7 +414,7 @@ const Login = () => {
                   setOtp('');
                   clearMessages();
                 }}
-                className="text-sm font-extrabold text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-[13px] font-extrabold text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Resend OTP
               </button>
@@ -424,7 +424,7 @@ const Login = () => {
                   setView('login');
                   clearMessages();
                 }}
-                className="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                className="text-[13px] font-extrabold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
                 Cancel
               </button>
@@ -433,9 +433,9 @@ const Login = () => {
         )}
 
         {view === 'reset-password' && (
-          <form onSubmit={handleResetPassword} className="space-y-5">
+          <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="relative">
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 New Password
               </label>
               <input
@@ -445,19 +445,19 @@ const Login = () => {
                 required
                 minLength={8}
                 placeholder="Enter a new strong password"
-                className="apple-input pr-12"
+                className="w-full p-4 pr-12 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-[38px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                className="absolute right-4 top-[40px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-white dark:bg-slate-950 pl-2"
               >
                 {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
               </button>
             </div>
 
             <div className="relative">
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Confirm Password
               </label>
               <input
@@ -467,14 +467,14 @@ const Login = () => {
                 required
                 minLength={8}
                 placeholder="Re-enter your new password"
-                className="apple-input pr-12"
+                className="w-full p-4 pr-12 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2 mt-4"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2 mt-4 text-[15px]"
             >
               {isLoading ? 'Resetting...' : 'Save New Password'}
             </button>
