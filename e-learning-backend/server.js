@@ -1708,16 +1708,22 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email is required.' });
     
-    const user = await User.findOne({ email });
+    // FIX: Normalize email to lowercase so Capital letters don't cause 404
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Use regex for a case-insensitive search in DB
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } });
     if (!user) return res.status(404).json({ message: 'No account found with this email.' });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await OTP.deleteMany({ email });
-    await OTP.create({ email, otp });
+    
+    // Save OTP against the normalized email
+    await OTP.deleteMany({ email: normalizedEmail });
+    await OTP.create({ email: normalizedEmail, otp });
 
     const mailOptions = {
       from: `"Destination Career" <${process.env.EMAIL_USER}>`,
-      to: email,
+      to: user.email, // Send to the exact email stored in DB
       subject: '🔐 Your Destination Career Password Reset OTP',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
@@ -1732,7 +1738,6 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       `
     };
 
-    // ⏳ Timeout protection (8 seconds) so request never hangs in (pending) state
     const sendMailPromise = transporter.sendMail(mailOptions);
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('SMTP connection timed out. Please try again.')), 8000)
@@ -1751,8 +1756,13 @@ app.post('/api/auth/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required.' });
-    const record = await OTP.findOne({ email, otp });
+    
+    // FIX: Normalize to match how it was stored
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    const record = await OTP.findOne({ email: normalizedEmail, otp });
     if (!record) return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    
     res.json({ message: 'OTP verified successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1764,34 +1774,32 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const { email, newPassword, otp } = req.body;
     if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and new password are required.' });
     
-    // STRICT 8-CHARACTER CHECK FOR BACKEND
     if (newPassword.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     
-    const record = await OTP.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    const record = await OTP.findOne({ email: normalizedEmail, otp });
     if (!record) return res.status(400).json({ message: 'Invalid or expired OTP.' });
     
-    // Find user (case-insensitive for safety)
-    const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    // BULLETPROOF EXPLICIT HASHING (Fixes the 400 Bad Request on Login)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
   
-    // Force update the database with the HASHED password
     await User.updateOne(
       { _id: user._id },
       { $set: { password: hashedPassword } }
     );
 
-    await OTP.deleteMany({ email });
+    await OTP.deleteMany({ email: normalizedEmail });
 
     res.json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
 // ---------- SUPERADMIN: trainer accounts ----------
 app.post('/api/trainers', verifyToken, async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Only super admin can add trainers' });
