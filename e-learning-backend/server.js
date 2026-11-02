@@ -17,6 +17,10 @@ const {
 } = require('./middleware/inputValidation');
 const crypto = require('crypto');   
 const app = express();
+
+// ✅ FIX: Trust Render's proxy so express-rate-limit works without throwing ValidationError
+app.set('trust proxy', 1);
+
 const port = process.env.PORT || 5000;
 const axios = require('axios');
 const multer = require('multer');
@@ -28,6 +32,8 @@ const emailOk = (v) => /^\S+@\S+\.\S+$/.test(v || '');
 const phoneOk = (v) => /^\d{10}$/.test(v || '');
 const urlOn = (value, domain) => { try { const u = new URL(value); return ['http:', 'https:'].includes(u.protocol) && (u.hostname === domain || u.hostname.endsWith('.' + domain)); } catch { return false; } };
 
+// Helper to safely escape special characters in email for RegExp
+const escapeRegex = (str) => String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // FIX: the JWT secret now comes from .env (falls back to the old value so logged-in users are not kicked out)
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
@@ -209,7 +215,7 @@ transporter.verify(function (error, success) {
   } else {
     console.log("✅ Gmail HTTPS Webhook is ready to send emails!");
   }
-});         
+});          
 
 
 // 0. DATABASE SCHEMAS
@@ -539,10 +545,14 @@ app.post(
     try {
       const { name, email, password } = req.body;
 
+      if (!name || !email || !password) {
+        return res.status(400).json({ message: 'All fields (name, email, password) are required.' });
+      }
+
       const normalizedEmail = email.trim().toLowerCase();
 
       const existingUser = await User.findOne({
-        email: normalizedEmail
+        email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') }
       });
 
       if (existingUser) {
@@ -576,21 +586,51 @@ app.post(
   }
 );
 
+// --- AUTH: LOGIN ---
 app.post(
   '/api/login',
   authLimiter,
-  validateLoginInput,
+  // 🛠️ FIX: Removed validateLoginInput middleware so it never strips Gmail dots or blocks valid logins
   async (req, res) => {
   try {
     const { email, password, deviceId, deviceType } = req.body;
 
-    // 🚀 SPEED BOOST: Exclude heavy profilePic during login check
-    const user = await User.findOne({ email }).select('-profilePic');
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // 🚀 SPEED BOOST: Exclude heavy profilePic during login check + case-insensitive lookup
+    const user = await User.findOne({ 
+      email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') } 
+    }).select('-profilePic');
+
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // ==========================================
+    // 🛠️ FIX: SILENT PASSWORD MIGRATION 
+    // ==========================================
+    let isMatch = false;
+
+    if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
+      isMatch = await bcrypt.compare(password, user.password);
+    } else {
+      // Legacy user with plaintext password in DB
+      if (password === user.password) {
+        isMatch = true;
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { password: hashedPassword } }
+        );
+        console.log(`✅ Automatically secured password for user: ${normalizedEmail}`);
+      }
+    }
+
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -1478,16 +1518,21 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: 'Email is required.' });
     
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    
+    // Case-insensitive search so capital letters never cause 404
+    const user = await User.findOne({ 
+      email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') } 
+    });
     if (!user) return res.status(404).json({ message: 'No account found with this email.' });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await OTP.deleteMany({ email });
-    await OTP.create({ email, otp });
+    await OTP.deleteMany({ email: normalizedEmail });
+    await OTP.create({ email: normalizedEmail, otp });
 
     const mailOptions = {
       from: `"Destination Career" <${process.env.EMAIL_USER}>`,
-      to: email,
+      to: user.email,
       subject: '🔐 Your Destination Career Password Reset OTP',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 10px;">
@@ -1521,7 +1566,12 @@ app.post('/api/auth/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required.' });
-    const record = await OTP.findOne({ email, otp });
+    
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const record = await OTP.findOne({ 
+      email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') }, 
+      otp: String(otp).trim() 
+    });
     if (!record) return res.status(400).json({ message: 'Invalid or expired OTP.' });
     res.json({ message: 'OTP verified successfully.' });
   } catch (error) {
@@ -1537,12 +1587,16 @@ app.post('/api/auth/reset-password', async (req, res) => {
     // STRICT 8-CHARACTER CHECK FOR BACKEND
     if (newPassword.length < 8) return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
     
-    const record = await OTP.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const record = await OTP.findOne({ 
+      email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') }, 
+      otp: String(otp).trim() 
+    });
     if (!record) return res.status(400).json({ message: 'Invalid or expired OTP.' });
     
     // Find user (case-insensitive for safety)
-    const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } });
+    const user = await User.findOne({ email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') } });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     // BULLETPROOF EXPLICIT HASHING (Fixes the 400 Bad Request on Login)
@@ -1555,7 +1609,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
       { $set: { password: hashedPassword } }
     );
 
-    await OTP.deleteMany({ email });
+    await OTP.deleteMany({ email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') } });
 
     res.json({ message: 'Password reset successful. You can now log in.' });
   } catch (error) {
