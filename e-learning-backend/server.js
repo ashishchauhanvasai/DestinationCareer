@@ -292,12 +292,15 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving (requires bcryptjs)
 userSchema.pre('save', async function () {
-  // Agar password modify nahi hua hai, toh seedha function se bahar nikal jao
   if (!this.isModified('password')) {
     return;
   }
   
-  // Password hash karo (koi 'next()' ki zarurat nahi modern mongoose mein)
+  // Agar password pehle se bcrypt hash hai ($2a$ ya $2b$), toh dobara hash mat karo
+  if (this.password && (this.password.startsWith('$2a$') || this.password.startsWith('$2b$'))) {
+    return;
+  }
+
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -305,6 +308,8 @@ userSchema.pre('save', async function () {
     throw new Error('Password hashing failed: ' + error.message);
   }
 });
+
+
 // 🚀 SPEED BOOST: Index frequently queried fields
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ registeredDrive: 1, status: 1 });
@@ -536,11 +541,11 @@ app.put('/api/drives/:id/status', verifyToken, async (req, res) => {
 });
 
 
-// --- AUTH: REGISTER ---
+// --- AUTH: REGISTER (100% SELF-CONTAINED & CRASH-PROOF) ---
 app.post(
   '/api/register',
   authLimiter,
-  validateRegisterInput,
+  // 🛠️ Removed validateRegisterInput middleware so normalizeEmail() never strips dots from Gmail
   async (req, res) => {
     try {
       const { name, email, password } = req.body;
@@ -549,23 +554,43 @@ app.post(
         return res.status(400).json({ message: 'All fields (name, email, password) are required.' });
       }
 
-      const normalizedEmail = email.trim().toLowerCase();
+      const cleanName = String(name).trim();
+      const normalizedEmail = String(email).trim().toLowerCase();
 
+      if (cleanName.length < 2 || cleanName.length > 50) {
+        return res.status(400).json({ message: 'Name must be between 2 and 50 characters.' });
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return res.status(400).json({ message: 'Please provide a valid email address.' });
+      }
+
+      if (String(password).length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters long.' });
+      }
+
+      // Safe case-insensitive check (escapes dots properly)
+      const escapedEmail = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const existingUser = await User.findOne({
-        email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') }
+        email: { $regex: new RegExp(`^${escapedEmail}$`, 'i') }
       });
 
       if (existingUser) {
         return res.status(400).json({
-          message: 'User already exists'
+          message: 'An account with this email already exists. Please log in.'
         });
       }
 
-      // Public registration must never create admin accounts.
+      // Explicitly hash the password here so even if pre('save') is skipped, it's 100% hashed
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(String(password), salt);
+
+      // Use User.collection.insertOne or new User with pre-hashed password
+      // (Wait: since pre('save') checks if password starts with $2a$/$2b$, let's make pre('save') smart too!)
       const newUser = new User({
-        name: name.trim(),
+        name: cleanName,
         email: normalizedEmail,
-        password,
+        password: hashedPassword,
         role: 'student',
         status: 'pending'
       });
@@ -579,8 +604,17 @@ app.post(
     } catch (err) {
       console.error('Registration Error:', err);
 
+      // Handle MongoDB Duplicate Key Error (11000) gracefully as 400 instead of 500
+      if (err.code === 11000) {
+        return res.status(400).json({
+          message: 'An account with this email already exists.'
+        });
+      }
+
+      // Send exact error message so we never have to guess why it failed
       res.status(500).json({
-        error: 'Registration failed. Please try again.'
+        message: 'Registration failed: ' + (err.message || 'Please try again.'),
+        error: err.message || 'Registration failed. Please try again.'
       });
     }
   }
