@@ -94,7 +94,7 @@ const AdminBatches = () => {
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto">
-      
+
       {/* HEADER */}
       <div className="flex items-center gap-4 mb-4">
         <div className="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl backdrop-blur-md border border-blue-500/20 shadow-sm">
@@ -107,7 +107,7 @@ const AdminBatches = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        
+
         {/* ADD STAFF FORM (Glass Panel) */}
         <form onSubmit={addStaff} className="glass-panel p-8 rounded-[2rem] flex flex-col h-full shadow-lg border-white/60">
           <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight mb-6">Add Staff Account</h3>
@@ -116,22 +116,20 @@ const AdminBatches = () => {
             <button
               type="button"
               onClick={() => setTForm({ ...tForm, role: 'trainer' })}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 ${
-                tForm.role === 'trainer' 
-                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm' 
+              className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 ${tForm.role === 'trainer'
+                  ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               Trainer
             </button>
             <button
               type="button"
               onClick={() => setTForm({ ...tForm, role: 'promotional' })}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 ${
-                tForm.role === 'promotional' 
-                  ? 'bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-sm' 
+              className={`flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 ${tForm.role === 'promotional'
+                  ? 'bg-white dark:bg-slate-800 text-teal-600 dark:text-teal-400 shadow-sm'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
+                }`}
             >
               Promo Team
             </button>
@@ -150,9 +148,8 @@ const AdminBatches = () => {
             )}
           </div>
 
-          <button className={`w-full mt-6 py-3.5 rounded-xl font-extrabold text-white flex items-center justify-center gap-2 shadow-lg transition-all ${
-            tForm.role === 'trainer' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-blue-500/30' : 'bg-gradient-to-r from-teal-500 to-emerald-600 hover:shadow-teal-500/30'
-          }`}>
+          <button className={`w-full mt-6 py-3.5 rounded-xl font-extrabold text-white flex items-center justify-center gap-2 shadow-lg transition-all ${tForm.role === 'trainer' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-blue-500/30' : 'bg-gradient-to-r from-teal-500 to-emerald-600 hover:shadow-teal-500/30'
+            }`}>
             <FiPlus size={18} /> Create {tForm.role === 'trainer' ? 'Trainer' : 'Promo'} Account
           </button>
         </form>
@@ -160,14 +157,14 @@ const AdminBatches = () => {
         {/* STAFF LIST (Glass Panel) */}
         <div className="glass-panel p-6 rounded-[2rem] flex flex-col h-[500px] shadow-lg border-white/60 overflow-hidden">
           <div className="flex items-center justify-between mb-4 px-2">
-             <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight">
-               {tForm.role === 'trainer' ? 'Trainers' : 'Promo Team'} 
-               <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-full border border-black/5 dark:border-white/5">
-                 {tForm.role === 'trainer' ? trainers.length : promoUsers.length}
-               </span>
-             </h3>
+            <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight">
+              {tForm.role === 'trainer' ? 'Trainers' : 'Promo Team'}
+              <span className="ml-2 text-sm text-gray-500 dark:text-gray-400 bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-full border border-black/5 dark:border-white/5">
+                {tForm.role === 'trainer' ? trainers.length : promoUsers.length}
+              </span>
+            </h3>
           </div>
-          
+
           <div className="overflow-y-auto custom-scrollbar pr-2 flex-1 space-y-3">
             {tForm.role === 'trainer' ? (
               <>
@@ -176,7 +173,7 @@ const AdminBatches = () => {
                   <div key={t._id} className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-white/50 dark:border-slate-700/50 p-4 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors shadow-sm">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-500/20">
-                         {t.name.charAt(0).toUpperCase()}
+                        {t.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <p className="font-extrabold text-gray-900 dark:text-white truncate">{t.name}</p>
@@ -197,7 +194,7 @@ const AdminBatches = () => {
                   <div key={p._id} className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-md border border-white/50 dark:border-slate-700/50 p-4 rounded-2xl flex justify-between items-center hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors shadow-sm">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-full bg-teal-500/20 text-teal-700 dark:text-teal-400 flex items-center justify-center font-bold text-sm shrink-0 border border-teal-500/20">
-                         {p.name.charAt(0).toUpperCase()}
+                        {p.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
                         <p className="font-extrabold text-gray-900 dark:text-white truncate">{p.name}</p>
@@ -215,15 +212,15 @@ const AdminBatches = () => {
 
       {tForm.role === 'trainer' && (
         <div className="grid lg:grid-cols-3 gap-8 items-start">
-          
+
           {/* CREATE BATCH FORM (Glass Panel) */}
           <form onSubmit={addBatch} className="glass-panel p-8 rounded-[2rem] lg:col-span-1 shadow-lg border-white/60 h-fit sticky top-6">
             <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight mb-6">Create New Batch</h3>
-            
+
             <div className="space-y-4">
               <input required placeholder="Batch Code (e.g. JAVA-EVE-01)" value={bForm.batchCode} onChange={(e) => setBForm({ ...bForm, batchCode: e.target.value })} className="apple-input font-bold" />
               <input required placeholder="Subject (e.g. Core Java)" value={bForm.subject} onChange={(e) => setBForm({ ...bForm, subject: e.target.value })} className="apple-input" />
-              
+
               <div className="relative">
                 <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
                 <select required value={bForm.trainerId} onChange={(e) => setBForm({ ...bForm, trainerId: e.target.value })} className="apple-input pl-11 cursor-pointer">
@@ -233,8 +230,8 @@ const AdminBatches = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                 <input required placeholder="Venue" value={bForm.venue} onChange={(e) => setBForm({ ...bForm, venue: e.target.value })} className="apple-input" />
-                 <input placeholder="Location" value={bForm.location} onChange={(e) => setBForm({ ...bForm, location: e.target.value })} className="apple-input" />
+                <input required placeholder="Venue" value={bForm.venue} onChange={(e) => setBForm({ ...bForm, venue: e.target.value })} className="apple-input" />
+                <input placeholder="Location" value={bForm.location} onChange={(e) => setBForm({ ...bForm, location: e.target.value })} className="apple-input" />
               </div>
 
               <div className="relative">
@@ -246,7 +243,7 @@ const AdminBatches = () => {
                 <input placeholder="Start (06:00 PM)" value={bForm.scheduledStartTime} onChange={(e) => setBForm({ ...bForm, scheduledStartTime: e.target.value })} className="apple-input" />
                 <input placeholder="End (08:00 PM)" value={bForm.scheduledEndTime} onChange={(e) => setBForm({ ...bForm, scheduledEndTime: e.target.value })} className="apple-input" />
               </div>
-              
+
               <div className="relative">
                 <FiUsers className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
                 <input type="number" placeholder="Expected Strength (optional)" value={bForm.expectedStrength} onChange={(e) => setBForm({ ...bForm, expectedStrength: e.target.value })} className="apple-input pl-11" />
@@ -261,16 +258,16 @@ const AdminBatches = () => {
           {/* BATCHES LIST (Glass Panel Grid) */}
           <div className="lg:col-span-2 flex flex-col h-[700px]">
             <div className="flex items-center justify-between mb-6 px-2">
-               <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight">Active Batches</h3>
-               <span className="text-sm font-extrabold text-blue-600 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl shadow-sm">
-                 {batches.length} Total
-               </span>
+              <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight">Active Batches</h3>
+              <span className="text-sm font-extrabold text-blue-600 bg-blue-500/10 border border-blue-500/20 px-3 py-1.5 rounded-xl shadow-sm">
+                {batches.length} Total
+              </span>
             </div>
 
             <div className="overflow-y-auto custom-scrollbar flex-1 pr-2 space-y-5">
               {batches.length === 0 && (
                 <div className="glass-panel p-16 rounded-[2rem] text-center">
-                   <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">No offline batches created yet.</p>
+                  <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">No offline batches created yet.</p>
                 </div>
               )}
               {batches.map((b) => (
@@ -285,15 +282,15 @@ const AdminBatches = () => {
                       </span>
                     </div>
                     <h4 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">{b.subject}</h4>
-                    
+
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-white/60 dark:bg-slate-800/60 p-3 rounded-xl border border-white/50 dark:border-slate-700/50 shadow-sm">
-                        <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><FiMapPin className="text-blue-500"/> Venue</p>
+                        <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><FiMapPin className="text-blue-500" /> Venue</p>
                         <p className="font-bold text-gray-900 dark:text-white text-sm truncate" title={b.venue}>{b.venue}</p>
                       </div>
                       <div className="bg-white/60 dark:bg-slate-800/60 p-3 rounded-xl border border-white/50 dark:border-slate-700/50 shadow-sm">
-                        <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><FiClock className="text-purple-500"/> Timing</p>
-                        <p className="font-bold text-gray-900 dark:text-white text-xs leading-snug">{b.scheduledStartTime}<br/>{b.scheduledEndTime}</p>
+                        <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1 flex items-center gap-1.5"><FiClock className="text-purple-500" /> Timing</p>
+                        <p className="font-bold text-gray-900 dark:text-white text-xs leading-snug">{b.scheduledStartTime}<br />{b.scheduledEndTime}</p>
                       </div>
                     </div>
                   </div>
@@ -310,7 +307,7 @@ const AdminBatches = () => {
               ))}
             </div>
           </div>
-         </div>
+        </div>
       )}
 
       {/* QR MODAL (Glassmorphism) */}
@@ -320,20 +317,20 @@ const AdminBatches = () => {
             <button onClick={() => setQrBatch(null)} className="absolute top-5 right-5 p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full transition-colors">
               <FiX size={20} className="text-gray-500 dark:text-gray-300" />
             </button>
-            
+
             <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white mb-2 tracking-tight pr-8">{qrBatch.batch.subject}</h3>
             <p className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 inline-block px-3 py-1.5 rounded-lg mb-6 shadow-sm">
               {qrBatch.batch.batchCode} • {qrBatch.batch.venue}
             </p>
-            
+
             <div className="bg-white p-4 rounded-[2rem] border-4 border-gray-100 shadow-inner mb-6 mx-auto w-fit">
               {qrBatch.qrValue ? <QRCodeSVG value={qrBatch.qrValue} size={200} className="rounded-xl" /> : <div className="h-[200px] w-[200px] flex items-center justify-center text-gray-400 font-bold">Loading...</div>}
             </div>
-            
+
             <button onClick={() => window.print()} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3.5 rounded-xl font-extrabold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/30">
               <FiPrinter size={18} /> Print QR Code
             </button>
-            
+
             <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-5 leading-relaxed px-4">
               Stick this at the venue. The trainer scans it via their dashboard to check in and out.
             </p>

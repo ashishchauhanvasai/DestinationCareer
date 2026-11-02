@@ -30,24 +30,32 @@ const ChangeCredentialsModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
-          <p className="font-bold text-lg">Change Login Details</p>
-          <button onClick={onClose}><FiX size={20} className="text-gray-400" /></button>
-        </div>
-        <form onSubmit={submit} className="space-y-3">
-          <input required type="password" placeholder="Current password" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} className="w-full p-2 border rounded text-sm" />
-          <input type="email" placeholder="New email (optional)" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} className="w-full p-2 border rounded text-sm" />
-          <input type="password" placeholder="New password (optional)" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} className="w-full p-2 border rounded text-sm" />
+    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] max-w-sm w-full shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full transition-colors">
+          <FiX size={20} className="text-gray-500 dark:text-gray-300" />
+        </button>
+        
+        <h2 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight mb-6">Change Login Details</h2>
+        
+        <form onSubmit={submit} className="space-y-4">
+          <input required type="password" placeholder="Current password" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} className="apple-input font-medium" />
+          <input type="email" placeholder="New email (optional)" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} className="apple-input font-medium" />
+          <input type="password" placeholder="New password (optional)" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} className="apple-input font-medium" />
           {form.newPassword && (
-            <input type="password" placeholder="Confirm new password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} className="w-full p-2 border rounded text-sm" />
+            <input type="password" placeholder="Confirm new password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} className="apple-input font-medium animate-fade-in" />
           )}
-          <button disabled={busy} className="w-full bg-blue-600 text-white py-2 rounded font-bold text-sm disabled:opacity-50">{busy ? 'Saving...' : 'Save Changes'}</button>
+          <button disabled={busy} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3.5 mt-2 rounded-xl font-extrabold text-[15px] shadow-lg shadow-blue-500/30 disabled:opacity-60 transition-all hover:scale-[0.98]">
+            {busy ? 'Saving...' : 'Save Changes'}
+          </button>
         </form>
-        <p className="text-xs text-gray-400 mt-3">Leave email/password blank to keep them unchanged. You'll be logged out after saving.</p>
+        
+        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-6 leading-relaxed text-center px-2">
+          Leave email/password blank to keep them unchanged. You'll be logged out after saving.
+        </p>
       </div>
     </div>
   );
 };
+
 export default ChangeCredentialsModal;
