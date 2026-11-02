@@ -184,8 +184,8 @@ const Login = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError('Password must contain at least 6 characters.');
+    if (newPassword.length < 8) {
+      setError('Password must contain at least 8 characters.');
       return;
     }
 
@@ -439,7 +439,7 @@ const Login = () => {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 placeholder="Enter a new strong password"
                 className="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
@@ -461,7 +461,7 @@ const Login = () => {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 placeholder="Re-enter your new password"
                 className="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
