@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
-import { FiHeart, FiSearch } from 'react-icons/fi';
+import { FiHeart, FiSearch, FiHelpCircle } from 'react-icons/fi';
 
 const CompanyQuestions = () => {
   const [companies, setCompanies] = useState([]);
@@ -43,29 +43,60 @@ const CompanyQuestions = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Company Questions</h1>
-        <div className="relative">
-          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} type="text" placeholder="Search companies" className="pl-10 pr-4 py-2 border rounded-lg text-sm w-64 focus:outline-none focus:border-blue-500" />
+    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl backdrop-blur-md border border-blue-500/20 shadow-sm">
+            <FiHelpCircle className="text-blue-600 dark:text-blue-400" size={28} />
+          </div>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Company Questions</h1>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Prepare for your next interview.</p>
+          </div>
+        </div>
+
+        <div className="relative w-full md:w-80">
+          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 z-10" size={18} />
+          <input 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            type="text" 
+            placeholder="Search companies..." 
+            className="apple-input pl-11 shadow-sm" 
+          />
         </div>
       </div>
 
-      <div className="flex gap-6 border-b border-gray-200 mb-6">
+      <div className="flex gap-4 border-b border-black/5 dark:border-white/5 pb-2 overflow-x-auto custom-scrollbar">
         {['All', 'Favorites'].map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)} className={`pb-3 font-medium text-sm transition-colors relative ${activeTab === tab ? 'text-blue-600' : 'text-gray-500 hover:text-gray-800'}`}>
-            {tab === 'All' ? `All ${companies.length}` : `Favorites ${favorites.filter((f) => companies.some((c) => c._id === f)).length}`}
-            {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full"></div>}
+          <button 
+            key={tab} 
+            onClick={() => setActiveTab(tab)} 
+            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 relative whitespace-nowrap ${
+              activeTab === tab 
+                ? 'bg-white/60 dark:bg-slate-800/60 text-blue-600 dark:text-blue-400 shadow-sm border border-white/50 dark:border-slate-700/50 backdrop-blur-md' 
+                : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5'
+            }`}
+          >
+            {tab === 'All' ? `All (${companies.length})` : `Favorites (${favorites.filter((f) => companies.some((c) => c._id === f)).length})`}
           </button>
         ))}
       </div>
 
       {techTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-8 items-center">
-          <span className="text-sm font-semibold text-gray-500 mr-2">Technology</span>
+        <div className="glass-panel p-5 rounded-[1.5rem] flex flex-wrap items-center gap-3 shadow-sm border-white/60">
+          <span className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mr-2">Technologies</span>
           {techTags.map((tag) => (
-            <button key={tag} onClick={() => setActiveTag(activeTag === tag ? null : tag)} className={`px-3 py-1 border rounded-full text-xs font-medium transition-colors ${activeTag === tag ? 'bg-blue-600 text-white border-blue-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            <button 
+              key={tag} 
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)} 
+              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all duration-300 shadow-sm border ${
+                activeTag === tag 
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/20' 
+                  : 'bg-white/50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-300 border-white/50 dark:border-slate-700/50 hover:bg-black/5 dark:hover:bg-white/5'
+              }`}
+            >
               {tag}
             </button>
           ))}
@@ -73,33 +104,47 @@ const CompanyQuestions = () => {
       )}
 
       {visible.length === 0 ? (
-        <p className="text-gray-500">No companies found.</p>
+        <div className="glass-panel text-center py-20 rounded-[2.5rem]">
+           <p className="text-gray-500 dark:text-gray-400 font-bold text-lg">No companies found.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {visible.map((company) => (
-            <div key={company._id} className="bg-white p-6 rounded-2xl border shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-48">
+            <div key={company._id} className="glass-panel p-8 rounded-[2rem] flex flex-col justify-between hover:-translate-y-1.5 transition-all duration-300 group shadow-lg border-white/60 min-h-[220px]">
               <div>
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500">
-                      {company.name.charAt(0)}
+                <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-[1rem] bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-lg font-extrabold text-blue-600 dark:text-blue-400 shadow-sm border border-white/60 dark:border-slate-600">
+                      {company.name.charAt(0).toUpperCase()}
                     </div>
-                    <h3 className="font-bold text-gray-900">{company.name}</h3>
+                    <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight">{company.name}</h3>
                   </div>
-                  <button onClick={() => toggleFav(company._id)} className={`transition-colors ${favorites.includes(company._id) ? 'text-red-500' : 'text-gray-300 hover:text-red-500'}`}>
-                    <FiHeart size={18} fill={favorites.includes(company._id) ? 'currentColor' : 'none'} />
+                  <button onClick={() => toggleFav(company._id)} className={`p-2 rounded-full transition-all ${favorites.includes(company._id) ? 'text-red-500 bg-red-500/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-500/10 bg-black/5 dark:bg-white/10'}`}>
+                    <FiHeart size={18} fill={favorites.includes(company._id) ? 'currentColor' : 'none'} className={favorites.includes(company._id) ? 'scale-110' : ''} />
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                
+                <div className="flex flex-wrap gap-2.5">
                   {(company.tags || []).slice(0, 4).map((tag, i) => (
-                    <span key={i} className="text-xs text-gray-500 font-medium">{tag}</span>
+                    <span key={i} className="text-[10px] font-extrabold bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg uppercase tracking-wider shadow-sm">
+                      {tag}
+                    </span>
                   ))}
-                  {(company.tags || []).length > 4 && <span className="text-xs text-gray-400">+{company.tags.length - 4}</span>}
+                  {(company.tags || []).length > 4 && (
+                    <span className="text-[10px] font-extrabold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg shadow-sm">
+                      +{company.tags.length - 4}
+                    </span>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                <Link to={`/company-questions/${company._id}`} className="text-sm font-bold text-blue-600 hover:underline">Explore questions &rarr;</Link>
-                <span className="text-xs text-gray-400">{company.questions?.length || 0} questions</span>
+
+              <div className="mt-8 pt-5 border-t border-black/5 dark:border-white/5 flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 bg-white/40 dark:bg-slate-800/40 px-3 py-1.5 rounded-lg border border-white/50 dark:border-slate-700/50 shadow-sm">
+                  {company.questions?.length || 0} Q's
+                </span>
+                <Link to={`/company-questions/${company._id}`} className="glass-button text-blue-600 dark:text-blue-400 font-extrabold text-xs px-5 py-2.5 rounded-xl transition-all group-hover:bg-blue-600 group-hover:text-white">
+                  Explore &rarr;
+                </Link>
               </div>
             </div>
           ))}
