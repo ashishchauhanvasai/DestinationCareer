@@ -1529,13 +1529,22 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const { email, newPassword, otp } = req.body;
     if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and new password are required.' });
     if (newPassword.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+    
     const record = await OTP.findOne({ email, otp });
     if (!record) return res.status(400).json({ message: 'Invalid or expired OTP.' });
+    
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    user.password = newPassword;
-    await user.save();
+    // ✅ FIX: Manually hash the password and use updateOne to bypass any schema hook issues
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { password: hashedPassword } }
+    );
+
     await OTP.deleteMany({ email });
 
     res.json({ message: 'Password reset successful. You can now log in.' });
