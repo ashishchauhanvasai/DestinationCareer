@@ -577,6 +577,8 @@ app.post(
     }
   }
 );
+
+
 app.post(
   '/api/login',
   authLimiter,
@@ -585,8 +587,13 @@ app.post(
   try {
     const { email, password, deviceId, deviceType } = req.body;
 
-    // 🚀 SPEED BOOST: Exclude heavy profilePic during login check
-    const user = await User.findOne({ email }).select('-profilePic');
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 🚀 SPEED BOOST: Exclude heavy profilePic and use case-insensitive email matching
+    const user = await User.findOne({ 
+      email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') } 
+    }).select('-profilePic');
+    
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -596,23 +603,18 @@ app.post(
     // ==========================================
     let isMatch = false;
 
-    // Check if the stored password is already a bcrypt hash (starts with $2a$ or $2b$)
-    if (user.password.startsWith('$2a$') || user.password.startsWith('$2b$')) {
-      // Normal secure compare for new/hashed users
+    if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
       isMatch = await bcrypt.compare(password, user.password);
     } else {
-      // Old user with a plaintext password from before the fix
+      // Old user with a plaintext password
       if (password === user.password) {
         isMatch = true;
-        // Instantly hash it and update the database so it's secure for the future!
-        // We use updateOne to safely bypass the pre('save') double-hash hook.
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         await User.updateOne(
           { _id: user._id },
           { $set: { password: hashedPassword } }
         );
-        console.log(`✅ Automatically secured password for user: ${email}`);
       }
     }
 
@@ -636,10 +638,8 @@ app.post(
         });
       }
 
-      // Support both the explicit deviceType and the MOB- prefix from the frontend ID.
       const normalizedDeviceType = String(deviceType || '').toLowerCase();
-      const isMobileDevice =
-        normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
+      const isMobileDevice = normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
 
       if (normalizedDeviceType && !['mobile', 'desktop'].includes(normalizedDeviceType)) {
         return res.status(400).json({
@@ -648,11 +648,9 @@ app.post(
       }
 
       if (isMobileDevice) {
-        // Read the new field first, with fallback to the existing field for old records.
         const savedMobileId = user.mobileDeviceId || user.allowedMobileId;
 
         if (!savedMobileId) {
-          // First login or device was reset by an administrator: bind this device.
           user.mobileDeviceId = deviceId;
           user.allowedMobileId = deviceId;
           user.mobileChangeRequested = false;
@@ -660,7 +658,6 @@ app.post(
           user.pendingMobileId = null;
           await user.save();
         } else if (savedMobileId !== deviceId) {
-          // New device: preserve the existing approved ID and store the request.
           user.mobileChangeRequested = true;
           user.pendingMobileDeviceId = deviceId;
           user.pendingMobileId = deviceId;
@@ -670,7 +667,6 @@ app.post(
             message: 'New mobile device detected! Approval request sent to Admin.'
           });
         } else if (user.mobileDeviceId !== deviceId || user.allowedMobileId !== deviceId) {
-          // Keep old and new field names synchronized for existing records.
           user.mobileDeviceId = deviceId;
           user.allowedMobileId = deviceId;
           await user.save();
@@ -704,11 +700,7 @@ app.post(
 
     // JWT TOKEN GENERATION
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role,
-        version: user.tokenVersion
-      },
+      { id: user._id, role: user.role, version: user.tokenVersion },
       JWT_SECRET,
       { expiresIn: '4h' }
     );
@@ -731,6 +723,8 @@ app.post(
     res.status(500).json({ error: err.message });
   }
 });
+
+
 // --- ADMIN APPROVE DEVICE CHANGE ---
 app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {

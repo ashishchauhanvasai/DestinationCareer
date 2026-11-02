@@ -12,7 +12,7 @@ const validateRegisterInput = [
   body('email')
     .trim()
     .isEmail()
-    .normalizeEmail()
+    .toLowerCase() // FIX: Replaced normalizeEmail() to prevent dot-stripping in Gmail
     .withMessage('Please provide a valid email address')
     .matches(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, { message: 'Email format is invalid' })
     .isLength({ max: 254 }), // RFC 5321
@@ -33,7 +33,7 @@ const validateRegisterInput = [
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        message: 'Validation failed',
+        message: errors.array()[0].msg,
         errors: errors.array(),
         success: false
       });
@@ -46,21 +46,34 @@ const validateLoginInput = [
   body('email')
     .trim()
     .isEmail()
-    .withMessage('Please provide a valid email address')
-    .normalizeEmail(),
+    .toLowerCase() // FIX: Replaced normalizeEmail() to prevent dot-stripping
+    .withMessage('Please provide a valid email address'),
   
   body('password')
     .notEmpty()
     .withMessage('Password is required')
     .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters')
+    .withMessage('Password must be at least 8 characters'),
+
+  // FIX: Added the missing error checker block for Login
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        message: errors.array()[0].msg,
+        errors: errors.array(),
+        success: false
+      });
+    }
+    next();
+  }
 ];
 
 const validateForgotPasswordInput = [
   body('email')
     .trim()
     .isEmail()
-    .normalizeEmail()
+    .toLowerCase() // FIX: Replaced normalizeEmail()
     .withMessage('Please provide a valid email address')
     .isLength({ max: 254 }),
 
@@ -68,7 +81,7 @@ const validateForgotPasswordInput = [
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
-        message: 'Validation failed',
+        message: errors.array()[0].msg,
         errors: errors.array(),
         success: false
       });
@@ -92,8 +105,8 @@ const validateResetPasswordInput = [
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(700).json({
-        message: 'Validation failed',
+      return res.status(400).json({ // Changed 700 to 400 (700 is an invalid HTTP status code)
+        message: errors.array()[0].msg,
         errors: errors.array(),
         success: false
       });
