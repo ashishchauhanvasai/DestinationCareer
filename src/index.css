@@ -3,31 +3,31 @@
 @tailwind utilities;
 
 @layer utilities {
-  /* The core Apple-like Liquid Glass effect */
+  /* Updated Glass Panel: More opaque white, stronger border, and deeper soft shadow to pop off the background */
   .glass-panel {
-    @apply bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 shadow-[0_8px_32px_rgba(0,0,0,0.04)];
+    @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-white dark:border-slate-700/80 shadow-[0_8px_30px_rgba(0,0,0,0.08)];
   }
   
   /* Smooth glass buttons */
   .glass-button {
-    @apply bg-white/50 dark:bg-slate-800/50 backdrop-blur-md border border-white/50 dark:border-slate-700/50 shadow-sm hover:shadow-md transition-all duration-300;
+    @apply bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-gray-200/80 dark:border-slate-700/80 shadow-sm hover:shadow-md transition-all duration-300;
   }
   
   /* Soft inputs */
   .apple-input {
-    @apply w-full p-3 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border border-gray-200/50 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all;
+    @apply w-full p-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-gray-200 dark:border-slate-700/80 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all shadow-sm;
   }
 }
 
 body {
-  /* Soft Apple-like mesh gradient background */
-  background-color: #f6f8fd;
+  /* Deepened the mesh gradient slightly so the white cards stand out clearly */
+  background-color: #f1f5f9; 
   background-image: 
-    radial-gradient(at 0% 0%, hsla(210, 100%, 95%, 1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(225, 39%, 90%, 0.5) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(339, 49%, 95%, 0.5) 0, transparent 50%);
+    radial-gradient(at 0% 0%, hsla(210, 100%, 93%, 1) 0, transparent 60%), 
+    radial-gradient(at 50% 0%, hsla(225, 50%, 90%, 0.8) 0, transparent 60%), 
+    radial-gradient(at 100% 0%, hsla(339, 49%, 95%, 0.6) 0, transparent 60%);
   background-attachment: fixed;
-  color: #1d1d1f; /* Apple standard dark text */
+  color: #1d1d1f;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -35,9 +35,9 @@ body {
 .dark body {
   background-color: #0f172a;
   background-image: 
-    radial-gradient(at 0% 0%, hsla(253, 16%, 15%, 1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(225, 39%, 20%, 0.2) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(339, 49%, 20%, 0.1) 0, transparent 50%);
+    radial-gradient(at 0% 0%, hsla(253, 16%, 12%, 1) 0, transparent 60%), 
+    radial-gradient(at 50% 0%, hsla(225, 39%, 18%, 0.4) 0, transparent 60%), 
+    radial-gradient(at 100% 0%, hsla(339, 49%, 18%, 0.2) 0, transparent 60%);
   color: #f5f5f7;
 }
 
@@ -62,10 +62,10 @@ body {
 
 /* GLOBAL BUTTON & LINK ANIMATION */
 button, a {
-  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease, background-color 0.2s ease !important;
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease !important;
 }
 button:active, a:active {
-  transform: scale(0.96) !important;
+  transform: scale(0.97) !important;
 }
 
 /* Hide scrollbar for clean internal areas but keep functionality */
