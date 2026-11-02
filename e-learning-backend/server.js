@@ -1018,7 +1018,8 @@ app.delete('/api/jobs/:id', verifyToken, async (req, res) => {
   } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
-// --- Update Profile (Skills Always Editable & Promo Fields) ---
+
+// --- Update Profile (Skills & Profile details always editable) ---
 app.put('/api/users/profile', verifyToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -1039,7 +1040,7 @@ app.put('/api/users/profile', verifyToken, async (req, res) => {
       address
     } = req.body;
 
-    // Skills can ALWAYS be updated, even when profile is locked
+    // Skills can ALWAYS be updated
     if (skillsAcquired !== undefined) {
       user.skillsAcquired = skillsAcquired;
     }
@@ -1055,23 +1056,22 @@ app.put('/api/users/profile', verifyToken, async (req, res) => {
       }
     }
 
-    // Academic details can only be saved once for students
-    if (user.role === 'student' && !user.profileLocked) {
-      user.highestQualification = highestQualification;
-      user.passingYear = passingYear;
-      user.percentage = percentage;
-      user.backlogs = backlogs;
-      user.educationGap = educationGap;
-      user.readyForRelocation = readyForRelocation;
-
-      user.profileLocked = true;
+    // Academic details can now be updated ANYTIME by students (Lock removed)
+    if (user.role === 'student' || user.role === 'campus_student') {
+      if (highestQualification !== undefined) user.highestQualification = highestQualification;
+      if (passingYear !== undefined) user.passingYear = passingYear;
+      if (percentage !== undefined) user.percentage = percentage;
+      if (backlogs !== undefined) user.backlogs = backlogs;
+      if (educationGap !== undefined) user.educationGap = educationGap;
+      if (readyForRelocation !== undefined) user.readyForRelocation = readyForRelocation;
+      
+      // Ensure profileLocked is explicitly set to false in the database
+      user.profileLocked = false; 
     }
 
     await user.save();
 
-    const updatedUser = await User.findById(req.user.id)
-      .select('-password');
-
+    const updatedUser = await User.findById(req.user.id).select('-password');
     res.json(updatedUser);
 
   } catch (error) {

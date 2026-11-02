@@ -120,7 +120,6 @@ const Profile = () => {
     educationGap: 0,
     readyForRelocation: false,
     skillsAcquired: "",
-    profileLocked: false,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -170,13 +169,8 @@ const Profile = () => {
 
   // =========================================================
   // HANDLE INPUT CHANGE
-  // Technical Skills remain editable even when profile is locked.
   // =========================================================
   const handleChange = (field, value) => {
-    if (profile.profileLocked && field !== "skillsAcquired") {
-      return;
-    }
-
     setProfile((prev) => ({
       ...prev,
       [field]: value,
@@ -197,20 +191,13 @@ const Profile = () => {
     try {
       let payload;
 
-      if (profile.profileLocked && !isPromo) {
-        // Locked students can update only their Technical Skills.
-        payload = {
-          skillsAcquired: profile.skillsAcquired,
-        };
-      } else if (isPromo) {
-        // Promotional users can update their basic profile details.
+      if (isPromo) {
         payload = {
           contactNumber: profile.contactNumber,
           address: profile.address,
           skillsAcquired: profile.skillsAcquired,
         };
       } else {
-        // Preserve the existing student profile submission.
         payload = {
           ...profile,
         };
@@ -223,15 +210,6 @@ const Profile = () => {
       );
 
       setSaveSuccess(true);
-
-      // Preserve the original behavior: lock a student's
-      // eligibility profile after its first successful submission.
-      if (!isPromo && !profile.profileLocked) {
-        setProfile((prev) => ({
-          ...prev,
-          profileLocked: true,
-        }));
-      }
 
       setTimeout(() => {
         setSaveSuccess(false);
@@ -351,29 +329,6 @@ const Profile = () => {
 
         {/* PROFILE FORM */}
         <form onSubmit={handleSubmit}>
-          {profile.profileLocked && (
-            <div className="mb-6 p-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
-              <div className="flex items-start gap-3">
-                <FiLock
-                  className="text-amber-600 dark:text-amber-400 mt-1 shrink-0"
-                  size={22}
-                />
-
-                <div>
-                  <h3 className="font-bold text-amber-800 dark:text-amber-300">
-                    Profile Locked
-                  </h3>
-
-                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-1 leading-relaxed">
-                    {isPromo
-                      ? "Your core profile details are locked. However, you can still update your Technical Skills below."
-                      : "Your eligibility details are locked. However, you can still update your Technical Skills below."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-200 dark:border-slate-700 p-6">
             <div className="flex items-center gap-3 mb-2">
               <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -411,7 +366,7 @@ const Profile = () => {
                         handleChange("contactNumber", e.target.value)
                       }
                       placeholder="Phone Number"
-                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
 
@@ -427,7 +382,7 @@ const Profile = () => {
                         handleChange("address", e.target.value)
                       }
                       placeholder="Full Address"
-                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
                 </>
@@ -447,13 +402,8 @@ const Profile = () => {
                       onChange={(e) =>
                         handleChange("highestQualification", e.target.value)
                       }
-                      disabled={profile.profileLocked}
                       placeholder="e.g. B.Tech"
-                      className={`w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
-                        profile.profileLocked
-                          ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-600"
-                          : ""
-                      }`}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
 
@@ -468,13 +418,8 @@ const Profile = () => {
                       onChange={(e) =>
                         handleChange("passingYear", e.target.value)
                       }
-                      disabled={profile.profileLocked}
                       placeholder="e.g. 2026"
-                      className={`w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
-                        profile.profileLocked
-                          ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-600"
-                          : ""
-                      }`}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
 
@@ -489,13 +434,8 @@ const Profile = () => {
                       onChange={(e) =>
                         handleChange("percentage", e.target.value)
                       }
-                      disabled={profile.profileLocked}
                       placeholder="e.g. 75.50"
-                      className={`w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
-                        profile.profileLocked
-                          ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-600"
-                          : ""
-                      }`}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
 
@@ -514,13 +454,8 @@ const Profile = () => {
                           parseInt(e.target.value, 10) || 0
                         )
                       }
-                      disabled={profile.profileLocked}
                       placeholder="0"
-                      className={`w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
-                        profile.profileLocked
-                          ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-600"
-                          : ""
-                      }`}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
 
@@ -539,32 +474,20 @@ const Profile = () => {
                           parseInt(e.target.value, 10) || 0
                         )
                       }
-                      disabled={profile.profileLocked}
                       placeholder="0"
-                      className={`w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all ${
-                        profile.profileLocked
-                          ? "opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-600"
-                          : ""
-                      }`}
+                      className="w-full p-3 border border-gray-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
 
                   <div className="col-span-1 md:col-span-2">
-                    <label
-                      className={`flex items-center gap-3 ${
-                        profile.profileLocked
-                          ? "cursor-not-allowed opacity-60"
-                          : "cursor-pointer"
-                      }`}
-                    >
+                    <label className="flex items-center gap-3 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={!!profile.readyForRelocation}
                         onChange={(e) =>
                           handleChange("readyForRelocation", e.target.checked)
                         }
-                        disabled={profile.profileLocked}
-                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-all disabled:opacity-60"
+                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 transition-all"
                       />
 
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -575,7 +498,6 @@ const Profile = () => {
                 </>
               )}
 
-              {/* ✅ FIX: Replaced undefined 'form' with 'profile' and 'handleChange' */}
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   Technical Skills (Comma separated)
@@ -601,13 +523,8 @@ const Profile = () => {
                     className="text-green-600 dark:text-green-400 shrink-0"
                     size={22}
                   />
-
                   <p className="text-sm font-semibold text-green-700 dark:text-green-400">
-                    {isPromo
-                      ? "Profile saved successfully!"
-                      : profile.profileLocked
-                      ? "Technical skills saved successfully!"
-                      : "Profile saved successfully and locked!"}
+                    Profile saved successfully!
                   </p>
                 </div>
               )}
