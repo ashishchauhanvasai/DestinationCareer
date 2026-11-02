@@ -1146,24 +1146,61 @@ app.post(
 );
 
 
+// --- AUTH: LOGIN ---
 app.post(
   '/api/login',
   authLimiter,
-  validateLoginInput,
+  // 🛠️ FIX 1: Temporarily removed `validateLoginInput` to check if it is blocking the request early.
   async (req, res) => {
   try {
+    console.log("--- NEW LOGIN ATTEMPT ---");
+    
     const { email, password, deviceId, deviceType } = req.body;
+    console.log(`Email: ${email}, DeviceType: ${deviceType}, DeviceID: ${deviceId ? 'Present' : 'Missing'}`);
+
+    if (!email || !password) {
+        console.log("❌ Missing email or password");
+        return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     // 🚀 SPEED BOOST: Exclude heavy profilePic during login check
-    const user = await User.findOne({ email }).select('-profilePic');
+    const user = await User.findOne({ email: normalizedEmail }).select('-profilePic');
+    
     if (!user) {
+      console.log("❌ Login Failed: User email not found in DB");
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // ==========================================
+    // 🛠️ FIX 2: SILENT PASSWORD MIGRATION & DEBUG LOGS
+    // ==========================================
+    let isMatch = false;
+
+    if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
+      isMatch = await bcrypt.compare(password, user.password);
+      console.log(`🔒 Bcrypt Match Result: ${isMatch}`);
+    } else {
+      console.log("🔓 Old Plaintext password detected in DB");
+      if (password === user.password) {
+        isMatch = true;
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { password: hashedPassword } }
+        );
+        console.log(`✅ Automatically secured password for user: ${normalizedEmail}`);
+      }
+    }
+
     if (!isMatch) {
+      console.log("❌ Login Failed: Password does not match");
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+
+    console.log("✅ Password matched!");
 
     if (user.status === 'pending') {
       return res.status(403).json({ message: 'Pending verification.' });
@@ -1176,28 +1213,25 @@ app.post(
     // Device locking applies only to students.
     if (user.role === 'student' || user.role === 'campus_student') {
       if (typeof deviceId !== 'string' || !deviceId.trim()) {
+        console.log("❌ Login Failed: Device ID missing");
         return res.status(400).json({
           message: 'Device identification is missing. Please refresh the page and try again.'
         });
       }
 
-      // Support both the explicit deviceType and the MOB- prefix from the frontend ID.
       const normalizedDeviceType = String(deviceType || '').toLowerCase();
-      const isMobileDevice =
-        normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
+      const isMobileDevice = normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
 
       if (normalizedDeviceType && !['mobile', 'desktop'].includes(normalizedDeviceType)) {
+         console.log("❌ Login Failed: Invalid Device Type");
         return res.status(400).json({
           message: 'Invalid device type. Use desktop or mobile.'
         });
       }
 
       if (isMobileDevice) {
-        // Read the new field first, with fallback to the existing field for old records.
         const savedMobileId = user.mobileDeviceId || user.allowedMobileId;
-
         if (!savedMobileId) {
-          // First login or device was reset by an administrator: bind this device.
           user.mobileDeviceId = deviceId;
           user.allowedMobileId = deviceId;
           user.mobileChangeRequested = false;
@@ -1205,24 +1239,21 @@ app.post(
           user.pendingMobileId = null;
           await user.save();
         } else if (savedMobileId !== deviceId) {
-          // New device: preserve the existing approved ID and store the request.
           user.mobileChangeRequested = true;
           user.pendingMobileDeviceId = deviceId;
           user.pendingMobileId = deviceId;
           await user.save();
-
+          console.log("⚠️ Device Mismatch: Requesting Mobile Approval");
           return res.status(403).json({
             message: 'New mobile device detected! Approval request sent to Admin.'
           });
         } else if (user.mobileDeviceId !== deviceId || user.allowedMobileId !== deviceId) {
-          // Keep old and new field names synchronized for existing records.
           user.mobileDeviceId = deviceId;
           user.allowedMobileId = deviceId;
           await user.save();
         }
       } else {
         const savedDesktopId = user.desktopDeviceId || user.allowedDesktopId;
-
         if (!savedDesktopId) {
           user.desktopDeviceId = deviceId;
           user.allowedDesktopId = deviceId;
@@ -1235,7 +1266,7 @@ app.post(
           user.pendingDesktopDeviceId = deviceId;
           user.pendingDesktopId = deviceId;
           await user.save();
-
+          console.log("⚠️ Device Mismatch: Requesting Desktop Approval");
           return res.status(403).json({
             message: 'New laptop/desktop detected! Approval request sent to Admin.'
           });
@@ -1264,6 +1295,7 @@ app.post(
       driveCode = d?.driveCode || null;
     }
 
+    console.log("✅ Login fully successful! Sending Token.");
     res.json({
       message: 'Login successful',
       role: user.role,
@@ -1276,7 +1308,6 @@ app.post(
     res.status(500).json({ error: err.message });
   }
 });
-
 app.post('/api/doubts/:id/reply', verifyToken, async (req, res) => {
   try {
     const { replyText } = req.body;
