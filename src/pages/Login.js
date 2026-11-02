@@ -184,7 +184,6 @@ const Login = () => {
       return;
     }
 
-    // STRICT 8-CHARACTER CHECK FOR FRONTEND
     if (newPassword.length < 8) {
       setError('Password must contain at least 8 characters.');
       return;
@@ -199,7 +198,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/reset-password`, {
-        email: resetEmail.trim().toLowerCase(), // Lowercase to match login DB format
+        email: resetEmail.trim().toLowerCase(),
         otp,
         newPassword
       });
@@ -223,18 +222,22 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-              <FiLock size={26} />
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Dynamic Background elements for Login screen */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/20 dark:bg-blue-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/20 dark:bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+
+      <div className="w-full max-w-md glass-panel rounded-[2.5rem] p-8 md:p-10 shadow-2xl relative z-10">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-5">
+            <div className="w-16 h-16 bg-blue-600/10 dark:bg-blue-400/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center border border-blue-500/20 shadow-sm backdrop-blur-md">
+              <FiLock size={28} />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
             Destination Career
           </h1>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">
             {view === 'login' && 'Welcome back! Please enter your details.'}
             {view === 'request-otp' && 'Enter your email to receive an OTP.'}
             {view === 'verify-otp' && 'Enter the 6-digit OTP sent to your email.'}
@@ -243,14 +246,14 @@ const Login = () => {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm font-bold shadow-sm animate-fade-in">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm flex items-center gap-2">
-            <FiCheckCircle />
+          <div className="mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 text-sm font-bold shadow-sm flex items-center gap-2 animate-fade-in">
+            <FiCheckCircle size={18} />
             <span>{success}</span>
           </div>
         )}
@@ -258,7 +261,7 @@ const Login = () => {
         {view === 'login' && (
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
                 Email
               </label>
               <input
@@ -267,12 +270,12 @@ const Login = () => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
                 placeholder="Enter your email"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
                 Password
               </label>
               <div className="relative">
@@ -282,33 +285,33 @@ const Login = () => {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
                   placeholder="Enter your password"
-                  className="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="apple-input pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[14px] text-gray-500 hover:text-gray-700 transition-colors"
+                  className="absolute right-4 top-[14px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
                 >
                   {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
               </div>
             </div>
 
-            <div className="text-right">
+            <div className="flex justify-end pt-1">
               <button
                 type="button"
                 onClick={() => {
                   setView('request-otp');
                   clearMessages();
                 }}
-                className="text-sm text-blue-600 hover:underline"
+                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline transition-all"
               >
                 Forgot Password?
               </button>
             </div>
 
             {isPending && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+              <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-sm font-bold text-yellow-700 dark:text-yellow-500 shadow-sm">
                 Your account is currently pending approval.
               </div>
             )}
@@ -316,7 +319,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 mt-4"
             >
               {isLoading ? (
                 <>
@@ -331,9 +334,9 @@ const Login = () => {
               )}
             </button>
 
-            <p className="text-center text-sm text-gray-600">
+            <p className="text-center text-sm font-medium text-gray-600 dark:text-gray-400 pt-2">
               Don't have an account?{' '}
-              <Link to="/register" className="text-blue-600 font-semibold hover:underline">
+              <Link to="/register" className="text-blue-600 dark:text-blue-400 font-extrabold hover:underline">
                 Register
               </Link>
             </p>
@@ -343,7 +346,7 @@ const Login = () => {
         {view === 'request-otp' && (
           <form onSubmit={handleRequestOTP} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
                 Account Email
               </label>
               <input
@@ -352,14 +355,14 @@ const Login = () => {
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
                 placeholder="Enter your registered email"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? 'Sending OTP...' : 'Send OTP'}
             </button>
@@ -370,7 +373,7 @@ const Login = () => {
                 setView('login');
                 clearMessages();
               }}
-              className="w-full text-sm font-semibold text-gray-500 hover:text-gray-700"
+              className="w-full text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               Back to Login
             </button>
@@ -378,9 +381,9 @@ const Login = () => {
         )}
 
         {view === 'verify-otp' && (
-          <form onSubmit={handleVerifyOTP} className="space-y-5">
+          <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
                 Enter 6-digit OTP
               </label>
               <input
@@ -391,19 +394,19 @@ const Login = () => {
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
                 placeholder="------"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-center tracking-[0.5em] font-bold text-xl"
+                className="apple-input text-center tracking-[1em] font-extrabold text-2xl h-16"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? 'Verifying...' : 'Verify OTP'}
             </button>
 
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -411,7 +414,7 @@ const Login = () => {
                   setOtp('');
                   clearMessages();
                 }}
-                className="text-sm font-semibold text-blue-600 hover:underline"
+                className="text-sm font-extrabold text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Resend OTP
               </button>
@@ -421,7 +424,7 @@ const Login = () => {
                   setView('login');
                   clearMessages();
                 }}
-                className="text-sm font-semibold text-gray-500 hover:text-gray-700"
+                className="text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
               >
                 Cancel
               </button>
@@ -432,7 +435,7 @@ const Login = () => {
         {view === 'reset-password' && (
           <form onSubmit={handleResetPassword} className="space-y-5">
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
                 New Password
               </label>
               <input
@@ -442,19 +445,19 @@ const Login = () => {
                 required
                 minLength={8}
                 placeholder="Enter a new strong password"
-                className="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input pr-12"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
+                className="absolute right-4 top-[38px] text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
               >
                 {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
               </button>
             </div>
 
             <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
                 Confirm Password
               </label>
               <input
@@ -464,14 +467,14 @@ const Login = () => {
                 required
                 minLength={8}
                 placeholder="Re-enter your new password"
-                className="w-full p-3 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="apple-input pr-12"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2 mt-4"
             >
               {isLoading ? 'Resetting...' : 'Save New Password'}
             </button>

@@ -25,24 +25,20 @@ const Jobs = () => {
   };
 
   useEffect(() => {
-  const token = localStorage.getItem("token");
-  axios
-    .get(`${process.env.REACT_APP_API_URL}/api/jobs`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    .then((res) => setJobs(res.data))
-    .catch((err) => console.error("Error fetching jobs:", err));
-}, []);
+    const token = localStorage.getItem("token");
+    axios
+      .get(`${process.env.REACT_APP_API_URL}/api/jobs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => setJobs(res.data))
+      .catch((err) => console.error("Error fetching jobs:", err));
+  }, []);
 
   // Filter jobs based on search input
   const filteredJobs = jobs.filter(
     (job) =>
-      job.title
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      job.jobId
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+      job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.jobId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Helper function to check if a job is expired
@@ -52,80 +48,77 @@ const Jobs = () => {
 
   return (
     <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <FiBriefcase className="text-blue-600" /> Job Board
-        </h1>
+      
+      <div className="flex items-center gap-3 mb-8">
+        <div className="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl backdrop-blur-md border border-blue-500/20 shadow-sm">
+          <FiBriefcase className="text-blue-600 dark:text-blue-400" size={26} />
+        </div>
+        <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Job Board</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-6 border-b border-gray-200 mb-6 overflow-x-auto">
-        {[
-          "Technical"
-        ].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`pb-3 font-medium text-sm transition-colors whitespace-nowrap relative ${
-              activeTab === tab
-                ? "text-blue-600"
-                : "text-gray-500 hover:text-gray-800"
-            }`}
-          >
-            {tab}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        {/* Tabs */}
+        <div className="flex gap-4 overflow-x-auto custom-scrollbar">
+          {["Technical"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 relative whitespace-nowrap ${
+                activeTab === tab
+                  ? "bg-white/60 dark:bg-slate-800/60 text-blue-600 dark:text-blue-400 shadow-sm border border-white/50 dark:border-slate-700/50 backdrop-blur-md"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-            {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full"></div>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Search */}
-      <div className="relative mb-8">
-        <FiSearch
-          className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-          size={18}
-        />
-
-        <input
-          type="text"
-          placeholder="Search by Job Title or ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full max-w-md bg-white shadow-sm"
-        />
+        {/* Apple-style Search Bar */}
+        <div className="relative w-full md:w-96">
+          <FiSearch
+            className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 z-10"
+            size={18}
+          />
+          <input
+            type="text"
+            placeholder="Search by Job Title or ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="apple-input pl-11 shadow-sm"
+          />
+        </div>
       </div>
 
       {/* Jobs Grid */}
       {filteredJobs.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <p className="text-gray-500 font-medium">
+        <div className="glass-panel text-center py-16 rounded-[2rem]">
+          <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">
             No active jobs found for this category.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredJobs.map((job) => {
             const expired = isExpired(job.lastDateToApply);
 
             return (
               <div
                 key={job._id}
-                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between hover:shadow-md transition-shadow"
+                className="glass-panel p-8 rounded-[2.5rem] flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 group"
               >
                 <div>
                   {/* Job ID and Status */}
-                  <div className="flex justify-between items-start mb-4">
-                    <span className="text-xs font-extrabold text-blue-600 bg-blue-50 px-2 py-1 rounded tracking-wider">
+                  <div className="flex justify-between items-start mb-6">
+                    <span className="text-xs font-extrabold text-blue-700 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-400/10 px-3 py-1.5 rounded-lg border border-blue-500/20 tracking-wider">
                       {job.jobId}
                     </span>
 
                     <span
-                      className={`text-xs font-bold px-2 py-1 rounded flex items-center gap-1 uppercase tracking-wider ${
+                      className={`text-[11px] font-extrabold px-3 py-1.5 rounded-lg flex items-center gap-1.5 uppercase tracking-wider border ${
                         expired
-                          ? "text-red-600 bg-red-50"
-                          : "text-green-600 bg-green-50"
+                          ? "text-red-700 dark:text-red-300 bg-red-500/10 border-red-500/20"
+                          : "text-green-700 dark:text-green-300 bg-green-500/10 border-green-500/20"
                       }`}
                     >
                       <FiClock size={12} />{" "}
@@ -134,48 +127,44 @@ const Jobs = () => {
                   </div>
 
                   {/* Job Title */}
-                  <h3 className="font-bold text-xl text-gray-900 mb-6 truncate">
+                  <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white mb-8 tracking-tight truncate" title={job.title}>
                     {job.title}
                   </h3>
 
-                  {/* Job Information */}
-                  <div className="grid grid-cols-2 gap-y-6 text-sm mb-6">
-                    <div>
-                      <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1 mb-1 uppercase tracking-wider">
-                        <FiMapPin /> Location
+                  {/* Job Information Grid */}
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-6">
+                    <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1.5 mb-1 uppercase tracking-wider">
+                        <FiMapPin className="text-blue-500" /> Location
                       </p>
-
-                      <p className="font-bold text-gray-800 truncate">
+                      <p className="font-bold text-gray-900 dark:text-white truncate" title={job.location}>
                         {job.location}
                       </p>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1 mb-1 uppercase tracking-wider">
-                        <FiDollarSign /> Salary
+                    <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1.5 mb-1 uppercase tracking-wider">
+                        <FiDollarSign className="text-green-500" /> Salary
                       </p>
-
-                      <p className="font-bold text-gray-800 truncate">
+                      <p className="font-bold text-gray-900 dark:text-white truncate" title={job.salary}>
                         {job.salary}
                       </p>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1 mb-1 uppercase tracking-wider">
-                        <FiBookOpen /> Qualification
+                    <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1.5 mb-1 uppercase tracking-wider">
+                        <FiBookOpen className="text-purple-500" /> Qual.
                       </p>
-
-                      <p className="font-bold text-gray-800 truncate">
+                      <p className="font-bold text-gray-900 dark:text-white truncate" title={job.reqQualification}>
                         {job.reqQualification}
                       </p>
                     </div>
 
-                    <div>
-                      <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1 mb-1 uppercase tracking-wider">
-                        <FiCalendar /> Passing Year
+                    <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-black/5 dark:border-white/10">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold flex items-center gap-1.5 mb-1 uppercase tracking-wider">
+                        <FiCalendar className="text-orange-500" /> Batch
                       </p>
-
-                      <p className="font-bold text-gray-800">
+                      <p className="font-bold text-gray-900 dark:text-white">
                         {job.reqPassingYear}
                       </p>
                     </div>
@@ -183,22 +172,21 @@ const Jobs = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="pt-5 border-t border-gray-100 flex justify-between items-center mt-2">
-                  <span className="text-[11px] font-medium text-gray-500">
-                    Apply by:{" "}
-                    <strong className="text-gray-800">
-                      {new Date(
-                        job.lastDateToApply
-                      ).toLocaleDateString()}
+                <div className="pt-6 border-t border-black/5 dark:border-white/5 flex justify-between items-center mt-auto">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Apply by
+                    </span>
+                    <strong className="text-sm text-gray-900 dark:text-white">
+                      {new Date(job.lastDateToApply).toLocaleDateString()}
                     </strong>
-                  </span>
+                  </div>
 
-                  {/* Routes to JobDetails page where the matching engine lives */}
                   <Link
                     to={`/jobs/${job._id}`}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-sm font-bold transition-colors shadow-sm"
+                    className="glass-button bg-blue-600/90 hover:bg-blue-600 dark:bg-blue-600 border-none text-white px-6 py-2.5 rounded-xl text-sm font-extrabold shadow-md shadow-blue-500/20"
                   >
-                    Know more →
+                    Details →
                   </Link>
                 </div>
               </div>
