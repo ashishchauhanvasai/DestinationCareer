@@ -286,14 +286,19 @@ const userSchema = new mongoose.Schema({
 
 // Hash password before saving (requires bcryptjs)
 userSchema.pre('save', async function () {
-  // If password is not modified, exit the function (Mongoose continues automatically)
-  if (!this.isModified('password')) return;
+  // Agar password modify nahi hua hai, toh seedha function se bahar nikal jao
+  if (!this.isModified('password')) {
+    return;
+  }
   
-  // Hash the password
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  // Password hash karo (koi 'next()' ki zarurat nahi modern mongoose mein)
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  } catch (error) {
+    throw new Error('Password hashing failed: ' + error.message);
+  }
 });
-
 // 🚀 SPEED BOOST: Index frequently queried fields
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ registeredDrive: 1, status: 1 });
