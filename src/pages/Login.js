@@ -85,6 +85,7 @@ const handleLogin = async (e) => {
     setSuccess('');
     setIsLoading(true);
 
+  
     try {
       const deviceId = getPermanentDeviceId();
       const sanitizedPayload = {
@@ -100,7 +101,6 @@ const handleLogin = async (e) => {
       localStorage.setItem('role', res.data.role);
       localStorage.setItem('userId', res.data.userId);
 
-      // 1. Determine their default fallback route based on role
       const role = res.data.role;
       let defaultRoute = '/';
       if (role === 'admin' || role === 'superadmin') defaultRoute = '/admin';
@@ -108,11 +108,9 @@ const handleLogin = async (e) => {
       else if (role === 'promotional') defaultRoute = '/promo-dashboard';
       else if (role === 'campus_student') defaultRoute = '/campus-portal';
 
-      // 2. Check if we have a saved page in the stack, or if they were redirected here
       const lastVisited = localStorage.getItem('lastVisitedPage');
-
-      // 3. Navigate them to the last page, OR their default dashboard
-      if (lastVisited && lastVisited !== '/login' && lastVisited !== '/') {
+      
+      if (lastVisited && lastVisited !== '/login' && lastVisited !== '/' && !lastVisited.includes('mock-ratings')) {
         navigate(lastVisited);
       } else {
         navigate(defaultRoute);
@@ -127,7 +125,10 @@ const handleLogin = async (e) => {
     } finally {
       setIsLoading(false);
     }
-};
+  
+  
+
+  };
   const handleRequestOTP = async (e) => {
     e.preventDefault();
     setError('');
