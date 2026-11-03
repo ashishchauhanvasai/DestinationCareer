@@ -3,25 +3,24 @@
 @tailwind utilities;
 
 @layer utilities {
-  /* Updated Glass Panel: More opaque white, stronger border, and deeper soft shadow to pop off the background */
+  /* Updated Glass Panel: Stronger borders and deeper shadows for distinct card separation */
   .glass-panel {
-    @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl border border-white dark:border-slate-700/80 shadow-[0_8px_30px_rgba(0,0,0,0.08)];
+    @apply bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-gray-200 dark:border-slate-700 shadow-lg sm:shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)];
   }
   
   /* Smooth glass buttons */
   .glass-button {
-    @apply bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-gray-200/80 dark:border-slate-700/80 shadow-sm hover:shadow-md transition-all duration-300;
+    @apply bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-gray-300 dark:border-slate-600 shadow-md hover:shadow-lg transition-all duration-300;
   }
   
-  /* Soft inputs */
+  /* Soft inputs matching the login page */
   .apple-input {
-    @apply w-full p-3.5 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-gray-200 dark:border-slate-700/80 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-transparent outline-none transition-all shadow-sm;
+    @apply w-full p-4 bg-white dark:bg-slate-950 border border-gray-300 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium;
   }
 }
 
 body {
-  /* Deepened the mesh gradient slightly so the white cards stand out clearly */
-  background-color: #f1f5f9; 
+  background-color: #f8fafc; 
   background-image: 
     radial-gradient(at 0% 0%, hsla(210, 100%, 93%, 1) 0, transparent 60%), 
     radial-gradient(at 50% 0%, hsla(225, 50%, 90%, 0.8) 0, transparent 60%), 

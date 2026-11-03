@@ -76,13 +76,13 @@ function App() {
   useEffect(() => {
     // 1. Block Right Click
     const handleContextMenu = (e) => e.preventDefault();
-    
+
     // 2. Block Inspect Element Keyboard Shortcuts
     const handleKeyDown = (e) => {
       if (
-        e.key === 'F12' || 
-        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || 
-        (e.ctrlKey && e.key === 'U') || 
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && e.key === 'U') ||
         (e.metaKey && e.altKey && (e.key === 'I' || e.key === 'J' || e.key === 'U'))
       ) {
         e.preventDefault();
@@ -140,7 +140,7 @@ function App() {
           }
         />
         <Route path="/live-class/:batchCode" element={<LiveClassroom />} />
-        
+
         <Route path="/drive/:driveCode" element={<DriveTest />} />
 
         <Route
@@ -241,10 +241,8 @@ function App() {
         <Route
           path="/mock-ratings"
           element={
-            <PrivateRoute>
-              <Layout>
-                <MockRatings />
-              </Layout>
+            <PrivateRoute allowedRoles={['trainer']}>
+              <MockRatings />
             </PrivateRoute>
           }
         />

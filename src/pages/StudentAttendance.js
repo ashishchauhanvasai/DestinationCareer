@@ -26,28 +26,51 @@ const StudentAttendance = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Attendance</h1>
-
-      <div className="bg-white rounded-2xl border shadow-sm p-8 text-center mb-8">
-        <FiCamera size={40} className="text-blue-500 mx-auto mb-3" />
-        <p className="font-bold text-gray-800 mb-1">Scan the QR shown by your trainer</p>
-        <p className="text-sm text-gray-500 mb-4">This marks you present for today's class.</p>
-        <button onClick={() => setScanning(true)} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700">Scan QR Code</button>
+    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8 animate-fade-in">
+      <div className="flex items-center gap-4 mb-2">
+        <div className="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl backdrop-blur-md border border-blue-500/20 shadow-sm">
+          <FiCheckCircle className="text-blue-600 dark:text-blue-400" size={28} />
+        </div>
+        <div>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Attendance</h1>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Mark your daily presence and track your history.</p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl border shadow-sm divide-y">
-        <div className="p-4 bg-gray-50 font-bold rounded-t-2xl">My Attendance History</div>
-        {history.length === 0 && <p className="p-6 text-center text-gray-500 text-sm">No attendance marked yet.</p>}
-        {history.map((h, i) => (
-          <div key={i} className="p-4 flex justify-between items-center text-sm">
-            <div>
-              <p className="font-semibold">{h.subject} <span className="text-xs text-gray-400">({h.batchCode})</span></p>
-              <p className="text-xs text-gray-500">{h.venue} • {h.date}</p>
+      <div className="glass-panel rounded-[2.5rem] shadow-lg p-10 md:p-12 text-center border-white/60">
+        <div className="w-20 h-20 bg-blue-500/10 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 border border-blue-500/20 shadow-inner">
+          <FiCamera size={36} />
+        </div>
+        <p className="text-2xl font-extrabold text-gray-900 dark:text-white mb-2 tracking-tight">Scan the batch QR</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-8">Point your camera at the QR code shown by your trainer to mark yourself present for today's class.</p>
+        <button onClick={() => setScanning(true)} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-10 py-4 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-[15px]">
+          Scan QR Code
+        </button>
+      </div>
+
+      <div className="glass-panel rounded-[2rem] overflow-hidden shadow-sm border-white/60">
+        <div className="p-6 md:p-8 bg-white/20 dark:bg-slate-800/20 font-extrabold text-gray-900 dark:text-white text-xl border-b border-black/5 dark:border-white/5 tracking-tight">
+          My Attendance History
+        </div>
+        <div className="divide-y divide-black/5 dark:divide-white/5">
+          {history.length === 0 && <p className="p-10 text-center text-gray-500 font-medium text-lg">No attendance marked yet.</p>}
+          {history.map((h, i) => (
+            <div key={i} className="p-6 flex justify-between items-center text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+              <div>
+                <p className="font-extrabold text-lg text-gray-900 dark:text-white leading-snug">
+                  {h.subject} 
+                  <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded uppercase tracking-wider ml-2 shadow-sm relative -top-0.5">
+                    {h.batchCode}
+                  </span>
+                </p>
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1.5">{h.venue} • {h.date}</p>
+              </div>
+              <span className="text-[11px] bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 font-extrabold px-3 py-1.5 rounded-lg flex items-center gap-1.5 uppercase tracking-wider shadow-sm">
+                <FiCheckCircle size={14} /> {new Date(h.markedAt).toLocaleTimeString()}
+              </span>
             </div>
-            <span className="text-green-600 font-bold flex items-center gap-1"><FiCheckCircle /> {new Date(h.markedAt).toLocaleTimeString()}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {scanning && <QrScannerModal onResult={handleScan} onClose={() => setScanning(false)} />}

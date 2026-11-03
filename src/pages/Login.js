@@ -73,8 +73,7 @@ const Login = () => {
     }
     return errors;
   };
-
-  const handleLogin = async (e) => {
+const handleLogin = async (e) => {
     e.preventDefault();
     const validationErrors = validateLoginInput(form);
     if (Object.keys(validationErrors).length > 0) {
@@ -101,17 +100,24 @@ const Login = () => {
       localStorage.setItem('role', res.data.role);
       localStorage.setItem('userId', res.data.userId);
 
-      if (res.data.role === 'admin' || res.data.role === 'superadmin') {
-        navigate('/admin');
-      } else if (res.data.role === 'trainer') {
-        navigate('/trainer');
-      } else if (res.data.role === 'promotional') {
-        navigate('/promo-dashboard');
-      } else if (res.data.role === 'campus_student') {
-        navigate('/campus-portal');
+      // 1. Determine their default fallback route based on role
+      const role = res.data.role;
+      let defaultRoute = '/';
+      if (role === 'admin' || role === 'superadmin') defaultRoute = '/admin';
+      else if (role === 'trainer') defaultRoute = '/trainer';
+      else if (role === 'promotional') defaultRoute = '/promo-dashboard';
+      else if (role === 'campus_student') defaultRoute = '/campus-portal';
+
+      // 2. Check if we have a saved page in the stack, or if they were redirected here
+      const lastVisited = localStorage.getItem('lastVisitedPage');
+
+      // 3. Navigate them to the last page, OR their default dashboard
+      if (lastVisited && lastVisited !== '/login' && lastVisited !== '/') {
+        navigate(lastVisited);
       } else {
-        navigate('/');
+        navigate(defaultRoute);
       }
+
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Login failed';
       if (errorMessage.includes('pending')) {
@@ -121,8 +127,7 @@ const Login = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
+};
   const handleRequestOTP = async (e) => {
     e.preventDefault();
     setError('');
