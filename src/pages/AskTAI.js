@@ -1,47 +1,127 @@
-import React from 'react';
-import { FiMessageCircle, FiBook, FiList, FiTrendingUp, FiCode, FiDatabase } from 'react-icons/fi';
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import { FiSend, FiMessageSquare, FiUser, FiCpu } from 'react-icons/fi';
+import ReactMarkdown from 'react-markdown';
+
+const API = process.env.REACT_APP_API_URL;
+const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+
+const MD_CLASS = 'text-sm leading-relaxed [&_p]:mb-2 [&_h1]:text-lg [&_h1]:font-extrabold [&_h2]:text-base [&_h2]:font-extrabold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_code]:bg-black/10 dark:[&_code]:bg-white/20 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre]:bg-black/10 dark:[&_pre]:bg-white/10 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0';
 
 const AskTAI = () => {
-  const options = [
-    { icon: <FiMessageCircle className="text-blue-500" size={20}/>, title: 'Resolve a query', desc: 'Clear your code-related doubts' },
-    { icon: <FiBook className="text-green-500" size={20}/>, title: 'Learn concepts', desc: 'Understand and practice a topic' },
-    { icon: <FiList className="text-purple-500" size={20}/>, title: 'Take a quiz', desc: 'Quick questions to test yourself' },
-    { icon: <FiTrendingUp className="text-orange-500" size={20}/>, title: 'Aptitude mentor', desc: 'Sharpen your aptitude skills' },
-    { icon: <FiCode className="text-blue-600" size={20}/>, title: 'Coding problem', desc: 'Get a challenge to solve' },
-    { icon: <FiDatabase className="text-red-500" size={20}/>, title: 'SQL practice', desc: 'Put your SQL skills to the test' }
-  ];
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage = { text: input.trim(), sender: 'user' };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const res = await axios.post(`${API}/api/ask-tai`, { prompt: userMessage.text }, cfg());
+      const taiMessage = { text: res.data.response, sender: 'tai' };
+      setMessages((prev) => [...prev, taiMessage]);
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) => [...prev, { text: 'Sorry, I encountered an error processing your request.', sender: 'tai', isError: true }]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] max-w-4xl mx-auto px-4">
-      <div className="mb-8 flex flex-col items-center">
-        {/* Futuristic Icon Placeholder */}
-        <div className="text-blue-600 text-5xl mb-4 font-bold flex items-center">
-          D<span className="text-3xl mx-1">≡</span>C
+    <div className="h-[calc(100vh-6rem)] max-w-5xl mx-auto py-6 px-4 sm:px-6 lg:px-8 animate-fade-in flex flex-col">
+      <div className="flex items-center gap-4 mb-6 shrink-0">
+        <div className="p-3 bg-indigo-600/10 dark:bg-indigo-400/10 rounded-2xl backdrop-blur-md border border-indigo-500/20 shadow-sm">
+          <FiCpu className="text-indigo-600 dark:text-indigo-400" size={28} />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Hi Ashish, I'm DC Assistance</h1>
-        <p className="text-gray-500">Your AI study buddy. What do you want to do today?</p>
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Ask TAI</h1>
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">Your AI Teaching Assistant for coding and doubts.</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-        {options.map((opt, idx) => (
-          <button key={idx} className="flex items-start gap-4 p-5 bg-white border border-gray-200 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all text-left">
-            <div className="mt-1 bg-gray-50 p-2 rounded-lg">
-              {opt.icon}
+      <div className="flex-1 glass-panel rounded-[2.5rem] shadow-xl border-white/60 flex flex-col overflow-hidden relative">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-white/40 dark:bg-slate-900/40">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-70">
+              <div className="w-16 h-16 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center border border-indigo-500/20 shadow-inner">
+                <FiMessageSquare size={24} />
+              </div>
+              <div>
+                <p className="text-lg font-extrabold text-gray-800 dark:text-gray-200">Hi, I'm TAI.</p>
+                <p className="text-sm font-medium text-gray-500">Ask me anything about programming, algorithms, or your coursework.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-bold text-gray-900 mb-1">{opt.title}</h3>
-              <p className="text-sm text-gray-500">{opt.desc}</p>
+          )}
+
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`flex gap-3 max-w-[85%] md:max-w-[75%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm border ${msg.sender === 'user' ? 'bg-blue-600 text-white border-blue-700' : 'bg-indigo-600 text-white border-indigo-700'}`}>
+                  {msg.sender === 'user' ? <FiUser size={14} /> : <FiCpu size={14} />}
+                </div>
+                <div className={`p-4 rounded-2xl shadow-sm ${msg.sender === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : msg.isError ? 'bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/20 rounded-tl-sm' : 'bg-white dark:bg-slate-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-slate-700 rounded-tl-sm'}`}>
+                  {msg.sender === 'tai' && !msg.isError ? (
+                    <div className={MD_CLASS}><ReactMarkdown>{msg.text}</ReactMarkdown></div>
+                  ) : (
+                    <p className="text-[15px] font-medium leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  )}
+                </div>
+              </div>
             </div>
-          </button>
-        ))}
-      </div>
-      
-      {/* Chat Input Area */}
-      <div className="w-full mt-12 relative">
-         <input type="text" placeholder="Ask DC anything..." className="w-full p-4 pr-12 rounded-full border border-gray-300 shadow-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" />
-         <button className="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white hover:bg-blue-700">
-           ↑
-         </button>
+          ))}
+          {loading && (
+            <div className="flex justify-start">
+               <div className="flex gap-3">
+                 <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm border border-indigo-700">
+                    <FiCpu size={14} />
+                 </div>
+                 <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-tl-sm shadow-sm flex items-center gap-1.5">
+                   <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                   <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                   <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                 </div>
+               </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="p-5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-gray-200 dark:border-slate-700 shrink-0">
+          <form onSubmit={handleSubmit} className="relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Message TAI..."
+              className="apple-input pr-[60px]"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || loading}
+              className="absolute right-2 top-2 bottom-2 w-12 bg-blue-600 text-white rounded-xl flex items-center justify-center disabled:opacity-50 hover:bg-blue-500 transition-colors shadow-md"
+            >
+              <FiSend size={18} />
+            </button>
+          </form>
+          <p className="text-center text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mt-3">TAI can make mistakes. Verify important information.</p>
+        </div>
       </div>
     </div>
   );

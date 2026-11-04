@@ -233,7 +233,7 @@ const handleLogin = async (e) => {
       <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-blue-400/30 dark:bg-blue-600/20 blur-[140px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/30 dark:bg-indigo-600/20 blur-[140px] rounded-full pointer-events-none"></div>
 
-      <div className="w-full max-w-[420px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_8px_40px_rgba(0,0,0,0.06)] relative z-10">
+      <div className="w-full max-w-[500px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_8px_40px_rgba(0,0,0,0.06)] relative z-10">
         <div className="text-center mb-10">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 text-blue-600 dark:text-blue-400 rounded-[1.5rem] flex items-center justify-center border border-white dark:border-slate-700 shadow-sm shadow-blue-500/10">
