@@ -14,11 +14,11 @@ const SidebarItem = ({ icon: Icon, text, to, isActive, onClick }) => (
     onClick={onClick}
     className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-2xl font-semibold transition-all duration-300 ${
       isActive 
-        ? 'bg-blue-600/90 text-white shadow-md shadow-blue-500/20 backdrop-blur-md border border-white/20' 
-        : 'text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white'
+        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-transparent' 
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
     }`}
   >
-    <Icon size={18} className={isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500'} />
+    <Icon size={18} className={isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'} />
     {text}
   </Link>
 );
@@ -101,27 +101,27 @@ const Layout = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-transparent transition-colors duration-300 overflow-hidden">
-      
-      {/* Mobile Overlay (Glass blur) */}
+
+      {/* Mobile Overlay (Darker for better contrast) */}
       <div
-        className={`fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
+        className={`fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
         onClick={() => setIsSidebarOpen(false)}
       />
 
-      {/* SIDEBAR: Upgraded to Liquid Glass */}
+      {/* SIDEBAR: Uses new .sidebar-panel class */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[260px] m-4 glass-panel rounded-3xl flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
+        className={`fixed inset-y-0 left-0 z-40 w-[260px] m-4 sidebar-panel rounded-3xl flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
         ${isSidebarOpen ? 'translate-x-0 md:ml-4' : '-translate-x-full md:-ml-[280px]'}`}
       >
         <div className="overflow-y-auto custom-scrollbar h-full flex flex-col pt-2">
           <div className="p-6 flex justify-between items-center shrink-0">
             <h1 className="text-xl font-extrabold text-blue-600 dark:text-blue-400 tracking-tight">
               Destination<br />
-              <span className="text-gray-800 dark:text-white text-base opacity-80">Career</span>
+              <span className="text-gray-900 dark:text-white text-base opacity-90">Career</span>
             </h1>
 
             <button
-              className="md:hidden text-gray-500 hover:text-gray-900 dark:text-gray-400 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              className="md:hidden text-gray-500 hover:text-gray-900 dark:text-gray-300 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
               onClick={() => setIsSidebarOpen(false)}
             >
               <FiX size={20} />
@@ -129,7 +129,7 @@ const Layout = ({ children }) => {
           </div>
 
           <nav className="mt-2 px-3 pb-4 flex-1">
-            <p className="px-4 text-[10px] font-bold text-gray-400 dark:text-slate-500 mb-3 uppercase tracking-widest">
+            <p className="px-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-widest">
               {isAdmin ? 'Admin Panel' : isTrainer ? 'Trainer' : isPromotional ? 'CSR Team' : 'Main Menu'}
             </p>
 
@@ -175,15 +175,15 @@ const Layout = ({ children }) => {
           </nav>
 
           {/* User Widget / Dark Mode Toggle */}
-          <div className="p-4 mx-3 mb-3 bg-white/40 dark:bg-black/20 rounded-2xl border border-white/50 dark:border-white/5 shrink-0">
+          <div className="p-4 mx-3 mb-3 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shrink-0">
             {role === 'student' && (
-              <div className="bg-white/50 dark:bg-slate-800/50 p-3 rounded-xl mb-4 border border-white/60 dark:border-slate-700/50 flex flex-col items-center shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-xl mb-4 border border-gray-200 dark:border-slate-700 flex flex-col items-center shadow-sm">
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold mb-0.5 tracking-wider uppercase">Employability</p>
                 <p className="text-xl font-extrabold text-gray-900 dark:text-white">0 <span className="text-xs text-gray-400 font-medium">/ 100</span></p>
               </div>
             )}
 
-            <div className="flex bg-black/5 dark:bg-black/30 rounded-xl p-1 mb-4">
+            <div className="flex bg-gray-200 dark:bg-slate-900 rounded-xl p-1 mb-4 border border-gray-300 dark:border-slate-800">
               <button onClick={() => setIsDarkMode(false)} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all ${!isDarkMode ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
                 <FiSun size={14} /> Light
               </button>
@@ -194,19 +194,19 @@ const Layout = ({ children }) => {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 truncate">
-                <div className={`w-9 h-9 shrink-0 rounded-full shadow-sm flex items-center justify-center text-white font-bold text-sm ${isAdmin ? 'bg-red-500' : isTrainer ? 'bg-purple-500' : isPromotional ? 'bg-teal-500' : 'bg-blue-500'}`}>
+                <div className={`w-9 h-9 shrink-0 rounded-full shadow-sm flex items-center justify-center text-white font-bold text-sm ${isAdmin ? 'bg-red-500' : isTrainer ? 'bg-purple-500' : isPromotional ? 'bg-teal-500' : 'bg-blue-600'}`}>
                   {isAdmin ? 'A' : isTrainer ? 'T' : isPromotional ? 'P' : 'S'}
                 </div>
                 <div className="truncate">
                   <p className="font-bold text-xs text-gray-900 dark:text-white truncate">
                     {isAdmin ? 'Administrator' : isTrainer ? 'Trainer' : isPromotional ? 'Promo Exec' : 'Student Name'}
                   </p>
-                  <p className="text-[10px] font-medium text-gray-500 dark:text-slate-400 truncate">
+                  <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 truncate">
                     {isAdmin ? 'admin@dc.com' : isTrainer ? 'trainer@dc.com' : isPromotional ? 'promo@dc.com' : 'student@email.com'}
                   </p>
                 </div>
               </div>
-              <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 bg-white/50 dark:bg-black/20 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors shrink-0" title="Logout">
+              <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-500 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-colors shrink-0 shadow-sm" title="Logout">
                 <FiLogOut size={16} />
               </button>
             </div>
@@ -215,18 +215,18 @@ const Layout = ({ children }) => {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Top Header - Glass Effect */}
+        {/* Top Header */}
         <header className="glass-panel m-4 mb-0 p-3 px-4 rounded-2xl flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-gray-600 dark:text-gray-300 p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-xl transition-colors"
+              className="text-gray-600 dark:text-gray-300 p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
             >
               <FiMenu size={20} />
             </button>
 
             <h1 className={`text-base font-extrabold text-blue-600 dark:text-blue-400 transition-opacity duration-300 ${!isSidebarOpen || window.innerWidth < 768 ? 'opacity-100' : 'md:opacity-0 md:w-0 overflow-hidden'}`}>
-              Destination<span className="text-gray-800 dark:text-white opacity-80">Career</span>
+              Destination<span className="text-gray-900 dark:text-white opacity-90">Career</span>
             </h1>
           </div>
 

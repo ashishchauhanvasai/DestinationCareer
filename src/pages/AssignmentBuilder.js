@@ -260,7 +260,7 @@ const AssignmentBuilder = () => {
                 {q.qType === 'MCQ' && (
                   <div className="bg-white/40 dark:bg-slate-900/40 p-6 rounded-2xl border border-white/50 dark:border-slate-700/50 shadow-sm space-y-4">
                     <p className="text-[11px] font-extrabold text-gray-500 uppercase tracking-widest border-b border-black/5 dark:border-white/5 pb-2">MCQ Options (Select the correct one)</p>
-                    {q.options.map((opt, oi) => (
+                    {q.options.map((opt, oi) => (   
                       <div key={oi} className={`flex items-center gap-4 p-3 rounded-xl border transition-colors ${q.correctIndex === oi ? 'border-green-500 bg-green-500/10' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}>
                         <input type="radio" name={`correct-${ti}-${qi}`} className="w-5 h-5 accent-green-600" checked={q.correctIndex === oi} onChange={() => mutate((n) => { n.topics[ti].questions[qi].correctIndex = oi; })} />
                         <input value={opt} placeholder={`Option ${oi + 1}`} onChange={(e) => mutate((n) => { n.topics[ti].questions[qi].options[oi] = e.target.value; })} className="flex-1 bg-transparent border-none focus:outline-none text-sm font-semibold text-gray-800 dark:text-white" />
