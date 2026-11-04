@@ -12,7 +12,7 @@ const SidebarItem = ({ icon: Icon, text, to, isActive, onClick }) => (
   <Link
     to={to} 
     onClick={onClick}
-    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-2xl font-semibold transition-all duration-300 ${
+    className={`flex items-center gap-3 px-4 py-3 mb-1.5 rounded-2xl font-semibold transition-all duration-300 ${
       isActive 
         ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20 border border-transparent' 
         : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
@@ -102,15 +102,15 @@ const Layout = ({ children }) => {
   return (
     <div className="flex h-screen bg-transparent transition-colors duration-300 overflow-hidden">
 
-      {/* Mobile Overlay (Darker for better contrast) */}
+      {/* Mobile Overlay (Dark and fully opaque backdrop) */}
       <div
-        className={`fixed inset-0 bg-gray-900/70 backdrop-blur-sm z-30 md:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
+        className={`fixed inset-0 bg-gray-900/70 backdrop-blur-md z-40 md:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
         onClick={() => setIsSidebarOpen(false)}
       />
 
-      {/* SIDEBAR: Uses new .sidebar-panel class */}
+      {/* SIDEBAR: Now uses a solid 100% opaque background (bg-white) to prevent bleed-through */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[260px] m-4 sidebar-panel rounded-3xl flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] m-4 bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-[2rem] flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
         ${isSidebarOpen ? 'translate-x-0 md:ml-4' : '-translate-x-full md:-ml-[280px]'}`}
       >
         <div className="overflow-y-auto custom-scrollbar h-full flex flex-col pt-2">
@@ -175,7 +175,7 @@ const Layout = ({ children }) => {
           </nav>
 
           {/* User Widget / Dark Mode Toggle */}
-          <div className="p-4 mx-3 mb-3 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shrink-0">
+          <div className="p-4 mx-3 mb-3 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shrink-0 shadow-sm">
             {role === 'student' && (
               <div className="bg-white dark:bg-slate-900 p-3 rounded-xl mb-4 border border-gray-200 dark:border-slate-700 flex flex-col items-center shadow-sm">
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold mb-0.5 tracking-wider uppercase">Employability</p>
@@ -216,7 +216,7 @@ const Layout = ({ children }) => {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Top Header */}
-        <header className="glass-panel m-4 mb-0 p-3 px-4 rounded-2xl flex items-center justify-between z-10 shrink-0">
+        <header className="glass-panel m-4 mb-0 p-3 px-4 rounded-2xl flex items-center justify-between z-10 shrink-0 border-white/60">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
