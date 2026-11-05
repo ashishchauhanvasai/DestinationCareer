@@ -9,12 +9,12 @@ import {
   FiUpload,
 } from "react-icons/fi";
 
-// Shared Glass Input Styles
-const inputStyles = "w-full p-3.5 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md border border-white/50 dark:border-slate-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/30 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium";
-const labelStyles = "block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider";
+// Shared Solid Input Styles
+const inputStyles = "apple-input w-full font-medium text-[15px]";
+const labelStyles = "block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1";
 
 // =========================================================
-// PROFILE PICTURE UPLOADER (Glassmorphism)
+// PROFILE PICTURE UPLOADER (Solid Component)
 // =========================================================
 const ProfilePicUpload = ({ currentPicUrl, onUploadSuccess }) => {
   const [image, setImage] = useState(currentPicUrl || "");
@@ -66,18 +66,18 @@ const ProfilePicUpload = ({ currentPicUrl, onUploadSuccess }) => {
   };
 
   return (
-    <div className="flex flex-col items-center sm:items-start gap-4">
+    <div className="flex flex-col items-center sm:items-start gap-5">
       <div className="relative group">
         <img
           src={image || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
           alt="Profile"
-          className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white/60 dark:border-slate-700/60 shadow-xl"
+          className="w-28 h-28 sm:w-32 sm:h-32 rounded-[2rem] object-cover border-4 border-gray-100 dark:border-slate-800 shadow-md bg-white"
         />
-        <div className="absolute inset-0 rounded-full bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+        <div className="absolute inset-0 rounded-[2rem] bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       </div>
 
-      <label className="cursor-pointer glass-button text-blue-600 dark:text-blue-400 px-5 py-2.5 rounded-full text-xs font-extrabold flex items-center justify-center gap-2 w-full sm:w-auto">
-        <FiUpload size={16} />
+      <label className="cursor-pointer glass-button bg-gray-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 px-5 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 w-full sm:w-auto shadow-sm border border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-700">
+        <FiUpload size={14} />
         {uploading ? "Uploading..." : "Change Photo"}
         <input
           type="file"
@@ -114,6 +114,7 @@ const Profile = () => {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
@@ -124,7 +125,10 @@ const Profile = () => {
   };
 
   useEffect(() => {
-    if (role === "admin") return;
+    if (role === "admin") {
+      setLoading(false);
+      return;
+    }
 
     const fetchProfile = async () => {
       try {
@@ -140,6 +144,8 @@ const Profile = () => {
         }));
       } catch (err) {
         console.error("Failed to load profile:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -203,18 +209,20 @@ const Profile = () => {
     }
   };
 
-  // ADMIN RESTRICTED VIEW (Glassmorphism)
+  if (loading) return <div className="h-[50vh] flex items-center justify-center font-bold text-gray-500 animate-pulse text-lg">Loading Profile...</div>;
+
+  // ADMIN RESTRICTED VIEW (Solid Structure)
   if (role === "admin") {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6">
-        <div className="glass-panel p-10 rounded-[2rem] max-w-lg w-full text-center flex flex-col items-center">
-          <div className="w-20 h-20 mb-6 rounded-full bg-red-500/10 dark:bg-red-500/20 flex items-center justify-center border border-red-500/20">
-            <FiLock className="text-red-500 dark:text-red-400" size={36} />
+        <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-12 rounded-[2.5rem] max-w-lg w-full text-center flex flex-col items-center shadow-sm">
+          <div className="w-24 h-24 mb-6 rounded-[2rem] bg-red-50 dark:bg-red-900/30 flex items-center justify-center border border-red-200 dark:border-red-800 shadow-sm">
+            <FiLock className="text-red-600 dark:text-red-400" size={40} />
           </div>
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-3 tracking-tight">
+          <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
             Access Restricted
           </h2>
-          <p className="text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+          <p className="text-gray-600 dark:text-gray-300 leading-relaxed font-medium text-[15px]">
             Administrators do not require academic profiles. This section is strictly for students to use with the Smart Matching Engine.
           </p>
         </div>
@@ -223,23 +231,23 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 pb-12">
+    <div className="min-h-screen p-4 md:p-6 pb-16 animate-fade-in">
       <div className="max-w-5xl mx-auto space-y-8">
         
-        {/* PAGE HEADER & PROFILE PIC (Glass Panel) */}
-        <div className="glass-panel p-8 md:p-10 rounded-[2rem] flex flex-col sm:flex-row items-center gap-8">
+        {/* PAGE HEADER & PROFILE PIC */}
+        <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] flex flex-col sm:flex-row items-center gap-8 shadow-sm">
           <ProfilePicUpload
             currentPicUrl={profile.profilePic}
             onUploadSuccess={(newPicUrl) => setProfile((prev) => ({ ...prev, profilePic: newPicUrl }))}
           />
-          <div className="text-center sm:text-left">
-            <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-1">
+          <div className="text-center sm:text-left min-w-0">
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
               {isPromo ? "My Profile" : "My Academic Profile"}
             </h1>
-            <p className="text-xl font-bold text-gray-700 dark:text-gray-200">
+            <p className="text-xl font-extrabold text-gray-700 dark:text-gray-300 truncate">
               {profile.name || "User"}
             </p>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-3 flex items-center justify-center sm:justify-start gap-2 bg-black/5 dark:bg-white/5 w-fit px-4 py-1.5 rounded-full border border-black/5 dark:border-white/5 mx-auto sm:mx-0">
+            <p className="text-[13px] font-bold text-gray-500 dark:text-gray-400 mt-4 flex items-center justify-center sm:justify-start gap-2 bg-gray-50 dark:bg-slate-800 w-fit px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 mx-auto sm:mx-0 shadow-sm">
               <FiUser size={14} />
               {profile.email}
             </p>
@@ -248,22 +256,22 @@ const Profile = () => {
 
         {/* EMPLOYABILITY SCORE (Students Only) */}
         {!isPromo && (
-          <div className="glass-panel p-8 rounded-[2rem]">
-            <div className="flex items-center gap-4 mb-5">
-              <div className="w-12 h-12 rounded-2xl bg-yellow-500/10 dark:bg-yellow-500/20 flex items-center justify-center border border-yellow-500/20">
-                <FiAward className="text-yellow-600 dark:text-yellow-400" size={24} />
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] shadow-sm">
+            <div className="flex items-center gap-5 mb-6">
+              <div className="w-14 h-14 rounded-[1.2rem] bg-yellow-50 dark:bg-yellow-900/30 flex items-center justify-center border border-yellow-200 dark:border-yellow-800 shadow-sm shrink-0">
+                <FiAward className="text-yellow-600 dark:text-yellow-500" size={28} />
               </div>
               <div>
-                <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-0.5">
+                <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">
                   Employability Score
                 </p>
-                <p className="text-3xl font-extrabold text-gray-900 dark:text-white">
-                  {profile.employabilityScore} <span className="text-base text-gray-400">/ 100</span>
+                <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">
+                  {profile.employabilityScore} <span className="text-lg font-bold text-gray-400">/ 100</span>
                 </p>
               </div>
             </div>
 
-            <div className="w-full bg-black/5 dark:bg-white/5 rounded-full h-3 overflow-hidden backdrop-blur-sm border border-black/5 dark:border-white/5">
+            <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden border border-gray-200 dark:border-slate-700 shadow-inner">
               <div
                 className="bg-gradient-to-r from-yellow-400 to-orange-500 h-full rounded-full transition-all duration-1000 ease-out"
                 style={{ width: `${Math.min(Math.max(profile.employabilityScore || 0, 0), 100)}%` }}
@@ -272,20 +280,20 @@ const Profile = () => {
           </div>
         )}
 
-        {/* PROFILE FORM (Glass Panel) */}
+        {/* PROFILE FORM */}
         <form onSubmit={handleSubmit}>
           {/* Locked Status Indicator */}
           {profile.profileLocked && (
-            <div className="mb-6 p-6 glass-panel rounded-[1.5rem] bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/30">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center shrink-0">
-                  <FiLock className="text-amber-600 dark:text-amber-400" size={24} />
+            <div className="mb-8 p-6 md:p-8 glass-panel rounded-[2rem] bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+                <div className="w-14 h-14 rounded-[1.2rem] bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0 shadow-sm border border-amber-200 dark:border-amber-800">
+                  <FiLock className="text-amber-600 dark:text-amber-500" size={26} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold text-amber-800 dark:text-amber-400 mb-1">
+                  <h3 className="text-xl font-black text-amber-900 dark:text-amber-400 mb-2 tracking-tight">
                     Profile Locked
                   </h3>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-500 leading-relaxed">
+                  <p className="text-[15px] font-medium text-amber-800 dark:text-amber-500/80 leading-relaxed">
                     {isPromo
                       ? "Your core profile details are locked. However, you can still update your Technical Skills below."
                       : "Your eligibility details are locked. However, you can still update your Technical Skills below."}
@@ -295,23 +303,24 @@ const Profile = () => {
             </div>
           )}
 
-          <div className="glass-panel p-8 rounded-[2rem]">
-            <div className="flex items-center gap-4 mb-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-600/10 dark:bg-blue-400/10 flex items-center justify-center border border-blue-500/20">
-                <FiBriefcase className="text-blue-600 dark:text-blue-400" size={24} />
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] shadow-sm">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-14 h-14 rounded-[1.2rem] bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center border border-blue-200 dark:border-blue-800 shadow-sm shrink-0">
+                <FiBriefcase className="text-blue-600 dark:text-blue-400" size={26} />
               </div>
-              <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-                Profile Details
-              </h2>
+              <div>
+                <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+                  Profile Details
+                </h2>
+                <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mt-1">
+                  {isPromo
+                    ? "Update your contact information and technical skills."
+                    : "Fill in your eligibility details accurately. This data is used to match you with suitable job openings."}
+                </p>
+              </div>
             </div>
 
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-8 px-1">
-              {isPromo
-                ? "Update your contact information and technical skills."
-                : "Fill in your eligibility details accurately. This data is used to match you with suitable job openings."}
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
               
               {/* PROMOTIONAL FIELDS */}
               {isPromo && (
@@ -350,7 +359,7 @@ const Profile = () => {
                       onChange={(e) => handleChange("highestQualification", e.target.value)}
                       placeholder="e.g. B.Tech"
                       disabled={profile.profileLocked}
-                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-black/5' : ''}`}
+                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-800/80' : ''}`}
                     />
                   </div>
                   <div>
@@ -361,7 +370,7 @@ const Profile = () => {
                       onChange={(e) => handleChange("passingYear", e.target.value)}
                       placeholder="e.g. 2026"
                       disabled={profile.profileLocked}
-                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-black/5' : ''}`}
+                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-800/80' : ''}`}
                     />
                   </div>
                   <div>
@@ -372,7 +381,7 @@ const Profile = () => {
                       onChange={(e) => handleChange("percentage", e.target.value)}
                       placeholder="e.g. 75.50"
                       disabled={profile.profileLocked}
-                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-black/5' : ''}`}
+                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-800/80' : ''}`}
                     />
                   </div>
                   <div>
@@ -384,7 +393,7 @@ const Profile = () => {
                       onChange={(e) => handleChange("backlogs", parseInt(e.target.value, 10) || 0)}
                       placeholder="0"
                       disabled={profile.profileLocked}
-                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-black/5' : ''}`}
+                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-800/80' : ''}`}
                     />
                   </div>
                   <div>
@@ -396,22 +405,22 @@ const Profile = () => {
                       onChange={(e) => handleChange("educationGap", parseInt(e.target.value, 10) || 0)}
                       placeholder="0"
                       disabled={profile.profileLocked}
-                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-black/5' : ''}`}
+                      className={`${inputStyles} ${profile.profileLocked ? 'opacity-60 cursor-not-allowed bg-gray-100 dark:bg-slate-800/80' : ''}`}
                     />
                   </div>
-                  <div className="col-span-1 md:col-span-2 flex items-center mt-2">
-                    <label className={`flex items-center gap-3 cursor-pointer group ${profile.profileLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
-                      <div className="relative flex items-center justify-center">
+                  <div className="col-span-1 md:col-span-2 flex items-center mt-2 bg-gray-50 dark:bg-slate-800 p-4 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-sm w-fit">
+                    <label className={`flex items-center gap-4 cursor-pointer group ${profile.profileLocked ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                      <div className="relative flex items-center justify-center shrink-0">
                         <input
                           type="checkbox"
                           checked={!!profile.readyForRelocation}
                           onChange={(e) => handleChange("readyForRelocation", e.target.checked)}
                           disabled={profile.profileLocked}
-                          className="peer appearance-none w-6 h-6 border-2 border-gray-300 dark:border-slate-600 rounded-lg checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer disabled:cursor-not-allowed"
+                          className="peer appearance-none w-6 h-6 border-2 border-gray-300 dark:border-slate-500 rounded-lg checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer disabled:cursor-not-allowed shadow-sm bg-white"
                         />
                         <FiCheckCircle className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" size={16} />
                       </div>
-                      <span className={`text-sm font-bold text-gray-700 dark:text-gray-300 transition-colors ${!profile.profileLocked && 'group-hover:text-blue-600'}`}>
+                      <span className={`text-[15px] font-extrabold text-gray-700 dark:text-gray-300 transition-colors ${!profile.profileLocked && 'group-hover:text-blue-600 dark:group-hover:text-blue-400'}`}>
                         I am ready to relocate for work
                       </span>
                     </label>
@@ -420,7 +429,7 @@ const Profile = () => {
               )}
 
               {/* SHARED FIELD (Skills are always editable) */}
-              <div className="col-span-1 md:col-span-2 mt-2">
+              <div className="col-span-1 md:col-span-2 mt-4 pt-6 border-t border-gray-200 dark:border-slate-700">
                 <label className={labelStyles}>Technical Skills (Comma separated)</label>
                 <input
                   type="text"
@@ -433,15 +442,15 @@ const Profile = () => {
             </div>
 
             {/* FOOTER / SUBMIT */}
-            <div className="mt-8 pt-8 border-t border-black/5 dark:border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex-1">
+            <div className="mt-8 pt-8 border-t border-gray-200 dark:border-slate-700 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1 w-full md:w-auto">
                 {saveSuccess && (
-                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-400 rounded-xl backdrop-blur-md w-fit animate-fade-in">
-                    <FiCheckCircle size={18} />
-                    <p className="text-sm font-bold">
+                  <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 rounded-2xl w-full md:w-fit animate-fade-in shadow-sm">
+                    <FiCheckCircle size={20} className="shrink-0"/>
+                    <p className="text-[13px] font-extrabold leading-tight">
                       {isPromo ? "Profile saved successfully!" 
-                       : profile.profileLocked ? "Technical skills saved successfully!" 
-                       : "Profile saved successfully and locked!"}
+                        : profile.profileLocked ? "Technical skills saved successfully!" 
+                        : "Profile saved successfully and locked!"}
                     </p>
                   </div>
                 )}
@@ -450,7 +459,7 @@ const Profile = () => {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 disabled:opacity-60 transition-all"
+                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-10 py-4 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 disabled:opacity-60 transition-transform hover:scale-[0.98] text-[15px] shrink-0"
               >
                 {isSaving ? "Saving Data..." : "Save Profile Details"}
               </button>

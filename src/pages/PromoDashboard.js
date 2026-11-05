@@ -5,8 +5,8 @@ import { FiPlus, FiClock, FiX, FiCopy, FiTarget, FiArrowLeft, FiEdit3, FiCode, F
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-const inputCls = 'apple-input';
-const labelCls = 'block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider pl-1';
+const inputCls = 'apple-input w-full';
+const labelCls = 'block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1';
 
 const PromoDashboard = () => {
   const [view, setView] = useState('list'); 
@@ -154,58 +154,58 @@ const PromoDashboard = () => {
   const ongoingDrives = drives.filter(d => d.isActive);
   const completedDrives = drives.filter(d => !d.isActive);
 
-  if (loading) return <div className="h-[50vh] flex items-center justify-center text-lg font-bold text-gray-500">Loading Dashboard...</div>;
+  if (loading) return <div className="h-[50vh] flex items-center justify-center text-lg font-bold text-gray-500 animate-pulse">Loading Dashboard...</div>;
 
   const DriveCard = ({ d }) => (
-    <div className="glass-panel p-8 rounded-[2rem] flex flex-col justify-between hover:-translate-y-1.5 transition-all duration-300 group shadow-lg">
+    <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 rounded-[2.5rem] flex flex-col justify-between hover:-translate-y-1.5 transition-all duration-300 group shadow-sm hover:shadow-lg">
       <div>
-        <div className="flex justify-between items-start mb-4">
-          <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white leading-tight tracking-tight group-hover:text-blue-600 transition-colors">{d.collegeName}</h3>
-          <div className="flex gap-2 shrink-0">
-            <button onClick={(e) => openAssignModal(e, d)} className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-500/10 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-500/20" title="Assign Questions"><FiEdit3 size={14} /></button>
-            <button onClick={(e) => deleteDrive(e, d._id)} className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-500/10 text-red-500 hover:bg-red-600 hover:text-white transition-all opacity-0 group-hover:opacity-100 shadow-sm border border-red-500/20" title="Delete Drive"><FiTrash2 size={14} /></button>
+        <div className="flex justify-between items-start mb-5">
+          <h3 className="font-black text-2xl text-gray-900 dark:text-white leading-tight tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{d.collegeName}</h3>
+          <div className="flex gap-2 shrink-0 ml-4">
+            <button onClick={(e) => openAssignModal(e, d)} className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white transition-colors shadow-sm border border-blue-200 dark:border-blue-800" title="Assign Questions"><FiEdit3 size={16} /></button>
+            <button onClick={(e) => deleteDrive(e, d._id)} className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50 dark:bg-red-900/30 text-red-500 hover:bg-red-600 hover:text-white transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 shadow-sm border border-red-200 dark:border-red-800" title="Delete Drive"><FiTrash2 size={16} /></button>
           </div>
         </div>
         
-        <div className="flex items-center gap-3 mb-6">
-          <span className="font-mono text-xs font-extrabold bg-blue-500/10 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-500/20 uppercase tracking-wider shadow-sm">{d.driveCode}</span>
-          <button onClick={(e) => copyLink(e, d.driveCode)} className="p-2 text-gray-500 hover:text-blue-600 bg-black/5 dark:bg-white/10 hover:bg-black/10 rounded-lg transition-colors" title="Copy Link"><FiCopy size={16} /></button>
-          <button onClick={(e) => toggleStatus(e, d._id)} className="p-2 text-gray-500 hover:text-green-600 bg-black/5 dark:bg-white/10 hover:bg-black/10 rounded-lg transition-colors ml-auto" title="Start/Stop Drive">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <span className="font-mono text-[13px] font-black bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-800 uppercase tracking-wider shadow-sm">{d.driveCode}</span>
+          <button onClick={(e) => copyLink(e, d.driveCode)} className="p-2.5 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors border border-gray-200 dark:border-slate-700 shadow-sm" title="Copy Link"><FiCopy size={16} /></button>
+          <button onClick={(e) => toggleStatus(e, d._id)} className="p-2.5 text-gray-500 hover:text-green-600 dark:hover:text-green-400 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors ml-auto border border-gray-200 dark:border-slate-700 shadow-sm" title="Start/Stop Drive">
             <FiPower size={18} className={d.isActive ? 'text-green-500' : 'text-red-500'} />
           </button>
         </div>
         
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2.5 mb-8">
           {d.scheduledTestTime && (
-            <span className="text-[10px] bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-md font-extrabold text-purple-700 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wider shadow-sm">
-              <FiClock size={12} /> {new Date(d.scheduledTestTime).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+            <span className="text-[10px] bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 px-3 py-1.5 rounded-md font-extrabold text-purple-700 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wider shadow-sm">
+              <FiClock size={12} /> {new Date(d.scheduledTestTime).toLocaleString('en-IN', { hour: 'numeric', minute: 'numeric', hour12: true, day: 'numeric', month: 'short' })}
             </span>
           )}
-          <span className="text-[10px] bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-2.5 py-1 rounded-md font-extrabold text-gray-600 dark:text-gray-300 uppercase tracking-wider shadow-sm">{d.durationMinutes} Mins</span>
-          <span className="text-[10px] bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-md font-extrabold text-green-700 dark:text-green-400 uppercase tracking-wider shadow-sm">Cutoff {d.cutoffPercentage}%</span>
+          <span className="text-[10px] bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-3 py-1.5 rounded-md font-extrabold text-gray-600 dark:text-gray-300 uppercase tracking-wider shadow-sm">{d.durationMinutes} Mins</span>
+          <span className="text-[10px] bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-md font-extrabold text-green-700 dark:text-green-400 uppercase tracking-wider shadow-sm">Cutoff {d.cutoffPercentage}%</span>
         </div>
       </div>
 
-      <div className="bg-white/40 dark:bg-slate-900/40 rounded-[1.5rem] p-4 grid grid-cols-3 gap-3 mb-6 border border-white/50 dark:border-slate-700/50 shadow-sm text-center">
-        <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl">
-          <p className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Reg</p>
-          <p className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">{d.totalRegistered || 0}</p>
+      <div className="bg-gray-50 dark:bg-slate-800/80 rounded-[1.5rem] p-4 grid grid-cols-3 gap-4 mb-6 border border-gray-200 dark:border-slate-700 shadow-sm text-center">
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+          <p className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1.5">Reg</p>
+          <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">{d.totalRegistered || 0}</p>
         </div>
-        <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-green-500/20">
-          <p className="text-[9px] font-extrabold text-green-600 dark:text-green-400 uppercase tracking-widest mb-1">Pass</p>
-          <p className="text-xl font-extrabold text-green-600 dark:text-green-400 leading-none">{d.totalSelected || 0}</p>
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-green-200 dark:border-green-800/50 shadow-sm">
+          <p className="text-[10px] font-extrabold text-green-600 dark:text-green-400 uppercase tracking-widest mb-1.5">Pass</p>
+          <p className="text-2xl font-black text-green-600 dark:text-green-400 leading-none">{d.totalSelected || 0}</p>
         </div>
-        <div className="bg-black/5 dark:bg-white/5 p-3 rounded-xl border border-red-500/20">
-          <p className="text-[9px] font-extrabold text-red-500 dark:text-red-400 uppercase tracking-widest mb-1">Fail</p>
-          <p className="text-xl font-extrabold text-red-500 dark:text-red-400 leading-none">{d.totalRejected || 0}</p>
+        <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-red-200 dark:border-red-800/50 shadow-sm">
+          <p className="text-[10px] font-extrabold text-red-600 dark:text-red-400 uppercase tracking-widest mb-1.5">Fail</p>
+          <p className="text-2xl font-black text-red-500 dark:text-red-400 leading-none">{d.totalRejected || 0}</p>
         </div>
       </div>
 
       <div className="flex gap-4 mt-auto">
-        <button onClick={() => openRegisteredStudents(d)} className="flex-1 py-3 glass-button text-blue-600 dark:text-blue-400 rounded-xl text-[11px] font-extrabold uppercase tracking-wider">
+        <button onClick={() => openRegisteredStudents(d)} className="flex-1 py-4 glass-button text-blue-600 dark:text-blue-400 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border border-gray-300 dark:border-slate-600 shadow-sm">
           Registrations
         </button>
-        <button onClick={() => openSubmissions(d)} className="flex-1 py-3 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg shadow-gray-900/30 hover:scale-[0.98] transition-transform">
+        <button onClick={() => openSubmissions(d)} className="flex-1 py-4 bg-gradient-to-r from-gray-800 to-gray-900 text-white rounded-xl text-[11px] font-extrabold uppercase tracking-wider shadow-lg hover:scale-[0.98] transition-transform">
           Results
         </button>
       </div>
@@ -213,34 +213,34 @@ const PromoDashboard = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 py-4 px-2 sm:px-4">
+    <div className="max-w-7xl mx-auto space-y-12 py-8 px-4 sm:px-6 lg:px-8 pb-16">
       {view === 'list' && (
-        <div className="glass-panel rounded-[2rem] p-8 flex flex-col md:flex-row gap-6 items-center justify-between">
-          <div className="flex items-center gap-4">
-             <div className="w-14 h-14 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center border border-teal-500/20 shadow-sm">
-               <FiTarget size={28} />
+        <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-[2.5rem] p-8 md:p-10 flex flex-col md:flex-row gap-6 items-center justify-between shadow-sm">
+          <div className="flex items-center gap-5">
+             <div className="w-16 h-16 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-[1.2rem] flex items-center justify-center border border-teal-200 dark:border-teal-800 shadow-sm shrink-0">
+               <FiTarget size={32} />
              </div>
              <div>
-               <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Campus Drive Dashboard</h1>
-               <p className="text-gray-500 dark:text-gray-400 mt-1.5 text-sm font-medium">Manage college visits, test links, and assign questions.</p>
+               <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">Campus Drive Dashboard</h1>
+               <p className="text-gray-500 dark:text-gray-400 mt-2 text-[15px] font-medium">Manage college visits, test links, and assign questions.</p>
              </div>
           </div>
-          <button onClick={() => setView('create')} className="w-full md:w-auto bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white px-8 py-4 rounded-xl font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-all hover:scale-[0.98] text-[15px]">
+          <button onClick={() => setView('create')} className="w-full md:w-auto bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white px-8 py-4 rounded-xl font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-transform hover:scale-[0.98] text-[15px] shrink-0">
             <FiPlus size={20} /> Create New Drive
           </button>
         </div>
       )}
 
       {view === 'create' && (
-        <form onSubmit={handleCreate} className="glass-panel p-8 md:p-10 rounded-[2.5rem] space-y-8 max-w-4xl mx-auto animate-fade-in">
-          <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-5">
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Create College Drive</h2>
-            <button type="button" onClick={() => setView('list')} className="w-10 h-10 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full flex items-center justify-center transition-colors text-gray-500 dark:text-gray-300">
-              <FiX size={20} />
+        <form onSubmit={handleCreate} className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-12 rounded-[2.5rem] space-y-8 max-w-4xl mx-auto animate-fade-in shadow-sm">
+          <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-700 pb-5">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">Create College Drive</h2>
+            <button type="button" onClick={() => setView('list')} className="w-12 h-12 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full flex items-center justify-center transition-colors text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-slate-700 shadow-sm">
+              <FiX size={24} />
             </button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             <div><label className={labelCls}>College Name</label><input required placeholder="e.g. VIT Pune" value={form.collegeName} onChange={e => setForm({...form, collegeName: e.target.value})} className={inputCls} /></div>
             <div><label className={labelCls}>Drive Link Code</label><input required placeholder="e.g. VIT-2026" value={form.driveCode} onChange={e => setForm({...form, driveCode: e.target.value.toUpperCase().replace(/\s+/g, '-')})} className={`${inputCls} font-mono uppercase tracking-wider`} /></div>
             <div><label className={labelCls}>Scheduled Start Time</label><input required type="datetime-local" value={form.scheduledTestTime} onChange={e => setForm({...form, scheduledTestTime: e.target.value})} className={inputCls} /></div>
@@ -248,8 +248,8 @@ const PromoDashboard = () => {
             <div><label className={labelCls}>Cutoff Percentage</label><input type="number" min="1" max="100" required value={form.cutoffPercentage} onChange={e => setForm({...form, cutoffPercentage: Number(e.target.value)})} className={inputCls} /></div>
           </div>
           
-          <div className="flex justify-end pt-6 border-t border-black/5 dark:border-white/5 mt-4">
-            <button type="submit" className="w-full md:w-auto px-10 py-4 font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:scale-[0.98] shadow-lg shadow-blue-500/30 transition-transform text-[15px]">
+          <div className="flex justify-end pt-8 border-t border-gray-200 dark:border-slate-700 mt-6">
+            <button type="submit" className="w-full md:w-auto px-10 py-4 font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl hover:scale-[0.98] shadow-lg shadow-blue-500/30 transition-transform text-[15px]">
               Publish Drive Link
             </button>
           </div>
@@ -257,49 +257,49 @@ const PromoDashboard = () => {
       )}
 
       {view === 'assign' && (
-        <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] space-y-8 max-w-5xl mx-auto animate-fade-in">
-          <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-5">
-            <div>
-               <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Assign Questions</h2>
-               <p className="text-sm font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20 w-fit mt-3 uppercase tracking-wider">{selectedDrive.collegeName}</p>
+        <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-12 rounded-[2.5rem] space-y-8 max-w-5xl mx-auto animate-fade-in shadow-sm">
+          <div className="flex justify-between items-start md:items-center border-b border-gray-200 dark:border-slate-700 pb-5">
+            <div className="pr-4">
+               <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white tracking-tight">Assign Questions</h2>
+               <p className="text-[11px] font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 w-fit mt-3 uppercase tracking-wider shadow-sm">{selectedDrive.collegeName}</p>
             </div>
-            <button onClick={() => setView('list')} className="w-10 h-10 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full flex items-center justify-center transition-colors text-gray-500 dark:text-gray-300">
-              <FiX size={20}/>
+            <button onClick={() => setView('list')} className="w-12 h-12 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full flex items-center justify-center transition-colors text-gray-500 dark:text-gray-300 border border-gray-200 dark:border-slate-700 shadow-sm shrink-0">
+              <FiX size={24}/>
             </button>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-white/40 dark:bg-slate-900/40 rounded-[2rem] border border-white/50 dark:border-slate-700/50 shadow-sm p-6">
-              <h3 className="font-extrabold text-blue-800 dark:text-blue-300 flex items-center gap-3 mb-5 text-lg">
-                 <div className="p-2 bg-blue-500/20 rounded-xl"><FiList size={20}/></div> MCQ Assignments
+            <div className="bg-gray-50 dark:bg-slate-800 rounded-[2rem] border border-gray-200 dark:border-slate-700 shadow-sm p-6">
+              <h3 className="font-black text-blue-800 dark:text-blue-300 flex items-center gap-3 mb-6 text-xl tracking-tight">
+                 <div className="p-2.5 bg-blue-100 dark:bg-blue-900/50 rounded-xl shadow-sm"><FiList size={22}/></div> MCQ Assignments
               </h3>
-              <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar pr-2">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                 {resources.assignments.map(a => (
-                  <label key={a._id} className="flex items-center gap-4 p-4 border border-black/5 dark:border-white/5 rounded-2xl cursor-pointer bg-white dark:bg-slate-800 transition hover:border-blue-300 dark:hover:border-blue-500/50 shadow-sm">
-                    <input type="checkbox" className="w-5 h-5 accent-blue-600 rounded cursor-pointer" checked={assignForm.selectedAssignmentIds.includes(a._id)} onChange={() => toggleSelection('selectedAssignmentIds', a._id)} />
-                    <span className="font-bold text-gray-900 dark:text-white text-sm">{a.title}</span>
+                  <label key={a._id} className="flex items-center gap-4 p-5 border border-gray-200 dark:border-slate-700 rounded-2xl cursor-pointer bg-white dark:bg-slate-900 transition hover:border-blue-300 dark:hover:border-blue-700 shadow-sm">
+                    <input type="checkbox" className="w-5 h-5 accent-blue-600 rounded cursor-pointer shrink-0" checked={assignForm.selectedAssignmentIds.includes(a._id)} onChange={() => toggleSelection('selectedAssignmentIds', a._id)} />
+                    <span className="font-bold text-gray-900 dark:text-white text-[15px]">{a.title}</span>
                   </label>
                 ))}
               </div>
             </div>
             
-            <div className="bg-white/40 dark:bg-slate-900/40 rounded-[2rem] border border-white/50 dark:border-slate-700/50 shadow-sm p-6">
-              <h3 className="font-extrabold text-purple-800 dark:text-purple-300 flex items-center gap-3 mb-5 text-lg">
-                 <div className="p-2 bg-purple-500/20 rounded-xl"><FiCode size={20}/></div> Coding Problems
+            <div className="bg-gray-50 dark:bg-slate-800 rounded-[2rem] border border-gray-200 dark:border-slate-700 shadow-sm p-6">
+              <h3 className="font-black text-purple-800 dark:text-purple-300 flex items-center gap-3 mb-6 text-xl tracking-tight">
+                 <div className="p-2.5 bg-purple-100 dark:bg-purple-900/50 rounded-xl shadow-sm"><FiCode size={22}/></div> Coding Problems
               </h3>
-              <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar pr-2">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                 {resources.problems.map(p => (
-                  <label key={p._id} className="flex items-center gap-4 p-4 border border-black/5 dark:border-white/5 rounded-2xl cursor-pointer bg-white dark:bg-slate-800 transition hover:border-purple-300 dark:hover:border-purple-500/50 shadow-sm">
-                    <input type="checkbox" className="w-5 h-5 accent-purple-600 rounded cursor-pointer" checked={assignForm.selectedProblemIds.includes(p._id)} onChange={() => toggleSelection('selectedProblemIds', p._id)} />
-                    <span className="font-bold text-gray-900 dark:text-white text-sm">{p.title}</span>
+                  <label key={p._id} className="flex items-center gap-4 p-5 border border-gray-200 dark:border-slate-700 rounded-2xl cursor-pointer bg-white dark:bg-slate-900 transition hover:border-purple-300 dark:hover:border-purple-700 shadow-sm">
+                    <input type="checkbox" className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0" checked={assignForm.selectedProblemIds.includes(p._id)} onChange={() => toggleSelection('selectedProblemIds', p._id)} />
+                    <span className="font-bold text-gray-900 dark:text-white text-[15px]">{p.title}</span>
                   </label>
                 ))}
               </div>
             </div>
           </div>
           
-          <div className="flex justify-end pt-6 border-t border-black/5 dark:border-white/5 mt-4">
-            <button onClick={saveAssignedQuestions} className="w-full md:w-auto px-10 py-4 font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:scale-[0.98] shadow-lg shadow-blue-500/30 transition-transform text-[15px]">
+          <div className="flex justify-end pt-8 border-t border-gray-200 dark:border-slate-700 mt-6">
+            <button onClick={saveAssignedQuestions} className="w-full md:w-auto px-10 py-4 font-extrabold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl hover:scale-[0.98] shadow-lg shadow-blue-500/30 transition-transform text-[15px]">
               Save Test Questions
             </button>
           </div>
@@ -309,20 +309,20 @@ const PromoDashboard = () => {
       {view === 'list' && (
         <div className="space-y-12">
           <div>
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-black/5 dark:border-white/5 pb-4">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-gray-200 dark:border-slate-700 pb-4">
               <FiTarget className="text-blue-500"/> Ongoing Drives
             </h2>
-            {ongoingDrives.length === 0 ? <p className="text-gray-500 font-medium bg-black/5 dark:bg-white/5 p-6 rounded-2xl text-center">No active drives right now.</p> : (
+            {ongoingDrives.length === 0 ? <p className="text-gray-500 font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 rounded-2xl text-center shadow-sm">No active drives right now.</p> : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {ongoingDrives.map(d => <DriveCard key={d._id} d={d} />)}
               </div>
             )}
           </div>
           <div>
-            <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-black/5 dark:border-white/5 pb-4 opacity-70">
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-gray-200 dark:border-slate-700 pb-4 opacity-70">
               <FiCheckCircle className="text-green-500"/> Completed Drives
             </h2>
-            {completedDrives.length === 0 ? <p className="text-gray-500 font-medium bg-black/5 dark:bg-white/5 p-6 rounded-2xl text-center">No completed drives yet.</p> : (
+            {completedDrives.length === 0 ? <p className="text-gray-500 font-bold bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 rounded-2xl text-center shadow-sm opacity-70">No completed drives yet.</p> : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 opacity-80 hover:opacity-100 transition-opacity">
                 {completedDrives.map(d => <DriveCard key={d._id} d={d} />)}
               </div>
@@ -331,28 +331,27 @@ const PromoDashboard = () => {
         </div>
       )}
 
-      {/* Submissions & Registration Views follow the same structure as AdminApplications table wrapping */}
       {view === 'submissions' && selectedDrive && (
         <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
-          <button onClick={() => setView('list')} className="glass-button px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-extrabold text-gray-600 dark:text-gray-300 w-fit transition-all">
+          <button onClick={() => setView('list')} className="glass-button bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-extrabold text-gray-600 dark:text-gray-300 w-fit transition-all shadow-sm">
             <FiArrowLeft /> Back to Drives
           </button>
           
-          <div className="glass-panel p-8 rounded-[2.5rem] flex flex-wrap justify-between items-center gap-6">
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] flex flex-wrap justify-between items-center gap-6 shadow-sm">
              <div>
-               <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{selectedDrive.collegeName} Results</h2>
-               <p className="text-[11px] font-extrabold bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 px-3 py-1.5 rounded-lg uppercase tracking-wider w-fit mt-3">Cutoff: {selectedDrive.cutoffPercentage}%</p>
+               <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{selectedDrive.collegeName} Results</h2>
+               <p className="text-[11px] font-extrabold bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-lg uppercase tracking-wider w-fit mt-3 shadow-sm">Cutoff: {selectedDrive.cutoffPercentage}%</p>
              </div>
-             <div className="flex gap-6 bg-white/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-white/50 dark:border-slate-700/50 shadow-sm">
-               <div className="text-center px-4"><p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">Appeared</p><p className="text-3xl font-extrabold text-gray-900 dark:text-white">{subs.length}</p></div>
-               <div className="text-center border-l border-black/10 dark:border-white/10 pl-8 pr-4"><p className="text-[10px] font-extrabold text-green-600 dark:text-green-400 uppercase tracking-widest mb-1">Selected</p><p className="text-3xl font-extrabold text-green-600 dark:text-green-400">{subs.filter(s => s.status === 'Selected').length}</p></div>
+             <div className="flex gap-6 bg-gray-50 dark:bg-slate-800/80 p-5 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
+               <div className="text-center px-4"><p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Appeared</p><p className="text-3xl font-black text-gray-900 dark:text-white">{subs.length}</p></div>
+               <div className="text-center border-l border-gray-300 dark:border-slate-600 pl-8 pr-4"><p className="text-[10px] font-extrabold text-green-600 dark:text-green-400 uppercase tracking-widest mb-1.5">Selected</p><p className="text-3xl font-black text-green-600 dark:text-green-400">{subs.filter(s => s.status === 'Selected').length}</p></div>
              </div>
           </div>
           
-          <div className="glass-panel rounded-[2rem] overflow-hidden">
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-[2rem] overflow-hidden shadow-sm">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-black/5 dark:bg-white/5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-black/5 dark:border-white/5">
+              <table className="w-full text-left text-[15px] whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-slate-800 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-gray-200 dark:border-slate-700">
                   <tr>
                     <th className="p-6">Student Details</th>
                     <th className="p-6">Contact & Location</th>
@@ -360,32 +359,32 @@ const PromoDashboard = () => {
                     <th className="p-6 text-center">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                  {subs.length === 0 ? <tr><td colSpan="4" className="p-16 text-center text-gray-500 dark:text-gray-400 font-medium text-lg">No submissions yet.</td></tr> : (
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                  {subs.length === 0 ? <tr><td colSpan="4" className="p-20 text-center text-gray-500 dark:text-gray-400 font-bold text-xl">No submissions yet.</td></tr> : (
                     subs.map(s => (
-                      <tr key={s._id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
-                        <td className="p-6 flex items-center gap-4">
-                          <img src={s.student?.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-12 h-12 rounded-[1rem] border-2 border-white/60 shadow-sm object-cover bg-white"/>
+                      <tr key={s._id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
+                        <td className="p-6 flex items-center gap-5">
+                          <img src={s.student?.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-14 h-14 rounded-[1rem] border border-gray-200 dark:border-slate-700 shadow-sm object-cover bg-white"/>
                           <div>
-                            <p className="font-extrabold text-base text-gray-900 dark:text-white">{s.student?.name}</p>
-                            <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mt-1">{s.student?.highestQualification} ({s.student?.passingYear}) • {s.student?.percentage}%</p>
+                            <p className="font-extrabold text-lg text-gray-900 dark:text-white mb-1">{s.student?.name}</p>
+                            <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{s.student?.highestQualification} ({s.student?.passingYear}) • {s.student?.percentage}%</p>
                           </div>
                         </td>
                         <td className="p-6">
                           <p className="font-extrabold text-gray-800 dark:text-gray-200">{s.student?.contactNumber}</p>
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">{s.student?.email}</p>
+                          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mt-1">{s.student?.email}</p>
                         </td>
                         <td className="p-6 text-center">
-                          <p className="font-extrabold text-lg text-gray-900 dark:text-white">{s.totalScore} <span className="text-xs font-medium text-gray-500">/ {s.maxScore}</span></p>
-                          <p className="text-[11px] text-blue-600 dark:text-blue-400 font-extrabold uppercase mt-1 tracking-wider">{s.percentage}%</p>
+                          <p className="font-black text-xl text-gray-900 dark:text-white">{s.totalScore} <span className="text-sm font-bold text-gray-500">/ {s.maxScore}</span></p>
+                          <p className="text-[11px] text-blue-600 dark:text-blue-400 font-black uppercase mt-1 tracking-wider">{s.percentage}%</p>
                         </td>
                         <td className="p-6 text-center flex flex-col items-center gap-3">
-                          <span className={`px-4 py-1.5 rounded-lg text-[11px] font-extrabold uppercase tracking-wider shadow-sm border ${s.status === 'Selected' ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20'}`}>
+                          <span className={`px-4 py-2 rounded-lg text-[11px] font-extrabold uppercase tracking-wider shadow-sm border ${s.status === 'Selected' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'}`}>
                             {s.status}
                           </span>
                           <button
                             onClick={() => viewProctorLogs(s.student?._id, s.student?.name)}
-                            className="glass-button text-[10px] text-blue-600 dark:text-blue-400 font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all"
+                            className="glass-button text-[10px] text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/10 font-extrabold uppercase tracking-wider px-3.5 py-1.5 rounded-md opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all shadow-sm"
                           >
                             Proctor Logs
                           </button>
@@ -402,25 +401,25 @@ const PromoDashboard = () => {
 
       {view === 'registeredStudents' && selectedDrive && (
         <div className="space-y-6 max-w-7xl mx-auto animate-fade-in">
-          <button onClick={() => setView('list')} className="glass-button px-5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-extrabold text-gray-600 dark:text-gray-300 w-fit transition-all">
+          <button onClick={() => setView('list')} className="glass-button bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-6 py-3 rounded-xl flex items-center gap-2 text-sm font-extrabold text-gray-600 dark:text-gray-300 w-fit transition-all shadow-sm">
             <FiArrowLeft /> Back to Drives
           </button>
           
-          <div className="glass-panel p-8 rounded-[2.5rem] flex flex-wrap justify-between items-center gap-6">
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] flex flex-wrap justify-between items-center gap-6 shadow-sm">
              <div>
-               <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{selectedDrive.collegeName} Registrations</h2>
-               <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-2">All students who filled the intake form.</p>
+               <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">{selectedDrive.collegeName} Registrations</h2>
+               <p className="text-[15px] font-medium text-gray-500 dark:text-gray-400 mt-2">All students who filled the intake form.</p>
              </div>
-             <div className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-white/50 dark:border-slate-700/50 shadow-sm text-center px-8">
-               <p className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Total Registered</p>
-               <p className="text-3xl font-extrabold text-gray-900 dark:text-white">{registeredStudents.length}</p>
+             <div className="bg-gray-50 dark:bg-slate-800/80 p-5 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm text-center px-10">
+               <p className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1.5">Total Registered</p>
+               <p className="text-3xl font-black text-gray-900 dark:text-white">{registeredStudents.length}</p>
              </div>
           </div>
           
-          <div className="glass-panel rounded-[2rem] overflow-hidden">
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-[2rem] overflow-hidden shadow-sm">
             <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-black/5 dark:bg-white/5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-black/5 dark:border-white/5">
+              <table className="w-full text-left text-[15px] whitespace-nowrap">
+                <thead className="bg-gray-50 dark:bg-slate-800 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-gray-200 dark:border-slate-700">
                   <tr>
                     <th className="p-6">Student Details</th>
                     <th className="p-6">Contact Info</th>
@@ -429,35 +428,35 @@ const PromoDashboard = () => {
                     <th className="p-6 text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/5 dark:divide-white/5">
-                  {registeredStudents.length === 0 ? <tr><td colSpan="5" className="p-16 text-center text-gray-500 dark:text-gray-400 font-medium text-lg">No students registered yet.</td></tr> : (
+                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+                  {registeredStudents.length === 0 ? <tr><td colSpan="5" className="p-20 text-center text-gray-500 dark:text-gray-400 font-bold text-xl">No students registered yet.</td></tr> : (
                     registeredStudents.map(s => (
-                      <tr key={s._id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
-                        <td className="p-6 flex items-center gap-4">
-                          <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-14 h-14 rounded-[1rem] border-2 border-white/60 shadow-sm object-cover bg-white"/>
+                      <tr key={s._id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
+                        <td className="p-6 flex items-center gap-5">
+                          <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-14 h-14 rounded-[1rem] border border-gray-200 dark:border-slate-700 shadow-sm object-cover bg-white"/>
                           <div>
-                            <p className="font-extrabold text-base text-gray-900 dark:text-white mb-1.5">{s.name}</p>
-                            <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider shadow-sm border ${s.status === 'approved' ? 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20'}`}>
+                            <p className="font-extrabold text-lg text-gray-900 dark:text-white mb-2">{s.name}</p>
+                            <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-md uppercase tracking-wider shadow-sm border ${s.status === 'approved' ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800'}`}>
                               {s.status === 'approved' ? 'Active' : s.status}
                             </span>
                           </div>
                         </td>
                         <td className="p-6">
                           <p className="font-extrabold text-gray-800 dark:text-gray-200">{s.contactNumber}</p>
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">{s.email}</p>
+                          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mt-1">{s.email}</p>
                         </td>
-                        <td className="p-6 space-y-1.5">
-                          <p className="font-extrabold text-gray-900 dark:text-white text-sm">{s.highestQualification} {s.branch ? <span className="text-gray-500 font-medium">- {s.branch}</span> : ''}</p>
-                          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">Year: {s.yearOfStudy} | Passout: {s.passingYear} | Degree: <strong className="text-gray-700 dark:text-gray-300">{s.percentage}%</strong></p>
-                          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400">10th: <strong className="text-gray-700 dark:text-gray-300">{s.tenthPercentage}%</strong> | 12th: <strong className="text-gray-700 dark:text-gray-300">{s.twelfthPercentage}%</strong></p>
+                        <td className="p-6 space-y-2">
+                          <p className="font-extrabold text-gray-900 dark:text-white text-[15px]">{s.highestQualification} {s.branch ? <span className="text-gray-500 font-medium">
+{s.branch}</span> : ''}</p>
+                          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Year: {s.yearOfStudy} | Passout: {s.passingYear} | Degree: <strong className="text-gray-700 dark:text-gray-300">{s.percentage}%</strong></p>
+                          <p className="text-[11px] font-bold text-gray-500 dark:text-gray-400">10th: <strong className="text-gray-700 dark:text-gray-300">{s.tenthPercentage}%</strong> | 12th: <strong className="text-gray-700 dark:text-gray-300">{s.twelfthPercentage}%</strong></p>
                         </td>
                         <td className="p-6">
-                          <p className="text-[11px] text-gray-600 dark:text-gray-400 font-mono mb-1"><b className="font-extrabold text-gray-800 dark:text-gray-200 font-sans">PAN:</b> {s.panCard || 'N/A'}</p>
-                          <p className="text-[11px] text-gray-600 dark:text-gray-400 font-mono mb-2"><b className="font-extrabold text-gray-800 dark:text-gray-200 font-sans">UIDAI:</b> {s.aadharNumber || 'N/A'}</p>
-                          <p className="text-[10px] font-medium text-gray-500 dark:text-gray-400 truncate w-48 bg-black/5 dark:bg-white/5 p-2 rounded-lg border border-black/5 dark:border-white/5" title={s.address}>{s.address}</p>
+                          <p className="text-[11px] text-gray-600 dark:text-gray-400 font-mono mb-1.5"><b className="font-extrabold text-gray-800 dark:text-gray-200 font-sans">PAN:</b> {s.panCard || 'N/A'}</p>
+                          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 truncate w-48 bg-gray-50 dark:bg-slate-800 p-2.5 rounded-lg border border-gray-200 dark:border-slate-700" title={s.address}>{s.address}</p>
                         </td>
                         <td className="p-6 text-center">
-                          <button onClick={() => deleteCampusStudent(s._id)} className="w-10 h-10 rounded-xl flex items-center justify-center text-red-500 dark:text-red-400 bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 transition-all shadow-sm opacity-0 group-hover:opacity-100" title="Delete Student">
+                          <button onClick={() => deleteCampusStudent(s._id)} className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-600 hover:text-white border border-red-200 dark:border-red-800 transition-all shadow-sm opacity-100 lg:opacity-0 lg:group-hover:opacity-100" title="Delete Student">
                             <FiTrash2 size={16} />
                           </button>
                         </td>
@@ -471,35 +470,35 @@ const PromoDashboard = () => {
         </div>
       )}
 
-      {/* PROCTOR LOGS MODAL (Frosted Glass) */}
+      {/* PROCTOR LOGS MODAL (Solid background modal) */}
       {proctorLogs && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-panel p-8 rounded-[2rem] max-w-4xl w-full max-h-[90vh] overflow-y-auto relative custom-scrollbar shadow-2xl">
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] max-w-4xl w-full max-h-[90vh] overflow-y-auto relative custom-scrollbar shadow-2xl">
             <button
               onClick={() => setProctorLogs(null)}
-              className="absolute top-6 right-6 text-gray-400 hover:text-red-500 bg-black/5 dark:bg-white/10 p-2.5 rounded-full transition-colors"
+              className="absolute top-6 right-6 text-gray-400 hover:text-red-500 bg-gray-100 dark:bg-slate-800 p-3 rounded-full transition-colors border border-gray-200 dark:border-slate-700 shadow-sm"
             >
               <FiX size={20}/>
             </button>
 
-            <h2 className="text-2xl font-extrabold mb-6 text-gray-900 dark:text-white border-b border-black/5 dark:border-white/5 pb-4 tracking-tight">
+            <h2 className="text-2xl md:text-3xl font-black mb-6 text-gray-900 dark:text-white border-b border-gray-200 dark:border-slate-700 pb-5 tracking-tight">
               Proctor Logs: <span className="text-blue-600 dark:text-blue-400">{proctorLogs.name}</span>
             </h2>
 
             {proctorLogs.images.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 py-16 text-center text-lg font-medium">
+              <p className="text-gray-500 dark:text-gray-400 py-20 text-center text-xl font-bold bg-gray-50 dark:bg-slate-800 rounded-[2rem] border border-gray-200 dark:border-slate-700">
                 No images captured during this test session.
               </p>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
                 {proctorLogs.images.map((log, i) => (
-                  <div key={i} className="bg-white/40 dark:bg-slate-800/40 border border-white/50 dark:border-slate-700/50 rounded-[1.5rem] p-3 text-center shadow-sm hover:shadow-md transition-shadow">
+                  <div key={i} className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-[1.5rem] p-3 text-center shadow-sm hover:shadow-md transition-shadow">
                     <img
                       src={log.image}
                       alt="Proctor Snapshot"
-                      className="rounded-xl w-full h-auto object-cover mb-3 border border-black/5 dark:border-white/5 shadow-inner"
+                      className="rounded-xl w-full h-auto object-cover mb-4 border border-gray-200 dark:border-slate-700 shadow-inner bg-white"
                     />
-                    <p className="text-[10px] font-extrabold text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-900 inline-block px-3 py-1.5 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700 uppercase tracking-wider">
+                    <p className="text-[10px] font-extrabold text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-900 inline-block px-3 py-1.5 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 uppercase tracking-wider mb-1">
                       {new Date(log.createdAt).toLocaleTimeString()}
                     </p>
                   </div>
