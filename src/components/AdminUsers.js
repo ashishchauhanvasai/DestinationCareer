@@ -24,13 +24,13 @@ const cfg = () => ({
 
 // Upgraded Glass StatCard
 const StatCard = ({ icon: Icon, label, value }) => (
-  <div className="glass-panel rounded-[1.5rem] p-6 flex items-center gap-5 hover:-translate-y-1 transition-all duration-300">
-    <div className="p-4 bg-blue-500/10 rounded-2xl border border-blue-500/20 shadow-inner">
+  <div className="glass-panel rounded-[2rem] p-6 flex flex-col md:flex-row items-center md:items-start gap-4 hover:-translate-y-1 transition-all duration-300 shadow-sm border border-gray-200 dark:border-slate-700 text-center md:text-left">
+    <div className="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-2xl border border-blue-200 dark:border-blue-800 shadow-sm shrink-0">
       <Icon className="text-blue-600 dark:text-blue-400 text-2xl" />
     </div>
-    <div>
-      <div className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{value}</div>
-      <div className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">{label}</div>
+    <div className="w-full">
+      <div className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-none mb-2">{value}</div>
+      <div className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{label}</div>
     </div>
   </div>
 );
@@ -243,22 +243,24 @@ const AdminUsers = () => {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
       
       {/* Title */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="p-3 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl backdrop-blur-md border border-blue-500/20 shadow-sm">
-          <FiUsers className="text-blue-600 dark:text-blue-400" size={26} />
-        </div>
-        <div>
-          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Manage Users</h2>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">View or manage registered users.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3.5 bg-blue-600/10 dark:bg-blue-400/10 rounded-2xl border border-blue-500/20 shadow-sm shrink-0">
+            <FiUsers className="text-blue-600 dark:text-blue-400" size={28} />
+          </div>
+          <div>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">Manage Users</h2>
+            <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mt-1 opacity-90">View, edit, or manage registered user accounts globally.</p>
+          </div>
         </div>
       </div>
 
-      {/* Statistics (Glassmorphism) */}
+      {/* Statistics */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 animate-fade-in">
           <StatCard icon={FiUsers} label="Total Students" value={stats.students ?? 0} />
           <StatCard icon={FiBriefcase} label="Total Trainers" value={stats.trainers ?? 0} />
           <StatCard icon={FiShield} label="Total Admins" value={stats.admins ?? 0} />
@@ -266,9 +268,9 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* Tabs + Search (Glass Panel) */}
-      <div className="glass-panel rounded-[2rem] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-        <div className="flex bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl shadow-inner border border-black/5 dark:border-white/5 overflow-x-auto custom-scrollbar">
+      {/* Tabs + Search */}
+      <div className="glass-panel rounded-[2.5rem] p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6 shadow-sm border border-gray-200 dark:border-slate-700">
+        <div className="flex bg-gray-100 dark:bg-slate-800 p-1.5 rounded-2xl shadow-inner border border-gray-200 dark:border-slate-700 overflow-x-auto custom-scrollbar w-full lg:w-fit">
           {[
             { v: "student", l: "Students" },
             { v: "trainer", l: "Trainers" },
@@ -278,10 +280,10 @@ const AdminUsers = () => {
             <button
               key={t.v}
               onClick={() => setTab(t.v)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-extrabold transition-all duration-300 whitespace-nowrap ${
+              className={`flex-1 lg:flex-none px-6 py-3 rounded-xl text-sm font-extrabold transition-all duration-300 whitespace-nowrap text-center ${
                 tab === t.v
-                  ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm border border-white/50 dark:border-slate-700/50 backdrop-blur-md"
-                  : "text-gray-500 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-md border border-gray-200 dark:border-slate-600"
+                  : "text-gray-500 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-slate-700/50 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               {t.l}
@@ -289,28 +291,28 @@ const AdminUsers = () => {
           ))}
         </div>
 
-        <div className="relative w-full md:w-80">
+        <div className="relative w-full lg:w-96 shrink-0">
           <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={18} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name or email"
-            className="apple-input pl-11 shadow-sm"
+            className="apple-input pl-11 shadow-sm font-bold text-[15px] py-3.5"
           />
         </div>
       </div>
 
       {/* BULK ACTIONS BAR */}
       {selectedUserIds.length > 0 && (
-        <div className="glass-panel p-4 rounded-2xl flex flex-wrap items-center justify-between shadow-lg border-blue-500/30 dark:border-blue-400/30 gap-4 animate-fade-in bg-blue-50/80 dark:bg-blue-900/20">
-          <span className="text-blue-800 dark:text-blue-300 font-extrabold text-sm pl-2">
+        <div className="glass-panel p-5 md:p-6 rounded-[2rem] flex flex-col md:flex-row items-center justify-between shadow-lg border-blue-500/30 dark:border-blue-400/30 gap-5 animate-fade-in bg-blue-50 dark:bg-blue-900/20">
+          <span className="text-blue-800 dark:text-blue-300 font-extrabold text-[15px] pl-2 tracking-tight">
             {selectedUserIds.length} user(s) selected
           </span>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 w-full md:w-auto">
             <button
               onClick={handleBulkApprove}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition-all"
+              className="w-full sm:w-auto flex-1 sm:flex-none bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl text-xs font-extrabold shadow-md hover:scale-[0.98] transition-transform text-center"
             >
               Approve Accounts
             </button>
@@ -319,13 +321,13 @@ const AdminUsers = () => {
               <>
                 <button
                   onClick={() => setMovingStudent("BULK")}
-                  className="bg-gradient-to-r from-orange-500 to-amber-500 text-white px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition-all"
+                  className="w-full sm:w-auto flex-1 sm:flex-none bg-gradient-to-r from-orange-500 to-amber-500 text-white px-6 py-3 rounded-xl text-xs font-extrabold shadow-md hover:scale-[0.98] transition-transform text-center"
                 >
                   Move Selected to Batch
                 </button>
                 <button
                   onClick={handleBulkApproveDevices}
-                  className="bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white px-5 py-2.5 rounded-xl text-xs font-extrabold shadow-md hover:shadow-lg transition-all"
+                  className="w-full sm:w-auto flex-1 sm:flex-none bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white px-6 py-3 rounded-xl text-xs font-extrabold shadow-md hover:scale-[0.98] transition-transform text-center"
                 >
                   Approve Devices
                 </button>
@@ -335,124 +337,127 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* Users Table (Glass Panel) */}
-      <div className="glass-panel rounded-[2rem] overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-sm whitespace-nowrap">
-            <thead className="bg-black/5 dark:bg-white/5 border-b border-black/5 dark:border-white/5">
-              <tr>
-                <th className="px-6 py-4 w-10">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
-                    checked={users.length > 0 && selectedUserIds.length === users.length}
-                    onChange={handleSelectAll}
-                  />
-                </th>
-                <th className="text-left px-6 py-4 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">User</th>
-                <th className="text-left px-6 py-4 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Email</th>
-                {tab === "student" && <th className="text-left px-6 py-4 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Profile</th>}
-                <th className="text-left px-6 py-4 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Status</th>
-                <th className="text-center px-6 py-4 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Role</th>
-                <th className="text-right px-6 py-4 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5 dark:divide-white/5">
-              {users.length === 0 ? (
+      {/* Users Table */}
+      <div className="glass-panel rounded-[2.5rem] overflow-hidden shadow-sm">
+        {users.length === 0 ? (
+          <div className="text-center py-20 text-gray-500 dark:text-gray-400 font-bold text-xl">
+            No {tab}s found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto custom-scrollbar">
+            {/* The block md:table structure ensures mobile layout becomes stacked cards instead of a squished table */}
+            <table className="w-full text-sm block md:table text-left whitespace-nowrap">
+              <thead className="hidden md:table-header-group bg-gray-50 dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700">
                 <tr>
-                  <td colSpan={tab === "student" ? 7 : 6} className="text-center py-16 text-gray-500 dark:text-gray-400 font-medium text-lg">
-                    No {tab}s found.
-                  </td>
+                  <th className="px-6 py-5 w-10">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                      checked={users.length > 0 && selectedUserIds.length === users.length}
+                      onChange={handleSelectAll}
+                    />
+                  </th>
+                  <th className="px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">User & Email</th>
+                  {tab === "student" && <th className="px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-center">Profile</th>}
+                  <th className="px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-center">Status</th>
+                  <th className="px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-center">Role</th>
+                  <th className="px-6 py-5 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
-              ) : (
-                users.map((u) => (
-                  <tr key={u._id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
-                    <td className="px-6 py-4">
+              </thead>
+              <tbody className="block md:table-row-group divide-y divide-gray-200 dark:divide-slate-700">
+                {users.map((u) => (
+                  <tr key={u._id} className="block md:table-row hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group p-4 md:p-0">
+                    
+                    <td className="px-2 md:px-6 py-2 md:py-5 flex items-center md:table-cell align-middle">
                       <input
                         type="checkbox"
-                        className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                        className="w-4 h-4 cursor-pointer accent-blue-600 rounded mt-1 md:mt-0"
                         checked={selectedUserIds.includes(u._id)}
                         onChange={() => handleSelectUser(u._id)}
                       />
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-2 md:px-6 py-2 md:py-5 flex flex-col md:table-cell align-middle">
                       <div className="flex items-center gap-4">
                         <img 
                           src={u.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
                           alt="DP" 
-                          className="w-10 h-10 rounded-full object-cover border-2 border-white/60 shadow-sm"
+                          className="w-12 h-12 rounded-2xl object-cover border border-gray-200 dark:border-slate-700 shadow-sm bg-white shrink-0"
                         />
-                        <div className="font-extrabold text-gray-900 dark:text-white text-base">{u.name}</div>
+                        <div className="min-w-0">
+                           <div className="font-extrabold text-gray-900 dark:text-white text-[15px] truncate">{u.name}</div>
+                           <div className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-1 truncate">{u.email}</div>
+                        </div>
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 text-sm font-medium text-gray-600 dark:text-gray-300">{u.email}</td>
-
                     {tab === "student" && (
-                      <td className="px-6 py-4">
+                      <td className="px-2 md:px-6 py-2 md:py-5 flex items-center justify-between md:table-cell align-middle text-center">
+                        <span className="md:hidden text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">Profile:</span>
                         {u.profileLocked ? (
-                          <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                          <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 px-3 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
                             <FiLock size={12} /> Locked
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400 bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                          <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 px-3 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
                             <FiUnlock size={12} /> Editable
                           </span>
                         )}
                       </td>
                     )}
 
-                    <td className="px-6 py-4">
+                    <td className="px-2 md:px-6 py-2 md:py-5 flex items-center justify-between md:table-cell align-middle text-center">
+                      <span className="md:hidden text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">Status:</span>
                       <span
-                        className={`inline-flex px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider shadow-sm border ${
+                        className={`inline-flex px-3 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider shadow-sm border ${
                           u.status === "approved"
-                            ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+                            ? "bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800"
                             : u.status === "pending"
-                            ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20"
-                            : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+                            ? "bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800"
+                            : "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800"
                         }`}
                       >
                         {u.status || "N/A"}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border shadow-sm ${
-                        u.role === 'superadmin' ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20' :
-                        u.role === 'admin' ? 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20' :
-                        u.role === 'promotional' ? 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' :
-                        u.role === 'trainer' ? 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20' :
-                        'bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-black/5 dark:border-white/5'
+                    <td className="px-2 md:px-6 py-2 md:py-5 flex items-center justify-between md:table-cell align-middle text-center">
+                      <span className="md:hidden text-[10px] font-extrabold text-gray-500 uppercase tracking-widest">Role:</span>
+                      <span className={`px-3 py-1.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border shadow-sm ${
+                        u.role === 'superadmin' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800' :
+                        u.role === 'admin' ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800' :
+                        u.role === 'promotional' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                        u.role === 'trainer' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800' :
+                        'bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-slate-700'
                       }`}>
                         {u.role === 'promotional' ? 'Promo Team' : u.role}
                       </span>
                     </td>
 
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2.5">
+                    <td className="px-2 md:px-6 py-3 md:py-5 align-middle border-t border-gray-200 dark:border-slate-700 md:border-none mt-3 md:mt-0">
+                      <div className="flex flex-wrap items-center justify-start md:justify-end gap-3">
                         {tab === "student" && (
                           <>
                             <button
                               onClick={() => setMovingStudent(u)}
-                              className="text-orange-600 dark:text-orange-400 hover:text-white bg-orange-500/10 hover:bg-orange-500 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider border border-orange-500/20 transition-all shadow-sm"
+                              className="flex-1 md:flex-none text-orange-600 dark:text-orange-400 hover:text-white bg-orange-50 dark:bg-orange-900/30 hover:bg-orange-500 px-4 py-2 rounded-xl text-[10px] font-extrabold uppercase tracking-wider border border-orange-200 dark:border-orange-800 transition-all shadow-sm text-center"
                               title="Move to another batch"
                             >
-                              Change Batch
+                              Batch
                             </button>
 
                             <button
                               onClick={() => openEditModal(u)}
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 bg-blue-500/10 hover:bg-blue-600 hover:text-white border border-blue-500/20 transition-all shadow-sm"
+                              className="w-full md:w-10 h-10 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-600 hover:text-white border border-blue-200 dark:border-blue-800 transition-all shadow-sm shrink-0"
                               title="Edit Student Profile"
                             >
-                              <FiEdit size={14} />
+                              <FiEdit size={16} />
                             </button>
 
                             {(u.desktopChangeRequested || u.mobileChangeRequested) && (
                               <button
                                 onClick={() => handleApproveDevice(u._id)}
-                                className="text-white bg-gradient-to-br from-purple-500 to-fuchsia-600 hover:from-purple-400 hover:to-fuchsia-500 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-lg shadow-md transition-all"
+                                className="w-full md:w-auto text-white bg-gradient-to-br from-purple-500 to-fuchsia-600 hover:from-purple-400 hover:to-fuchsia-500 px-4 py-2 text-[10px] font-extrabold uppercase tracking-wider rounded-xl shadow-md transition-all text-center"
                                 title="Approve New Device Login"
                               >
                                 Approve {u.desktopChangeRequested && u.mobileChangeRequested ? "Devices" : u.desktopChangeRequested ? "Desktop" : "Mobile"}
@@ -463,59 +468,59 @@ const AdminUsers = () => {
                         {u.role !== 'superadmin' && (
                           <button
                             onClick={() => del(u)}
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 dark:text-red-400 bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 transition-all shadow-sm opacity-0 group-hover:opacity-100"
+                            className="w-full md:w-10 h-10 rounded-xl flex items-center justify-center text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-500 hover:text-white border border-red-200 dark:border-red-800 transition-all shadow-sm md:opacity-0 md:group-hover:opacity-100 shrink-0"
                             title="Remove user"
                           >
-                            <FiTrash2 size={14} />
+                            <FiTrash2 size={16} />
                           </button>
                         )}
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* MOVE BATCH MODAL (Frosted Glass) */}
+      {/* MOVE BATCH MODAL */}
       {movingStudent && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-panel rounded-[2rem] shadow-2xl w-full max-w-md">
-            <div className="relative p-8 border-b border-black/5 dark:border-white/5">
-              <button onClick={() => setMovingStudent(null)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 bg-black/5 p-2 rounded-full"><FiX size={18} /></button>
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="glass-panel rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden relative">
+            <div className="p-8 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/80">
+              <button onClick={() => setMovingStudent(null)} className="absolute top-6 right-6 text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2.5 rounded-full border border-gray-300 dark:border-slate-600 shadow-sm transition-colors"><FiX size={18} /></button>
               <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">
                 {movingStudent === "BULK" ? "Bulk Move Students" : "Change Student Batch"}
               </h2>
               
-              <div className="flex items-center gap-4 mt-6 p-4 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
+              <div className="flex items-center gap-5 mt-6 p-5 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
                 {movingStudent === "BULK" ? (
-                  <div className="flex items-center justify-center w-14 h-14 bg-blue-500/20 text-blue-600 rounded-2xl border border-blue-500/20"><FiUsers size={28} /></div>
+                  <div className="flex items-center justify-center w-16 h-16 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-200 dark:border-blue-800 shrink-0"><FiUsers size={32} /></div>
                 ) : (
-                  <img src={movingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-14 h-14 rounded-2xl object-cover shadow-sm bg-white border border-gray-200" />
+                  <img src={movingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-16 h-16 rounded-2xl object-cover shadow-sm bg-white border border-gray-200 shrink-0" />
                 )}
                 <div>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-widest mb-0.5">Moving</p>
-                  <p className="font-extrabold text-lg text-gray-900 dark:text-white">{movingStudent === "BULK" ? `${selectedUserIds.length} Selected Students` : movingStudent.name}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-widest mb-1">Moving</p>
+                  <p className="font-black text-xl text-gray-900 dark:text-white leading-tight">{movingStudent === "BULK" ? `${selectedUserIds.length} Selected Students` : movingStudent.name}</p>
                 </div>
               </div>
             </div>
             
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-6 bg-white dark:bg-slate-900">
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Select New Batch</label>
-                <select id="new-batch-select" className="apple-input cursor-pointer">
+                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2 pl-1">Select New Batch</label>
+                <select id="new-batch-select" className="apple-input cursor-pointer font-bold">
                   <option value="">-- Choose a Batch --</option>
                   {batches.map((b) => <option key={b._id} value={b._id}>{b.subject} ({b.batchCode})</option>)}
                 </select>
               </div>
-              <div className="flex gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <button onClick={() => setMovingStudent(null)} className="flex-1 glass-button py-3.5 rounded-xl font-extrabold text-gray-700 dark:text-gray-300 text-[15px] border border-gray-300 dark:border-slate-600">
+                  Cancel
+                </button>
                 <button onClick={confirmMoveBatch} className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-[15px]">
                   Confirm Move
-                </button>
-                <button onClick={() => setMovingStudent(null)} className="flex-1 glass-button py-3.5 rounded-xl font-extrabold text-gray-700 dark:text-gray-300 text-[15px]">
-                  Cancel
                 </button>
               </div>
             </div>
@@ -523,55 +528,56 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* EDIT PROFILE MODAL (Frosted Glass) */}
+      {/* EDIT PROFILE MODAL */}
       {editingStudent && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="glass-panel rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="relative p-8 border-b border-black/5 dark:border-white/5">
-              <button onClick={() => setEditingStudent(null)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 bg-black/5 p-2 rounded-full"><FiX size={18} /></button>
+        <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="glass-panel rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col relative">
+            <div className="p-6 md:p-8 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/90 shrink-0">
+              <button onClick={() => setEditingStudent(null)} className="absolute top-6 right-6 text-gray-500 hover:text-gray-700 bg-gray-200 dark:bg-slate-700 p-2.5 rounded-full border border-gray-300 dark:border-slate-600 shadow-sm transition-colors z-10"><FiX size={18} /></button>
               <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Edit Student Profile</h2>
               
-              <div className="flex items-center gap-5 mt-6 mb-2 p-5 bg-black/5 dark:bg-white/5 rounded-[1.5rem] border border-black/5 dark:border-white/5">
-                <img src={editingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-16 h-16 rounded-2xl object-cover shadow-sm bg-white border border-gray-200" />
-                <div>
-                  <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight mb-0.5">{editingStudent.name}</h3>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{editingStudent.email}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-5 mt-6 p-5 bg-white dark:bg-slate-900 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
+                <img src={editingStudent.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} alt="dp" className="w-16 h-16 rounded-2xl object-cover shadow-sm bg-white border border-gray-200 shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight mb-1 truncate">{editingStudent.name}</h3>
+                  <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 truncate">{editingStudent.email}</p>
                 </div>
               </div>
             </div>
             
-            <form onSubmit={handleProfileSubmit} className="p-8 space-y-5">
-              <div className="grid grid-cols-2 gap-5">
-                <div><label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Highest Qual.</label><input type="text" value={profileForm.highestQualification} onChange={(e) => setProfileForm({ ...profileForm, highestQualification: e.target.value })} className="apple-input" /></div>
-                <div><label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Passing Year</label><input type="text" value={profileForm.passingYear} onChange={(e) => setProfileForm({ ...profileForm, passingYear: e.target.value })} className="apple-input" /></div>
-                <div><label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Percentage / CGPA</label><input type="number" step="0.01" value={profileForm.percentage} onChange={(e) => setProfileForm({ ...profileForm, percentage: e.target.value })} className="apple-input" /></div>
-                <div><label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Backlogs</label><input type="number" value={profileForm.backlogs} onChange={(e) => setProfileForm({ ...profileForm, backlogs: e.target.value })} className="apple-input" /></div>
-                <div><label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Education Gap (Yrs)</label><input type="number" value={profileForm.educationGap} onChange={(e) => setProfileForm({ ...profileForm, educationGap: e.target.value })} className="apple-input" /></div>
-                <div className="flex items-center gap-3 mt-6 pl-2">
-                  <input type="checkbox" checked={profileForm.readyForRelocation} onChange={(e) => setProfileForm({ ...profileForm, readyForRelocation: e.target.checked })} className="w-5 h-5 cursor-pointer accent-blue-600 rounded" />
-                  <label className="text-sm font-extrabold text-gray-700 dark:text-gray-300">Ready for Relocation</label>
+            <form onSubmit={handleProfileSubmit} className="p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar bg-white dark:bg-[#1e293b] flex-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div><label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Highest Qual.</label><input type="text" value={profileForm.highestQualification} onChange={(e) => setProfileForm({ ...profileForm, highestQualification: e.target.value })} className="apple-input" /></div>
+                <div><label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Passing Year</label><input type="text" value={profileForm.passingYear} onChange={(e) => setProfileForm({ ...profileForm, passingYear: e.target.value })} className="apple-input" /></div>
+                <div><label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Percentage / CGPA</label><input type="number" step="0.01" value={profileForm.percentage} onChange={(e) => setProfileForm({ ...profileForm, percentage: e.target.value })} className="apple-input" /></div>
+                <div><label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Backlogs</label><input type="number" value={profileForm.backlogs} onChange={(e) => setProfileForm({ ...profileForm, backlogs: e.target.value })} className="apple-input" /></div>
+                <div><label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Education Gap (Yrs)</label><input type="number" value={profileForm.educationGap} onChange={(e) => setProfileForm({ ...profileForm, educationGap: e.target.value })} className="apple-input" /></div>
+                
+                <div className="flex items-center gap-3 sm:mt-6 bg-gray-50 dark:bg-slate-800 p-3 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm h-[52px]">
+                  <input type="checkbox" checked={profileForm.readyForRelocation} onChange={(e) => setProfileForm({ ...profileForm, readyForRelocation: e.target.checked })} className="w-5 h-5 cursor-pointer accent-blue-600 rounded ml-2 shrink-0" />
+                  <label className="text-[13px] font-extrabold text-gray-800 dark:text-gray-200">Ready for Relocation</label>
                 </div>
               </div>
               
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Skills (Comma separated)</label>
+                <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Skills (Comma separated)</label>
                 <input type="text" value={profileForm.skillsAcquired} onChange={(e) => setProfileForm({ ...profileForm, skillsAcquired: e.target.value })} className="apple-input" placeholder="Java, SQL, React, HTML" />
               </div>
               
-              <div className="bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 rounded-2xl p-5 flex items-center justify-between mt-6 shadow-inner">
+              <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 shadow-sm">
                 <div>
-                  <div className="font-extrabold text-gray-800 dark:text-gray-200 text-base">Profile Lock Status</div>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">Turn this off if the student needs to edit their profile again.</p>
+                  <div className="font-extrabold text-gray-900 dark:text-white text-base">Profile Lock Status</div>
+                  <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">Turn this off if the student needs to edit their profile again.</p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
                   <input type="checkbox" className="sr-only peer" checked={profileForm.profileLocked} onChange={(e) => setProfileForm({ ...profileForm, profileLocked: e.target.checked })} />
-                  <div className="w-12 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
+                  <div className="w-14 h-7 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-200 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
                 </label>
               </div>
               
-              <div className="flex gap-4 pt-6 border-t border-black/5 dark:border-white/5">
-                <button type="submit" className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-extrabold hover:scale-[0.98] transition-transform shadow-lg shadow-blue-500/30 text-[15px]">Save Changes</button>
-                <button type="button" onClick={() => setEditingStudent(null)} className="flex-1 glass-button py-3.5 rounded-xl font-extrabold text-gray-700 dark:text-gray-300 text-[15px]">Cancel</button>
+              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200 dark:border-slate-700">
+                <button type="button" onClick={() => setEditingStudent(null)} className="flex-1 glass-button py-3.5 rounded-xl font-extrabold text-gray-700 dark:text-gray-300 text-[15px] border border-gray-300 dark:border-slate-600 order-2 sm:order-1">Cancel</button>
+                <button type="submit" className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3.5 rounded-xl font-extrabold hover:scale-[0.98] transition-transform shadow-lg shadow-blue-500/30 text-[15px] order-1 sm:order-2">Save Changes</button>
               </div>
             </form>
           </div>

@@ -73,7 +73,8 @@ const Login = () => {
     }
     return errors;
   };
-const handleLogin = async (e) => {
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     const validationErrors = validateLoginInput(form);
     if (Object.keys(validationErrors).length > 0) {
@@ -85,7 +86,6 @@ const handleLogin = async (e) => {
     setSuccess('');
     setIsLoading(true);
 
-  
     try {
       const deviceId = getPermanentDeviceId();
       const sanitizedPayload = {
@@ -125,10 +125,8 @@ const handleLogin = async (e) => {
     } finally {
       setIsLoading(false);
     }
-  
-  
-
   };
+
   const handleRequestOTP = async (e) => {
     e.preventDefault();
     setError('');
@@ -228,22 +226,22 @@ const handleLogin = async (e) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#f6f8fd] dark:bg-slate-900">
-      {/* Light Color Lifter Gradient Blobs */}
-      <div className="absolute top-[-15%] left-[-10%] w-[50%] h-[50%] bg-blue-400/30 dark:bg-blue-600/20 blur-[140px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] bg-indigo-400/30 dark:bg-indigo-600/20 blur-[140px] rounded-full pointer-events-none"></div>
+    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-gray-50 dark:bg-[#0f172a]">
+      {/* Background Gradient Blobs */}
+      <div className="absolute top-[-15%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[140px] rounded-full pointer-events-none fixed"></div>
+      <div className="absolute bottom-[-15%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[140px] rounded-full pointer-events-none fixed"></div>
 
-      <div className="w-full max-w-[500px] bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/60 dark:border-slate-700/60 rounded-[2.5rem] p-10 md:p-12 shadow-[0_8px_40px_rgba(0,0,0,0.06)] relative z-10">
+      <div className="w-full max-w-[500px] glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-[2.5rem] p-8 md:p-12 shadow-xl relative z-10 animate-fade-in">
         <div className="text-center mb-10">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800 text-blue-600 dark:text-blue-400 rounded-[1.5rem] flex items-center justify-center border border-white dark:border-slate-700 shadow-sm shadow-blue-500/10">
+            <div className="w-20 h-20 bg-gray-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-[1.5rem] flex items-center justify-center border border-gray-200 dark:border-slate-700 shadow-sm">
               <FiLock size={32} />
             </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
             Destination Career
           </h1>
-          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 leading-relaxed">
+          <p className="text-[13px] font-medium text-gray-500 dark:text-gray-400 leading-relaxed">
             {view === 'login' && 'Welcome back! Please enter your details.'}
             {view === 'request-otp' && 'Enter your email to receive an OTP.'}
             {view === 'verify-otp' && 'Enter the 6-digit OTP sent to your email.'}
@@ -252,13 +250,13 @@ const handleLogin = async (e) => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm font-bold shadow-sm animate-fade-in text-center">
+          <div className="mb-6 p-4 rounded-[1rem] bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-[13px] font-extrabold shadow-sm animate-fade-in text-center leading-snug">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-6 p-4 rounded-2xl bg-green-50 dark:bg-green-500/10 border border-green-100 dark:border-green-500/20 text-green-700 dark:text-green-400 text-sm font-bold shadow-sm flex items-center justify-center gap-2 animate-fade-in">
+          <div className="mb-6 p-4 rounded-[1rem] bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-[13px] font-extrabold shadow-sm flex items-center justify-center gap-2 animate-fade-in">
             <FiCheckCircle size={18} />
             <span>{success}</span>
           </div>
@@ -267,7 +265,7 @@ const handleLogin = async (e) => {
         {view === 'login' && (
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
+              <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Email
               </label>
               <input
@@ -276,12 +274,12 @@ const handleLogin = async (e) => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
                 placeholder="Enter your email"
-                className="w-full p-4 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
+                className="w-full p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-bold text-[15px]"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
+              <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Password
               </label>
               <div className="relative">
@@ -291,12 +289,12 @@ const handleLogin = async (e) => {
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
                   placeholder="Enter your password"
-                  className="w-full p-4 pr-12 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
+                  className="w-full p-4 pr-12 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-bold text-[15px]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-[18px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-white dark:bg-slate-950 pl-2"
+                  className="absolute right-4 top-[18px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-transparent pl-2"
                 >
                   {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
@@ -317,7 +315,7 @@ const handleLogin = async (e) => {
             </div>
 
             {isPending && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl text-sm font-bold text-amber-800 dark:text-amber-500 shadow-sm text-center">
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-2xl text-[13px] font-extrabold text-amber-800 dark:text-amber-400 shadow-sm text-center">
                 Your account is currently pending approval.
               </div>
             )}
@@ -325,7 +323,7 @@ const handleLogin = async (e) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 mt-2 text-[15px]"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-transform hover:scale-[0.98] flex items-center justify-center gap-2 mt-2 text-[15px]"
             >
               {isLoading ? (
                 <>
@@ -340,9 +338,9 @@ const handleLogin = async (e) => {
               )}
             </button>
 
-            <p className="text-center text-[13px] font-medium text-gray-500 dark:text-gray-400 pt-6">
+            <p className="text-center text-[13px] font-bold text-gray-500 dark:text-gray-400 pt-6 border-t border-gray-100 dark:border-slate-800">
               Don't have an account?{' '}
-              <Link to="/register" className="text-blue-600 dark:text-blue-400 font-extrabold hover:underline">
+              <Link to="/register" className="text-blue-600 dark:text-blue-400 font-black hover:underline ml-1">
                 Register
               </Link>
             </p>
@@ -352,7 +350,7 @@ const handleLogin = async (e) => {
         {view === 'request-otp' && (
           <form onSubmit={handleRequestOTP} className="space-y-6">
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
+              <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Account Email
               </label>
               <input
@@ -361,14 +359,14 @@ const handleLogin = async (e) => {
                 onChange={(e) => setResetEmail(e.target.value)}
                 required
                 placeholder="Enter your registered email"
-                className="w-full p-4 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
+                className="w-full p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-bold text-[15px]"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 text-[15px]"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-transform hover:scale-[0.98] flex items-center justify-center gap-2 text-[15px]"
             >
               {isLoading ? 'Sending OTP...' : 'Send OTP'}
             </button>
@@ -389,7 +387,7 @@ const handleLogin = async (e) => {
         {view === 'verify-otp' && (
           <form onSubmit={handleVerifyOTP} className="space-y-8">
             <div>
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest text-center">
+              <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest text-center">
                 Enter 6-digit OTP
               </label>
               <input
@@ -400,14 +398,14 @@ const handleLogin = async (e) => {
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
                 placeholder="------"
-                className="w-full p-4 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm text-center tracking-[1em] font-extrabold text-3xl h-20"
+                className="w-full p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm text-center tracking-[1em] font-black text-3xl h-20"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 text-[15px]"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-blue-500/30 transition-transform hover:scale-[0.98] flex items-center justify-center gap-2 text-[15px]"
             >
               {isLoading ? 'Verifying...' : 'Verify OTP'}
             </button>
@@ -441,7 +439,7 @@ const handleLogin = async (e) => {
         {view === 'reset-password' && (
           <form onSubmit={handleResetPassword} className="space-y-6">
             <div className="relative">
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
+              <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 New Password
               </label>
               <input
@@ -451,19 +449,19 @@ const handleLogin = async (e) => {
                 required
                 minLength={8}
                 placeholder="Enter a new strong password"
-                className="w-full p-4 pr-12 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
+                className="w-full p-4 pr-12 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-bold text-[15px]"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-[40px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-white dark:bg-slate-950 pl-2"
+                className="absolute right-4 top-[40px] text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-transparent pl-2"
               >
                 {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
               </button>
             </div>
 
             <div className="relative">
-              <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
+              <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-widest pl-1">
                 Confirm Password
               </label>
               <input
@@ -473,14 +471,14 @@ const handleLogin = async (e) => {
                 required
                 minLength={8}
                 placeholder="Re-enter your new password"
-                className="w-full p-4 pr-12 bg-white dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-medium"
+                className="w-full p-4 pr-12 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-gray-900 dark:text-white shadow-sm font-bold text-[15px]"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2 mt-4 text-[15px]"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-60 text-white py-4 rounded-2xl font-extrabold shadow-lg shadow-green-500/30 transition-transform hover:scale-[0.98] flex items-center justify-center gap-2 mt-4 text-[15px]"
             >
               {isLoading ? 'Resetting...' : 'Save New Password'}
             </button>

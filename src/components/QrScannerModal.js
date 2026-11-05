@@ -27,20 +27,26 @@ const QrScannerModal = ({ onResult, onClose }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="glass-panel rounded-[2.5rem] p-6 max-w-sm w-full shadow-2xl relative">
-        <div className="flex justify-between items-center mb-5 border-b border-black/5 dark:border-white/5 pb-3">
-          <p className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight">Scan QR Code</p>
-          <button onClick={onClose} className="p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full transition-colors">
-            <FiX size={20} className="text-gray-500 dark:text-gray-300" />
+    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="glass-panel bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 max-w-sm w-full shadow-2xl relative">
+        <div className="flex justify-between items-center mb-5 border-b border-gray-200 dark:border-slate-700 pb-3">
+          <p className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight">Scan QR Code</p>
+          <button onClick={onClose} className="p-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors border border-gray-200 dark:border-slate-600 shadow-sm shrink-0">
+            <FiX size={18} className="text-gray-600 dark:text-gray-300" />
           </button>
         </div>
-        <div id={regionId} className="rounded-2xl overflow-hidden border-4 border-white/50 dark:border-slate-700/50 shadow-inner" />
-        <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mt-5 text-center uppercase tracking-widest bg-black/5 dark:bg-white/5 py-2 rounded-lg">
+        
+        {/* Camera viewport container */}
+        <div className="bg-gray-100 dark:bg-slate-800 rounded-3xl p-3 border border-gray-200 dark:border-slate-700 shadow-inner mb-5">
+          <div id={regionId} className="rounded-2xl overflow-hidden border-2 border-white dark:border-slate-600 shadow-sm bg-black aspect-square w-full" />
+        </div>
+        
+        <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 mt-2 text-center uppercase tracking-widest bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 py-3 rounded-[1rem] shadow-sm">
           Point your camera at the QR code
         </p>
       </div>
     </div>
   );
 };
+
 export default QrScannerModal;

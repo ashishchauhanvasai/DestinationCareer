@@ -23,9 +23,10 @@ const STARTER = {
 
 const MIN_FONT = 10;
 const MAX_FONT = 28;
-const MD_CLASS = 'text-sm text-gray-800 dark:text-gray-200 leading-relaxed [&_p]:mb-3 [&_h1]:text-xl [&_h1]:font-extrabold [&_h1]:mb-2 [&_h2]:text-base [&_h2]:font-extrabold [&_h2]:mt-5 [&_h2]:mb-2 [&_h3]:font-extrabold [&_h3]:mt-4 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_li]:mb-1 [&_code]:bg-black/5 dark:[&_code]:bg-white/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_pre]:bg-black/5 dark:[&_pre]:bg-white/5 [&_pre]:border [&_pre]:border-black/5 dark:[&_pre]:border-white/10 [&_pre]:p-4 [&_pre]:rounded-xl [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0';
+const MD_CLASS = 'text-[15px] text-gray-800 dark:text-gray-200 leading-relaxed [&_p]:mb-4 [&_h1]:text-2xl [&_h1]:font-extrabold [&_h1]:mb-3 [&_h2]:text-xl [&_h2]:font-extrabold [&_h2]:mt-6 [&_h2]:mb-3 [&_h3]:font-extrabold [&_h3]:mt-5 [&_h3]:mb-2 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_li]:mb-1.5 [&_code]:bg-gray-100 dark:[&_code]:bg-slate-800 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded-md [&_code]:font-mono [&_code]:text-[13px] [&_pre]:bg-gray-50 dark:[&_pre]:bg-slate-800 [&_pre]:border [&_pre]:border-gray-200 dark:[&_pre]:border-slate-700 [&_pre]:p-5 [&_pre]:rounded-[1.5rem] [&_pre]:overflow-x-auto [&_pre_code]:bg-transparent [&_pre_code]:p-0';
 
 const inputCls = "apple-input";
+const labelCls = "block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1";
 
 const enterFullScreen = () => {
   const elem = document.documentElement;
@@ -56,7 +57,7 @@ const DriveTest = () => {
 
   const [regForm, setRegForm] = useState({
     name: '', email: '', password: '', highestQualification: '', passingYear: '', percentage: '', profilePic: '',
-    contactNumber: '', aadharNumber: '', address: '', stream: '', branch: '', yearOfStudy: '', tenthPercentage: '', twelfthPercentage: '', panCard: ''
+    contactNumber: '', address: '', stream: '', branch: '', yearOfStudy: '', tenthPercentage: '', twelfthPercentage: '', panCard: ''
   });
   const [registering, setRegistering] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(false);
@@ -83,7 +84,7 @@ const DriveTest = () => {
   const [nowTime, setNowTime] = useState(Date.now());
   const [fontSize, setFontSize] = useState(14);
   const [expanded, setExpanded] = useState(false);
-  const [resultH, setResultH] = useState(224);
+  const [resultH, setResultH] = useState(260);
   const [busy, setBusy] = useState(false);
 
   const dragRef = useRef(null);
@@ -407,82 +408,82 @@ const DriveTest = () => {
     return `${m}:${s}`;
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-extrabold text-xl animate-pulse">Loading Test Environment...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-bold text-gray-500 text-lg animate-pulse">Loading Test Environment...</div>;
   if (!driveData) return null;
 
-  // 1. REGISTRATION & LOGIN SCREEN (Glassmorphism)
+  // 1. REGISTRATION & LOGIN SCREEN (Solid Structural Backgrounds)
   if (!token) {
     return (
-      <div className="min-h-screen py-10 px-4 flex items-center justify-center relative overflow-hidden bg-[#f1f5f9] dark:bg-slate-900">
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="min-h-screen py-12 px-4 flex flex-col items-center justify-center relative overflow-hidden bg-gray-50 dark:bg-[#0f172a]">
+        {/* Background gradients */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[140px] rounded-full pointer-events-none fixed"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[140px] rounded-full pointer-events-none fixed"></div>
 
         {isLoginMode ? (
-          <form onSubmit={handleDriveLogin} className="glass-panel p-10 md:p-12 rounded-[2.5rem] shadow-2xl max-w-md w-full relative z-10 animate-fade-in border-white/60">
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center mb-1 tracking-tight">{driveData.collegeName}</h2>
-            <p className="text-center text-blue-600 dark:text-blue-400 mb-8 text-[11px] font-extrabold uppercase tracking-widest border-b border-black/5 dark:border-white/5 pb-4">Test Portal Login</p>
+          <form onSubmit={handleDriveLogin} className="glass-panel bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-gray-200 dark:border-slate-700 max-w-md w-full relative z-10 animate-fade-in">
+            <h2 className="text-3xl font-black text-gray-900 dark:text-white text-center mb-1 tracking-tight">{driveData.collegeName}</h2>
+            <p className="text-center text-blue-600 dark:text-blue-400 mb-8 text-[11px] font-extrabold uppercase tracking-widest border-b border-gray-200 dark:border-slate-700 pb-4">Test Portal Login</p>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Email ID</label>
-                <input required type="email" value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} placeholder="you@example.com" className="apple-input bg-white/60 dark:bg-slate-900/60" />
+                <label className={labelCls}>Email ID</label>
+                <input required type="email" value={loginForm.email} onChange={e => setLoginForm({ ...loginForm, email: e.target.value })} placeholder="you@example.com" className={inputCls} />
               </div>
               <div>
-                <label className="block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Password</label>
-                <input required type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} placeholder="Enter your password" className="apple-input bg-white/60 dark:bg-slate-900/60" />
+                <label className={labelCls}>Password</label>
+                <input required type="password" value={loginForm.password} onChange={e => setLoginForm({ ...loginForm, password: e.target.value })} placeholder="Enter your password" className={inputCls} />
               </div>
             </div>
 
-            <button type="submit" disabled={loggingIn} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold py-4 rounded-xl mt-8 shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-all text-[15px]">
+            <button type="submit" disabled={loggingIn} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold py-4 rounded-xl mt-8 shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-[15px]">
               {loggingIn ? 'Authenticating...' : 'Login to Portal'}
             </button>
-            <p className="text-center text-xs font-bold text-gray-500 mt-6">Not registered? <button type="button" onClick={() => setIsLoginMode(false)} className="text-blue-600 hover:underline">Register Here</button></p>
+            <p className="text-center text-[13px] font-bold text-gray-500 mt-6 pt-5 border-t border-gray-100 dark:border-slate-800">Not registered? <button type="button" onClick={() => setIsLoginMode(false)} className="text-blue-600 hover:underline ml-1 font-black">Register Here</button></p>
           </form>
         ) : (
-          <form onSubmit={handleRegister} className="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-2xl max-w-5xl w-full relative z-10 animate-fade-in border-white/60">
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white text-center mb-1 tracking-tight">{driveData.collegeName}</h2>
-            <p className="text-center text-blue-600 dark:text-blue-400 mb-8 text-[11px] font-extrabold uppercase tracking-widest border-b border-black/5 dark:border-white/5 pb-4">Campus Drive Registration</p>
+          <form onSubmit={handleRegister} className="glass-panel bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-gray-200 dark:border-slate-700 max-w-5xl w-full relative z-10 animate-fade-in">
+            <h2 className="text-3xl font-black text-gray-900 dark:text-white text-center mb-1 tracking-tight">{driveData.collegeName}</h2>
+            <p className="text-center text-blue-600 dark:text-blue-400 mb-10 text-[11px] font-extrabold uppercase tracking-widest border-b border-gray-200 dark:border-slate-700 pb-5">Campus Drive Registration</p>
 
-            <div className="flex flex-col md:flex-row gap-10">
-              <div className="flex flex-col items-center space-y-5 w-full md:w-1/3 border-r-0 md:border-r border-black/5 dark:border-white/5 pr-0 md:pr-6">
+            <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
+              <div className="flex flex-col items-center space-y-6 w-full md:w-1/3 border-r-0 md:border-r border-gray-200 dark:border-slate-700 pr-0 md:pr-8">
                 <label className="cursor-pointer flex flex-col items-center">
                   {regForm.profilePic ? (
-                    <img src={regForm.profilePic} alt="DP" className="w-28 h-28 md:w-32 md:h-32 rounded-[1.5rem] object-cover border-4 border-white/60 shadow-lg bg-white" />
+                    <img src={regForm.profilePic} alt="DP" className="w-32 h-32 md:w-40 md:h-40 rounded-[2rem] object-cover border border-gray-200 dark:border-slate-700 shadow-sm bg-white" />
                   ) : (
-                    <div className="w-28 h-28 md:w-32 md:h-32 rounded-[1.5rem] bg-blue-500/10 border-2 border-dashed border-blue-500/30 flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-all shadow-inner">
-                      <FiUploadCloud size={32} />
-                      <span className="text-[10px] uppercase font-extrabold tracking-widest mt-2">Upload Photo</span>
+                    <div className="w-32 h-32 md:w-40 md:h-40 rounded-[2rem] bg-blue-50 dark:bg-blue-900/20 border-2 border-dashed border-blue-300 dark:border-blue-800 flex flex-col items-center justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors shadow-inner">
+                      <FiUploadCloud size={36} />
+                      <span className="text-[11px] uppercase font-black tracking-widest mt-2">Upload Photo</span>
                     </div>
                   )}
                   <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                 </label>
-                <div className="w-full space-y-4 pt-2">
+                <div className="w-full space-y-5 pt-2">
                    <input required type="text" placeholder="Full Name *" value={regForm.name} onChange={e => setRegForm({ ...regForm, name: e.target.value })} className={inputCls} />
                    <input required type="email" placeholder="Email ID *" value={regForm.email} onChange={e => setRegForm({ ...regForm, email: e.target.value })} className={inputCls} />
                    <input required type="password" placeholder="Set Password *" minLength={6} value={regForm.password} onChange={e => setRegForm({ ...regForm, password: e.target.value })} className={inputCls} />
                 </div>
               </div>
 
-              <div className="w-full md:w-2/3 space-y-5">
-                <h3 className="font-extrabold text-gray-800 dark:text-gray-200 text-sm border-b border-black/5 dark:border-white/5 pb-2">Personal Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="w-full md:w-2/3 space-y-6">
+                <h3 className="font-extrabold text-gray-900 dark:text-white text-[15px] border-b border-gray-200 dark:border-slate-700 pb-3">Personal Details</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <input required type="text" placeholder="Contact Number *" value={regForm.contactNumber} onChange={e => setRegForm({ ...regForm, contactNumber: e.target.value })} className={inputCls} />
-                  <textarea required placeholder="Full Residential Address *" value={regForm.address} onChange={e => setRegForm({ ...regForm, address: e.target.value })} className={`${inputCls} resize-none`} rows="1" />
+                  <textarea required placeholder="Full Residential Address *" value={regForm.address} onChange={e => setRegForm({ ...regForm, address: e.target.value })} className={`${inputCls} resize-none leading-relaxed`} rows="1" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <input required type="text" placeholder="Aadhar Number *" value={regForm.aadharNumber} onChange={e => setRegForm({ ...regForm, aadharNumber: e.target.value })} className={inputCls} />
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-5">
                   <input required type="text" placeholder="PAN Card No. *" value={regForm.panCard || ''} onChange={e => setRegForm({ ...regForm, panCard: e.target.value.toUpperCase() })} className={`${inputCls} uppercase`} />
                 </div>
 
-                <h3 className="font-extrabold text-gray-800 dark:text-gray-200 text-sm border-b border-black/5 dark:border-white/5 pb-2 mt-6">Academic Details</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="font-extrabold text-gray-900 dark:text-white text-[15px] border-b border-gray-200 dark:border-slate-700 pb-3 mt-8">Academic Details</h3>
+                <div className="grid grid-cols-2 gap-5">
                   <input required type="number" step="0.1" placeholder="10th % *" value={regForm.tenthPercentage || ''} onChange={e => setRegForm({ ...regForm, tenthPercentage: e.target.value })} className={inputCls} />
                   <input required type="number" step="0.1" placeholder="12th/Diploma % *" value={regForm.twelfthPercentage || ''} onChange={e => setRegForm({ ...regForm, twelfthPercentage: e.target.value })} className={inputCls} />
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
                   <input required type="text" placeholder="Degree (B.Tech) *" value={regForm.highestQualification} onChange={e => setRegForm({ ...regForm, highestQualification: e.target.value })} className={inputCls} />
                   <input required type="text" placeholder="Branch (CSE) *" value={regForm.branch || ''} onChange={e => setRegForm({ ...regForm, branch: e.target.value })} className={inputCls} />
-                  <select required value={regForm.yearOfStudy || ''} onChange={e => setRegForm({ ...regForm, yearOfStudy: e.target.value })} className={`${inputCls} cursor-pointer`}>
+                  <select required value={regForm.yearOfStudy || ''} onChange={e => setRegForm({ ...regForm, yearOfStudy: e.target.value })} className={`${inputCls} cursor-pointer font-bold`}>
                     <option value="">Current Year *</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year / Final</option><option>Graduated</option>
                   </select>
                   <input required type="number" placeholder="Passout Year *" value={regForm.passingYear} onChange={e => setRegForm({ ...regForm, passingYear: e.target.value })} className={inputCls} />
@@ -491,10 +492,10 @@ const DriveTest = () => {
               </div>
             </div>
 
-            <button type="submit" disabled={registering} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold py-4 rounded-xl mt-10 shadow-lg shadow-blue-500/30 hover:scale-[0.99] transition-transform text-[15px] disabled:opacity-60">
+            <button type="submit" disabled={registering} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold py-4 rounded-xl mt-10 shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-[15px] disabled:opacity-60">
               {registering ? 'Validating...' : 'Proceed for Assessment'}
             </button>
-            <p className="text-center text-[11px] uppercase tracking-widest font-extrabold text-gray-500 mt-5">Already registered? <button type="button" onClick={() => setIsLoginMode(true)} className="text-blue-600 hover:underline">Login Here</button></p>
+            <p className="text-center text-[13px] uppercase tracking-widest font-extrabold text-gray-500 mt-6 pt-5 border-t border-gray-100 dark:border-slate-800">Already registered? <button type="button" onClick={() => setIsLoginMode(true)} className="text-blue-600 hover:underline ml-1">Login Here</button></p>
           </form>
         )}
       </div>
@@ -504,14 +505,14 @@ const DriveTest = () => {
   // 2. BLIND THANK YOU SCREEN
   if (testCompleted && result) {
     return (
-      <div className="min-h-screen bg-[#f1f5f9] dark:bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
         <div className="absolute inset-0 bg-green-500/5 blur-3xl pointer-events-none"></div>
-        <div className="glass-panel max-w-lg w-full rounded-[2.5rem] shadow-2xl border-white/60 p-12 text-center relative z-10 animate-fade-in">
-          <div className="w-24 h-24 bg-green-500/10 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-500/20 shadow-inner">
-            <FiCheckCircle size={50} />
+        <div className="glass-panel bg-white dark:bg-slate-900 max-w-lg w-full rounded-[2.5rem] shadow-xl border border-gray-200 dark:border-slate-700 p-12 text-center relative z-10 animate-fade-in">
+          <div className="w-24 h-24 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mx-auto mb-6 border border-green-200 dark:border-green-800 shadow-sm">
+            <FiCheckCircle size={48} />
           </div>
-          <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">Test Submitted Successfully!</h1>
-          <p className="text-gray-600 dark:text-gray-300 text-sm font-medium leading-relaxed mb-10">
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">Test Submitted Successfully!</h1>
+          <p className="text-gray-600 dark:text-gray-300 text-[15px] font-medium leading-relaxed mb-10">
             Thank you for participating. Your responses have been recorded and sent to the recruitment team securely.
           </p>
           <button
@@ -530,30 +531,30 @@ const DriveTest = () => {
   // 3. LOBBY SCREEN
   if (!testStarted) {
     return (
-      <div className="min-h-screen bg-[#f1f5f9] dark:bg-slate-900 flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center p-6 relative overflow-hidden">
         <video ref={videoRef} autoPlay playsInline muted className="hidden" />
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 blur-[140px] rounded-full pointer-events-none"></div>
 
-        <div className="glass-panel p-10 md:p-12 rounded-[2.5rem] shadow-2xl border-white/60 max-w-xl w-full relative z-10 animate-fade-in">
-          <div className="border-b border-black/5 dark:border-white/5 pb-6 mb-8 text-center">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest px-4 py-2 rounded-lg bg-blue-500/10 text-blue-700 dark:text-blue-400 shadow-sm inline-block mb-4 border border-blue-500/20">Upcoming Assessment</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">{driveData.collegeName} Recruitment Test</h2>
+        <div className="glass-panel bg-white dark:bg-slate-900 p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-gray-200 dark:border-slate-700 max-w-xl w-full relative z-10 animate-fade-in">
+          <div className="border-b border-gray-200 dark:border-slate-700 pb-6 mb-8 text-center">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shadow-sm inline-block mb-4 border border-blue-200 dark:border-blue-800">Upcoming Assessment</span>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">{driveData.collegeName} Recruitment Test</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-10">
-            <div className="bg-black/5 dark:bg-white/5 p-5 rounded-[1.5rem] text-center border border-black/5 dark:border-white/5 shadow-inner">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+            <div className="bg-gray-50 dark:bg-slate-800 p-5 rounded-[1.5rem] text-center border border-gray-200 dark:border-slate-700 shadow-sm">
               <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Scheduled Time</p>
-              <p className="font-extrabold text-gray-900 dark:text-white text-base">{new Date(driveData.scheduledTestTime).toLocaleString('en-IN')}</p>
+              <p className="font-black text-gray-900 dark:text-white text-lg tracking-tight leading-none">{new Date(driveData.scheduledTestTime).toLocaleString('en-IN', { hour: 'numeric', minute: 'numeric', hour12: true, day: 'numeric', month: 'short' })}</p>
             </div>
-            <div className="bg-black/5 dark:bg-white/5 p-5 rounded-[1.5rem] text-center border border-black/5 dark:border-white/5 shadow-inner">
+            <div className="bg-gray-50 dark:bg-slate-800 p-5 rounded-[1.5rem] text-center border border-gray-200 dark:border-slate-700 shadow-sm">
               <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Duration</p>
-              <p className="font-extrabold text-gray-900 dark:text-white text-base">{driveData.durationMinutes} Minutes</p>
+              <p className="font-black text-gray-900 dark:text-white text-lg tracking-tight leading-none">{driveData.durationMinutes} Minutes</p>
             </div>
           </div>
 
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 text-sm text-amber-900 dark:text-amber-400 mb-8 shadow-sm">
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-[1.5rem] p-6 text-[13px] text-amber-900 dark:text-amber-400 mb-8 shadow-sm">
             <p className="font-extrabold flex items-center gap-2 mb-3 tracking-wide uppercase text-[11px]"><FiAlertTriangle size={18} /> Strict Proctoring Rules:</p>
-            <ul className="list-disc list-inside space-y-2 font-medium opacity-90 pl-1 leading-relaxed text-xs">
+            <ul className="list-disc list-inside space-y-2 font-medium opacity-90 pl-1 leading-relaxed">
               <li>Camera access is required. Snapshots are taken periodically.</li>
               <li>Do not switch tabs, minimize the browser, or open other apps.</li>
               <li>On the <strong>3rd warning</strong>, your test will be <strong>auto-submitted</strong> immediately.</li>
@@ -561,13 +562,13 @@ const DriveTest = () => {
           </div>
 
           {isLiveNow ? (
-            <button onClick={startTest} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition-all hover:scale-[0.98] text-[15px]">
+            <button onClick={startTest} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition-transform hover:scale-[0.98] text-[15px]">
               <FiPlay size={18} /> Start Assessment Now
             </button>
           ) : (
-            <div className="text-center p-6 bg-black/5 dark:bg-white/5 rounded-2xl shadow-inner border border-black/5 dark:border-white/5">
+            <div className="text-center p-6 bg-gray-50 dark:bg-slate-800 rounded-2xl shadow-inner border border-gray-200 dark:border-slate-700">
               <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">Test unlocks automatically</p>
-              <p className="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center justify-center gap-3">
+              <p className="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center gap-3 tracking-tight">
                 <FiClock className="text-blue-600 dark:text-blue-400" />
                 {Math.max(0, Math.ceil((new Date(driveData.scheduledTestTime).getTime() - nowTime) / 60000))} mins remaining
               </p>
@@ -578,21 +579,21 @@ const DriveTest = () => {
     );
   }
 
-  // 4. ACTIVE TEST INTERFACE (Liquid Glass)
+  // 4. ACTIVE TEST INTERFACE (Solid Structural UI)
   const currentQ = problems[currentIdx];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f1f5f9] dark:bg-slate-900 select-none overflow-hidden h-[100dvh] relative">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-[#0f172a] select-none overflow-hidden h-[100dvh] relative">
       <div className="absolute inset-0 bg-blue-500/5 blur-3xl pointer-events-none"></div>
       <video ref={videoRef} autoPlay playsInline muted className="hidden" />
 
-      <header className="glass-panel mx-4 mt-4 rounded-2xl px-6 py-4 flex justify-between items-center shadow-sm z-20 shrink-0 border-white/60">
-        <h1 className="font-extrabold text-lg text-gray-900 dark:text-white hidden md:block tracking-tight">{driveData.collegeName} Assessment</h1>
+      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700 mx-4 mt-4 rounded-[1.5rem] px-6 py-4 flex justify-between items-center shadow-sm z-20 shrink-0">
+        <h1 className="font-black text-xl text-gray-900 dark:text-white hidden md:block tracking-tight">{driveData.collegeName} Assessment</h1>
         <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-          <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-lg border uppercase tracking-wider shadow-sm ${warnings > 0 ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 animate-pulse' : 'bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-400 border-black/5 dark:border-white/10'}`}>
-            Warnings: {warnings}/3
+          <span className={`text-[11px] font-extrabold px-3 py-1.5 rounded-lg border uppercase tracking-wider shadow-sm flex items-center gap-1.5 ${warnings > 0 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-slate-700'}`}>
+            <FiAlertTriangle size={14} /> Warnings: {warnings}/3
           </span>
-          <div className="flex items-center gap-2 font-mono text-xl font-extrabold px-4 py-2 rounded-lg bg-gray-900 text-white shadow-inner border border-gray-700">
+          <div className="flex items-center gap-2 font-mono text-xl font-bold px-4 py-2 rounded-lg bg-gray-900 text-white shadow-inner border border-gray-700 tracking-wider">
             <FiClock className="text-blue-400" /> {formatTime(timeLeft)}
           </div>
           <button onClick={handleFinishAttempt} className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white px-6 py-2.5 rounded-xl font-extrabold transition-transform shadow-lg shadow-green-500/30 flex items-center gap-2 text-[13px] hover:scale-[0.98]">
@@ -603,12 +604,13 @@ const DriveTest = () => {
 
       <main className="flex-1 flex flex-col lg:flex-row max-w-[1600px] mx-auto w-full p-4 gap-6 min-h-0 overflow-y-auto lg:overflow-hidden relative z-10">
         {currentQ?.options ? (
-          <div className="flex-1 glass-panel rounded-[2rem] p-8 md:p-10 overflow-y-auto min-h-[50vh] shadow-sm border-white/60">
-            <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-5 mb-6">
-              <h2 className="text-xs font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-black/5 dark:bg-white/5 px-4 py-2 rounded-lg border border-black/5 dark:border-white/5">
+          /* MCQ PORTION */
+          <div className="flex-1 bg-white dark:bg-slate-900 rounded-[2.5rem] p-6 md:p-10 overflow-y-auto min-h-[50vh] shadow-sm border border-gray-200 dark:border-slate-700 custom-scrollbar">
+            <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-700 pb-5 mb-6">
+              <h2 className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-slate-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
                 Question {currentIdx + 1} of {problems.length}
               </h2>
-              <span className="text-[11px] font-extrabold bg-blue-500/10 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-500/20 uppercase tracking-wider shadow-sm">
+              <span className="text-[11px] font-extrabold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 uppercase tracking-wider shadow-sm">
                 {currentQ?.marks || 1} Marks
               </span>
             </div>
@@ -618,21 +620,21 @@ const DriveTest = () => {
             </div>
 
             {currentQ?.images && currentQ.images.length > 0 && (
-              <div className="flex flex-wrap gap-4 mb-8 bg-white/40 dark:bg-slate-800/40 p-4 rounded-[1.5rem] shadow-inner border border-white/50 dark:border-slate-700/50">
+              <div className="flex flex-wrap gap-4 mb-8 bg-gray-50 dark:bg-slate-800 p-5 rounded-[1.5rem] shadow-inner border border-gray-200 dark:border-slate-700">
                 {currentQ.images.map((imgId) => (
                   <img key={imgId} src={`${API}/assignment-images/${imgId}`} alt="question" className="max-h-56 w-auto rounded-xl border border-gray-200 shadow-sm bg-white" />
                 ))}
               </div>
             )}
 
-            <div className="space-y-3.5">
+            <div className="space-y-4">
               {currentQ?.options?.map((opt, oIdx) => (
                 <button
                   key={oIdx}
                   onClick={() => setMcqAnswers(prev => ({ ...prev, [currentQ._id]: oIdx }))}
-                  className={`w-full text-left p-5 rounded-[1.5rem] border-2 font-bold transition-all text-sm flex items-center gap-4 ${mcqAnswers[currentQ._id] === oIdx ? 'border-blue-600 bg-blue-500/10 text-blue-900 dark:text-blue-300 shadow-sm' : 'border-white/60 dark:border-slate-700/60 bg-white/40 dark:bg-slate-800/40 hover:bg-white dark:hover:bg-slate-800 text-gray-700 dark:text-gray-200 hover:shadow-sm'}`}
+                  className={`w-full text-left p-4 md:p-5 rounded-[1.5rem] border-2 font-bold transition-all text-[15px] flex items-center gap-4 group ${mcqAnswers[currentQ._id] === oIdx ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200 shadow-sm' : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 hover:border-gray-300 dark:hover:border-slate-600 text-gray-800 dark:text-gray-200 hover:shadow-sm'}`}
                 >
-                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold border-2 shrink-0 transition-colors ${mcqAnswers[currentQ._id] === oIdx ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-slate-600 text-gray-500'}`}>
+                  <span className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-black border-2 shrink-0 transition-colors ${mcqAnswers[currentQ._id] === oIdx ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 dark:border-slate-600 text-gray-400 bg-white dark:bg-slate-900'}`}>
                      {String.fromCharCode(65 + oIdx)}
                   </span>
                   <span className="leading-relaxed">{opt}</span>
@@ -640,59 +642,60 @@ const DriveTest = () => {
               ))}
             </div>
 
-            <div className="flex justify-between mt-10 pt-6 border-t border-black/5 dark:border-white/5">
-              <button onClick={() => goToQuestion(currentIdx - 1)} disabled={currentIdx === 0} className="glass-button px-6 py-3 rounded-xl font-extrabold text-sm disabled:opacity-30">Previous</button>
+            <div className="flex justify-between mt-10 pt-6 border-t border-gray-200 dark:border-slate-700">
+              <button onClick={() => goToQuestion(currentIdx - 1)} disabled={currentIdx === 0} className="glass-button px-6 py-3 rounded-xl font-extrabold text-[15px] disabled:opacity-40 border border-gray-300 dark:border-slate-600 shadow-sm">Previous</button>
               {currentIdx === problems.length - 1 ? (
-                <button onClick={handleFinishAttempt} className="px-8 py-3 rounded-xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-sm">Finish Test</button>
+                <button onClick={handleFinishAttempt} className="px-8 py-3 rounded-xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-[15px]">Finish Test</button>
               ) : (
-                <button onClick={() => goToQuestion(currentIdx + 1)} className="glass-button px-8 py-3 rounded-xl font-extrabold text-sm text-blue-700 dark:text-blue-400">Next</button>
+                <button onClick={() => goToQuestion(currentIdx + 1)} className="glass-button px-8 py-3 rounded-xl font-extrabold text-[15px] text-blue-700 dark:text-blue-400 border border-gray-300 dark:border-slate-600 shadow-sm">Next</button>
               )}
             </div>
           </div>
         ) : (
+          /* CODING PORTION */
           <>
-            <div className={`glass-panel p-6 md:p-8 rounded-[2rem] shadow-sm border-white/60 overflow-y-auto min-h-[40vh] lg:min-h-0 ${expanded ? 'hidden' : 'w-full lg:w-1/2'}`}>
-              <div className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-4 mb-6">
-                <span className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-lg">Question {currentIdx + 1} of {problems.length}</span>
-                <span className="text-[10px] font-extrabold bg-blue-500/10 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg uppercase tracking-wider shadow-sm border border-blue-500/20">{currentQ?.points || 10} Marks</span>
+            <div className={`bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-gray-200 dark:border-slate-700 overflow-y-auto custom-scrollbar min-h-[40vh] lg:min-h-0 ${expanded ? 'hidden' : 'w-full lg:w-1/2'}`}>
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-slate-700 pb-5 mb-6">
+                <span className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest bg-gray-50 dark:bg-slate-800 px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">Question {currentIdx + 1} of {problems.length}</span>
+                <span className="text-[11px] font-extrabold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-3 py-1.5 rounded-lg uppercase tracking-wider shadow-sm border border-blue-200 dark:border-blue-800">{currentQ?.points || 10} Marks</span>
               </div>
-              <h1 className="text-2xl font-extrabold mb-5 text-gray-900 dark:text-white tracking-tight">{currentQ?.title || "Coding Problem"}</h1>
+              <h1 className="text-2xl md:text-3xl font-black mb-5 text-gray-900 dark:text-white tracking-tight leading-tight">{currentQ?.title || "Coding Problem"}</h1>
               <div className={MD_CLASS}>
                 <ReactMarkdown>{currentQ?.statementMd || currentQ?.text || "No description provided."}</ReactMarkdown>
               </div>
               {(currentQ?.testCases || []).filter(t => t.isSample).map((t, i) => (
-                <div key={i} className="mt-8 text-sm border-t border-black/5 dark:border-white/5 pt-5">
-                  <p className="font-extrabold mb-3 text-gray-800 dark:text-gray-200 text-base tracking-tight">Example {i + 1}</p>
+                <div key={i} className="mt-8 text-sm border-t border-gray-200 dark:border-slate-700 pt-6">
+                  <p className="font-extrabold mb-3 text-gray-900 dark:text-white text-lg tracking-tight">Example {i + 1}</p>
                   <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Input</p>
-                  <pre className="bg-black/5 dark:bg-slate-900/50 p-4 rounded-2xl border border-black/5 dark:border-slate-700/50 whitespace-pre-wrap mb-4 font-mono text-gray-800 dark:text-gray-200 text-[13px] shadow-inner">{t.input}</pre>
+                  <pre className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 whitespace-pre-wrap mb-4 font-mono text-gray-800 dark:text-gray-200 text-[13px] shadow-inner">{t.input}</pre>
                   <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Output</p>
-                  <pre className="bg-black/5 dark:bg-slate-900/50 p-4 rounded-2xl border border-black/5 dark:border-slate-700/50 whitespace-pre-wrap font-mono text-gray-800 dark:text-gray-200 text-[13px] shadow-inner">{t.expectedOutput}</pre>
+                  <pre className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 whitespace-pre-wrap font-mono text-gray-800 dark:text-gray-200 text-[13px] shadow-inner">{t.expectedOutput}</pre>
                 </div>
               ))}
             </div>
 
             <div className={`flex flex-col gap-4 min-h-[50vh] lg:min-h-0 h-full ${expanded ? 'w-full' : 'w-full lg:w-1/2'}`}>
-              <div className="glass-panel p-2 rounded-2xl shadow-sm border-white/60 flex items-center justify-between gap-2 flex-wrap shrink-0">
-                <select value={lang.id} onChange={(e) => setLang(LANGS.find((l) => l.id === e.target.value))} className="apple-input w-full md:w-48 py-2 text-[13px] font-bold cursor-pointer">
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-[1.5rem] shadow-sm border border-gray-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap shrink-0">
+                <select value={lang.id} onChange={(e) => setLang(LANGS.find((l) => l.id === e.target.value))} className="apple-input w-full md:w-48 py-2.5 text-[13px] font-bold cursor-pointer shadow-sm">
                   {LANGS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
                 </select>
 
                 <div className="flex items-center gap-3 w-full md:w-auto ml-auto">
-                  <div className="hidden lg:flex items-center bg-black/5 dark:bg-white/5 rounded-xl border border-black/5 dark:border-white/10 p-1 shadow-inner">
-                    <button type="button" onClick={() => changeFont(-1)} disabled={fontSize <= MIN_FONT} className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg disabled:opacity-40 transition-colors font-extrabold text-sm w-8 h-8 flex items-center justify-center">A-</button>
+                  <div className="hidden lg:flex items-center bg-gray-50 dark:bg-slate-800 rounded-[1rem] border border-gray-200 dark:border-slate-700 p-1 shadow-inner">
+                    <button type="button" onClick={() => changeFont(-1)} disabled={fontSize <= MIN_FONT} className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-700 rounded-[0.8rem] disabled:opacity-40 transition-colors font-extrabold text-sm w-9 h-9 flex items-center justify-center">A-</button>
                     <span className="text-[11px] font-extrabold text-gray-500 w-6 text-center">{fontSize}</span>
-                    <button type="button" onClick={() => changeFont(1)} disabled={fontSize >= MAX_FONT} className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg disabled:opacity-40 transition-colors font-extrabold text-sm w-8 h-8 flex items-center justify-center">A+</button>
+                    <button type="button" onClick={() => changeFont(1)} disabled={fontSize >= MAX_FONT} className="p-1.5 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-700 rounded-[0.8rem] disabled:opacity-40 transition-colors font-extrabold text-sm w-9 h-9 flex items-center justify-center">A+</button>
                   </div>
-                  <button type="button" onClick={() => setExpanded((v) => !v)} className="hidden lg:flex glass-button text-[11px] font-extrabold uppercase tracking-wider text-gray-700 dark:text-gray-300 px-4 py-2.5 rounded-xl items-center gap-1.5">
+                  <button type="button" onClick={() => setExpanded((v) => !v)} className="hidden lg:flex glass-button text-[11px] font-extrabold uppercase tracking-wider text-gray-700 dark:text-gray-300 px-4 py-2.5 rounded-xl items-center gap-1.5 border border-gray-300 dark:border-slate-600 shadow-sm">
                     {expanded ? <><FiMinimize2 size={14}/> Split</> : <><FiMaximize2 size={14}/> Maximize</>}
                   </button>
-                  <button onClick={resetCode} className="glass-button text-[11px] font-extrabold uppercase tracking-wider text-red-600 dark:text-red-400 px-4 py-2.5 rounded-xl flex items-center gap-1.5 border-red-500/20 bg-red-500/5 hover:bg-red-500/10">
+                  <button onClick={resetCode} className="glass-button text-[11px] font-extrabold uppercase tracking-wider text-red-600 dark:text-red-400 px-4 py-2.5 rounded-xl flex items-center gap-1.5 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-sm">
                     <FiRotateCcw size={14} /> Reset
                   </button>
                 </div>
               </div>
 
-              <div ref={editorWrapperRef} className="flex-1 glass-panel rounded-[1.5rem] overflow-hidden shadow-inner border-white/40 min-h-[300px]">
+              <div ref={editorWrapperRef} className="flex-1 bg-[#1e1e1e] rounded-[1.5rem] overflow-hidden shadow-inner border border-gray-300 dark:border-slate-700 min-h-[300px]">
                 <Editor
                   height="100%"
                   language={lang.monaco}
@@ -704,58 +707,58 @@ const DriveTest = () => {
                 />
               </div>
 
-              <div className="glass-panel p-3 rounded-2xl shadow-sm border-white/60 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-                <button onClick={runCode} disabled={busy} className="w-full sm:w-auto bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 border border-black/10 dark:border-white/20 text-gray-800 dark:text-white px-6 py-3 rounded-xl font-extrabold disabled:opacity-50 flex items-center justify-center gap-2 transition-all text-sm shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4 shrink-0">
+                <button onClick={runCode} disabled={busy} className="w-full sm:w-auto bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-800 dark:text-white px-6 py-3 rounded-xl font-extrabold disabled:opacity-50 flex items-center justify-center gap-2 transition-all text-[15px] shadow-sm">
                   <FiPlay size={16} className="text-blue-500" /> {busy ? 'Running...' : 'Run Examples'}
                 </button>
                 <div className="flex gap-3 w-full sm:w-auto">
-                  <button onClick={() => goToQuestion(currentIdx - 1)} disabled={currentIdx === 0} className="flex-1 sm:flex-none glass-button px-6 py-3 rounded-xl font-extrabold text-sm disabled:opacity-30 text-gray-700 dark:text-gray-300">Previous</button>
+                  <button onClick={() => goToQuestion(currentIdx - 1)} disabled={currentIdx === 0} className="flex-1 sm:flex-none glass-button px-6 py-3 rounded-xl font-extrabold text-[15px] disabled:opacity-40 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-slate-600 shadow-sm">Previous</button>
                   {currentIdx === problems.length - 1 ? (
-                    <button onClick={handleFinishAttempt} className="flex-1 sm:flex-none px-8 py-3 rounded-xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-sm">Finish Test</button>
+                    <button onClick={handleFinishAttempt} className="flex-1 sm:flex-none px-8 py-3 rounded-xl font-extrabold bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-[15px]">Finish Test</button>
                   ) : (
-                    <button onClick={() => goToQuestion(currentIdx + 1)} className="flex-1 sm:flex-none glass-button px-6 py-3 rounded-xl font-extrabold text-sm text-blue-700 dark:text-blue-400">Next</button>
+                    <button onClick={() => goToQuestion(currentIdx + 1)} className="flex-1 sm:flex-none glass-button px-6 py-3 rounded-xl font-extrabold text-[15px] text-blue-700 dark:text-blue-400 border border-gray-300 dark:border-slate-600 shadow-sm">Next</button>
                   )}
                 </div>
               </div>
 
               <div onPointerDown={startDrag} title="Drag up or down to resize" className="hidden lg:flex h-4 -my-3 cursor-row-resize items-center justify-center touch-none select-none z-10 relative">
-                <div className="w-20 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 transition-colors shadow-sm" />
+                <div className="w-20 h-1.5 rounded-full bg-gray-300 dark:bg-slate-600 hover:bg-blue-500 transition-colors shadow-sm" />
               </div>
 
-              <div className="glass-panel p-5 rounded-[1.5rem] overflow-y-auto shrink-0 space-y-4 shadow-sm border-white/60 custom-scrollbar min-h-[150px] lg:min-h-0" style={{ height: window.innerWidth >= 1024 ? resultH : 'auto' }}>
-                <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-black/5 dark:border-white/5 pb-2 mb-1">Console Output</p>
-                {busy && <p className="text-sm text-blue-600 dark:text-blue-400 animate-pulse font-mono font-bold pl-1">Executing code on server...</p>}
-                {!busy && !runResults && <p className="text-sm text-gray-500 dark:text-gray-400 font-mono font-medium pl-1">Click "Run Examples" to see output here.</p>}
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] overflow-y-auto shrink-0 space-y-5 shadow-sm border border-gray-200 dark:border-slate-700 custom-scrollbar min-h-[150px] lg:min-h-0" style={{ height: window.innerWidth >= 1024 ? resultH : 'auto' }}>
+                <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b border-gray-200 dark:border-slate-700 pb-3 mb-2">Console Output</p>
+                {busy && <p className="text-[15px] text-blue-600 dark:text-blue-400 animate-pulse font-mono font-bold pl-1">Executing code on server...</p>}
+                {!busy && !runResults && <p className="text-[15px] text-gray-500 dark:text-gray-400 font-mono font-medium pl-1">Click "Run Examples" to see output here.</p>}
 
                 {runResults && runResults.map((r, i) => (
-                  <div key={i} className={`p-5 rounded-2xl border font-mono text-[13px] shadow-sm ${r.accepted ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
-                    <p className={`font-extrabold text-sm mb-3 tracking-tight ${r.accepted ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>Example {i + 1}: {r.status}</p>
+                  <div key={i} className={`p-5 rounded-2xl border font-mono text-[13px] shadow-sm ${r.accepted ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'}`}>
+                    <p className={`font-black text-[15px] mb-4 tracking-tight ${r.accepted ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>Example {i + 1}: {r.status}</p>
                     {r.input !== undefined && (
-                      <div className="space-y-3">
-                        <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-wider">Input</p>
-                        <pre className="bg-white/60 dark:bg-slate-900/60 border border-white/40 dark:border-slate-700/50 rounded-xl p-3 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.input}</pre>
+                      <div className="space-y-4">
+                        <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest">Input</p>
+                        <pre className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.input}</pre>
                         {!r.stderr && (
                           <>
-                            <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-wider">Your Output</p>
-                            <pre className="bg-white/60 dark:bg-slate-900/60 border border-white/40 dark:border-slate-700/50 rounded-xl p-3 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.stdout}</pre>
+                            <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest mt-2">Your Output</p>
+                            <pre className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.stdout}</pre>
                           </>
                         )}
                         {!r.accepted && !r.stderr && (
                           <>
-                            <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-wider">Expected</p>
-                            <pre className="bg-white/60 dark:bg-slate-900/60 border border-white/40 dark:border-slate-700/50 rounded-xl p-3 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.expected}</pre>
+                            <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest mt-2">Expected</p>
+                            <pre className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.expected}</pre>
                           </>
                         )}
                       </div>
                     )}
                     {r.printed ? (
-                      <div className="mt-4">
-                        <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-wider mb-1">StdOut</p>
-                        <pre className="bg-white/60 dark:bg-slate-900/60 border border-white/40 dark:border-slate-700/50 rounded-xl p-3 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.printed}</pre>
+                      <div className="mt-5">
+                        <p className="text-gray-500 dark:text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-1.5">StdOut</p>
+                        <pre className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl p-4 text-gray-800 dark:text-gray-200 whitespace-pre-wrap shadow-inner">{r.printed}</pre>
                       </div>
                     ) : null}
                     {r.stderr && (
-                      <pre className="text-red-700 dark:text-red-400 text-xs mt-4 bg-red-500/10 p-3 rounded-xl whitespace-pre-wrap border border-red-500/20 font-bold leading-relaxed">{r.stderr}</pre>
+                      <pre className="text-red-700 dark:text-red-400 text-[13px] mt-5 bg-red-100 dark:bg-red-900/40 p-4 rounded-xl whitespace-pre-wrap border border-red-200 dark:border-red-800 font-bold leading-relaxed">{r.stderr}</pre>
                     )}
                   </div>
                 ))}
@@ -764,20 +767,23 @@ const DriveTest = () => {
           </>
         )}
 
-        <div className={`w-full lg:w-72 glass-panel p-6 rounded-[2rem] shadow-sm border-white/60 flex flex-col h-fit shrink-0 ${expanded && !currentQ?.options ? 'hidden' : ''}`}>
-          <h3 className="font-extrabold text-gray-800 dark:text-gray-200 mb-5 border-b border-black/5 dark:border-white/5 pb-3 text-sm md:text-base tracking-tight">Question Palette</h3>
-          <div className="grid grid-cols-5 gap-2.5">
+        <div className={`w-full lg:w-[300px] bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col h-fit shrink-0 ${expanded && !currentQ?.options ? 'hidden' : ''}`}>
+          <h3 className="font-black text-gray-900 dark:text-white mb-6 border-b border-gray-200 dark:border-slate-700 pb-4 text-[15px] tracking-tight">Question Palette</h3>
+          <div className="grid grid-cols-5 gap-3">
             {problems.map((q, i) => (
               <button
                 key={q._id}
                 onClick={() => goToQuestion(i)}
-                className={`h-11 rounded-[10px] font-extrabold text-[13px] border-2 transition-all shadow-sm ${i === currentIdx ? 'ring-2 ring-blue-500 ring-offset-2 ring-offset-[#f1f5f9] dark:ring-offset-slate-900' : ''} ${isAnswered(q) ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border-transparent' : 'glass-button text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-slate-800'}`}
+                className={`h-11 rounded-xl font-extrabold text-[13px] border-2 transition-all shadow-sm ${i === currentIdx ? 'border-blue-500 ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-110' : ''} ${isAnswered(q) ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border-transparent' : 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 border-gray-200 dark:border-slate-700'}`}
               >
                 {i + 1}
               </button>
             ))}
           </div>
-          <p className="text-[10px] md:text-xs font-bold text-center text-gray-400 mt-6 uppercase tracking-wider bg-black/5 dark:bg-white/5 py-2 rounded-xl">Green = Attempted</p>
+          <div className="flex items-center justify-center gap-2 mt-8 bg-gray-50 dark:bg-slate-800 py-3 rounded-xl border border-gray-200 dark:border-slate-700">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <p className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Attempted</p>
+          </div>
         </div>
       </main>
     </div>

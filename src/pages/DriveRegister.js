@@ -6,7 +6,7 @@ import { FiCheckCircle, FiCalendar, FiClock } from "react-icons/fi";
 const API = `${process.env.REACT_APP_API_URL}/api`;
 
 const inputCls = "apple-input";
-const labelCls = "block text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1";
+const labelCls = "block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1";
 
 const DriveRegister = () => {
   const { driveCode } = useParams();
@@ -15,7 +15,7 @@ const DriveRegister = () => {
   const [driveError, setDriveError] = useState("");
 
   const [form, setForm] = useState({
-    name: "", email: "", password: "", contactNumber: "", aadharNumber: "",
+    name: "", email: "", password: "", contactNumber: "",
     panCard: "", address: "", tenthPercentage: "", twelfthPercentage: "",
     stream: "", branch: "", yearOfStudy: "", highestQualification: "",
     passingYear: "", percentage: "",
@@ -50,7 +50,6 @@ const DriveRegister = () => {
     setError("");
 
     if (!/^\d{10}$/.test(form.contactNumber.trim())) { setError("Please enter a valid 10-digit contact number."); return; }
-    if (!/^\d{12}$/.test(form.aadharNumber.trim())) { setError("Please enter a valid 12-digit Aadhaar number."); return; }
     if (!/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(form.panCard.trim().toUpperCase())) { setError("Please enter a valid PAN card number."); return; }
 
     const tenth = Number(form.tenthPercentage);
@@ -81,7 +80,6 @@ const DriveRegister = () => {
       await axios.post(`${API}/drives/${driveCode}/register`, {
         ...form,
         contactNumber: form.contactNumber.trim(),
-        aadharNumber: form.aadharNumber.trim(),
         panCard: form.panCard.trim().toUpperCase(),
         address: form.address.trim(),
         tenthPercentage: tenth,
@@ -102,10 +100,10 @@ const DriveRegister = () => {
 
   if (loadingDrive) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#f1f5f9] dark:bg-slate-900">
-        <div className="glass-panel p-10 rounded-[2.5rem] flex flex-col items-center gap-4 animate-pulse">
-           <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
-           <p className="text-lg font-extrabold text-gray-800 dark:text-gray-200">Loading Drive Details...</p>
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gray-50 dark:bg-[#0f172a]">
+        <div className="glass-panel bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] flex flex-col items-center gap-5 animate-pulse shadow-sm border border-gray-200 dark:border-slate-700">
+           <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+           <p className="text-xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Loading Drive Details...</p>
         </div>
       </div>
     );
@@ -113,11 +111,11 @@ const DriveRegister = () => {
 
   if (driveError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#f1f5f9] dark:bg-slate-900">
-        <div className="glass-panel p-12 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border-white/60 animate-fade-in">
-          <h2 className="text-2xl font-extrabold text-red-600 dark:text-red-400 mb-4 tracking-tight">Link Unavailable</h2>
-          <p className="text-gray-600 dark:text-gray-300 font-medium mb-8 leading-relaxed">{driveError}</p>
-          <Link to="/login" className="glass-button w-full block text-center text-blue-600 dark:text-blue-400 font-extrabold py-3.5 rounded-xl transition-all shadow-sm">
+      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-gray-50 dark:bg-[#0f172a]">
+        <div className="glass-panel bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] shadow-sm max-w-md w-full text-center border border-gray-200 dark:border-slate-700 animate-fade-in">
+          <h2 className="text-3xl font-black text-red-600 dark:text-red-400 mb-4 tracking-tight">Link Unavailable</h2>
+          <p className="text-[15px] font-medium text-gray-600 dark:text-gray-300 mb-8 leading-relaxed">{driveError}</p>
+          <Link to="/login" className="glass-button w-full block text-center text-blue-600 dark:text-blue-400 font-extrabold py-3.5 rounded-xl transition-all shadow-sm border border-gray-300 dark:border-slate-600">
             Go to Login
           </Link>
         </div>
@@ -127,16 +125,16 @@ const DriveRegister = () => {
 
   if (registered) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#f1f5f9] dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#f1f5f9] dark:bg-[#0f172a]">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-teal-500/20 blur-[120px] rounded-full pointer-events-none"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/20 blur-[120px] rounded-full pointer-events-none"></div>
         
-        <div className="glass-panel p-12 rounded-[2.5rem] shadow-2xl max-w-lg w-full text-center border-white/60 relative z-10 animate-fade-in">
+        <div className="glass-panel bg-white dark:bg-slate-900 p-12 rounded-[2.5rem] shadow-2xl max-w-lg w-full text-center border border-gray-200 dark:border-slate-700 relative z-10 animate-fade-in">
           <div className="w-24 h-24 bg-gradient-to-br from-teal-400 to-teal-600 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-teal-500/30 border-4 border-white/50">
             <FiCheckCircle size={44} />
           </div>
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">Registration Submitted!</h2>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
+          <h2 className="text-3xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">Registration Submitted!</h2>
+          <p className="text-[15px] font-medium text-gray-600 dark:text-gray-300 leading-relaxed mb-8">
             You have registered for the <strong className="text-gray-900 dark:text-white">{driveInfo?.collegeName}</strong> Campus Drive. Once the promotional team approves your registration, you will be able to log in to the test portal.
           </p>
           <Link to="/login" className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 text-white font-extrabold py-4 rounded-xl block shadow-lg shadow-teal-500/30 hover:scale-[0.98] transition-transform text-[15px]">
@@ -148,11 +146,12 @@ const DriveRegister = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 relative overflow-hidden bg-[#f1f5f9] dark:bg-slate-900">
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-500/20 blur-[140px] rounded-full pointer-events-none fixed"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/20 blur-[140px] rounded-full pointer-events-none fixed"></div>
+    <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 relative overflow-hidden bg-gray-50 dark:bg-[#0f172a]">
+      {/* Background gradients */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-500/10 dark:bg-teal-500/20 blur-[140px] rounded-full pointer-events-none fixed"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 dark:bg-blue-500/20 blur-[140px] rounded-full pointer-events-none fixed"></div>
 
-      <div className="max-w-2xl w-full glass-panel rounded-[2.5rem] shadow-2xl border-white/60 relative z-10 overflow-hidden animate-fade-in">
+      <div className="max-w-2xl w-full glass-panel bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-gray-200 dark:border-slate-700 relative z-10 overflow-hidden animate-fade-in">
         
         {/* CAMPUS DRIVE HEADER */}
         <div className="bg-gradient-to-br from-teal-500 to-blue-600 p-8 md:p-10 text-white relative overflow-hidden">
@@ -161,22 +160,22 @@ const DriveRegister = () => {
           <span className="text-[10px] uppercase tracking-widest bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-lg font-extrabold border border-white/30 shadow-sm inline-block mb-3 relative z-10">
             Campus Recruitment Drive
           </span>
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight relative z-10">{driveInfo?.collegeName}</h1>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight relative z-10 drop-shadow-sm">{driveInfo?.collegeName}</h1>
           
-          <div className="flex flex-wrap gap-3 mt-5 text-[11px] font-extrabold uppercase tracking-wider relative z-10">
-            <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">
-              <FiCalendar /> Scheduled: {driveInfo?.scheduledTestTime ? new Date(driveInfo.scheduledTestTime).toLocaleString("en-IN") : "Not specified"}
+          <div className="flex flex-wrap gap-3 mt-6 text-[11px] font-extrabold uppercase tracking-wider relative z-10">
+            <span className="flex items-center gap-1.5 bg-black/20 px-3.5 py-2 rounded-xl backdrop-blur-sm border border-white/10 shadow-sm">
+              <FiCalendar size={14}/> Scheduled: {driveInfo?.scheduledTestTime ? new Date(driveInfo.scheduledTestTime).toLocaleString("en-IN", { hour: 'numeric', minute: 'numeric', hour12: true, day: 'numeric', month: 'short' }) : "Not specified"}
             </span>
-            <span className="flex items-center gap-1.5 bg-black/20 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">
-              <FiClock /> Duration: {driveInfo?.durationMinutes} mins
+            <span className="flex items-center gap-1.5 bg-black/20 px-3.5 py-2 rounded-xl backdrop-blur-sm border border-white/10 shadow-sm">
+              <FiClock size={14}/> Duration: {driveInfo?.durationMinutes} mins
             </span>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 md:p-10 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 md:p-10 space-y-6">
           {error && (
-            <div role="alert" className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm font-bold shadow-sm flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-red-500 shrink-0"></div> {error}
+            <div role="alert" className="p-4 rounded-[1rem] bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-[13px] font-extrabold shadow-sm flex items-start sm:items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1 sm:mt-0"></div> <span className="leading-snug">{error}</span>
             </div>
           )}
 
@@ -196,11 +195,7 @@ const DriveRegister = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <div>
-              <label className={labelCls}>Aadhaar Card Number *</label>
-              <input required type="password" inputMode="numeric" maxLength={12} autoComplete="off" value={form.aadharNumber} onChange={(e) => handleChange("aadharNumber", e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="12-digit Aadhaar number" className={inputCls} />
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-1 gap-5">
             <div>
               <label className={labelCls}>PAN Card Number *</label>
               <input required type="text" maxLength={10} autoComplete="off" value={form.panCard} onChange={(e) => handleChange("panCard", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="ABCDE1234F" className={`${inputCls} uppercase`} />
@@ -209,11 +204,11 @@ const DriveRegister = () => {
 
           <div>
             <label className={labelCls}>Full Residential Address *</label>
-            <textarea required value={form.address} onChange={(e) => handleChange("address", e.target.value)} placeholder="House No, Street, City, State" className={`${inputCls} resize-none`} rows={2} />
+            <textarea required value={form.address} onChange={(e) => handleChange("address", e.target.value)} placeholder="House No, Street, City, State" className={`${inputCls} resize-none leading-relaxed`} rows={2} />
           </div>
 
-          <div className="pt-4 border-t border-black/5 dark:border-white/5 mt-6 mb-4">
-             <h3 className="font-extrabold text-xl text-gray-900 dark:text-white tracking-tight">Academic Background</h3>
+          <div className="pt-6 border-t border-gray-200 dark:border-slate-700 mt-8 mb-6">
+             <h3 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight">Academic Background</h3>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -227,7 +222,7 @@ const DriveRegister = () => {
             
             <div>
               <label className={labelCls}>Current Year *</label>
-              <select required value={form.yearOfStudy} onChange={(e) => handleChange("yearOfStudy", e.target.value)} className={`${inputCls} cursor-pointer`}>
+              <select required value={form.yearOfStudy} onChange={(e) => handleChange("yearOfStudy", e.target.value)} className={`${inputCls} cursor-pointer font-bold`}>
                 <option value="">Select</option><option value="1st Year">1st Year</option><option value="2nd Year">2nd Year</option><option value="3rd Year">3rd Year</option><option value="4th Year / Final">4th Year / Final</option><option value="Graduated">Graduated</option>
               </select>
             </div>
@@ -239,18 +234,18 @@ const DriveRegister = () => {
             <input required type="number" min="1950" max={new Date().getFullYear() + 10} value={form.passingYear} onChange={(e) => handleChange("passingYear", e.target.value)} placeholder="e.g. 2026" className={inputCls} />
           </div>
 
-          <div className="pt-6 border-t border-black/5 dark:border-white/5 mt-4">
+          <div className="pt-6 border-t border-gray-200 dark:border-slate-700 mt-8 mb-2">
             <label className={labelCls}>Create Password *</label>
             <input required type="password" minLength={6} value={form.password} onChange={(e) => handleChange("password", e.target.value)} placeholder="Minimum 6 characters" autoComplete="new-password" className={inputCls} />
           </div>
 
-          <button type="submit" disabled={submitting} className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 disabled:opacity-60 text-white py-4 rounded-xl font-extrabold shadow-lg shadow-teal-500/30 transition-all hover:scale-[0.98] mt-6 text-[15px]">
+          <button type="submit" disabled={submitting} className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 disabled:opacity-60 text-white py-4 rounded-xl font-extrabold shadow-lg shadow-teal-500/30 transition-transform hover:scale-[0.98] mt-8 text-[15px]">
             {submitting ? "Submitting Registration..." : "Register for Campus Drive"}
           </button>
 
-          <p className="text-center text-[13px] font-medium text-gray-500 dark:text-gray-400 pt-6">
+          <p className="text-center text-[13px] font-bold text-gray-500 dark:text-gray-400 pt-6 border-t border-gray-100 dark:border-slate-800">
             Already registered?{" "}
-            <Link to="/login" className="text-teal-600 dark:text-teal-400 font-extrabold hover:underline">
+            <Link to="/login" className="text-teal-600 dark:text-teal-400 font-black hover:underline ml-1">
               Sign In here
             </Link>
           </p>

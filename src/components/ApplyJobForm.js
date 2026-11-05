@@ -1,4 +1,3 @@
-// Save as: src/components/ApplyJobForm.js
 import React, { useState } from 'react';
 import axios from 'axios';
 import { FiX, FiUploadCloud } from 'react-icons/fi';
@@ -6,11 +5,10 @@ import { FiX, FiUploadCloud } from 'react-icons/fi';
 const API = process.env.REACT_APP_API_URL;
 const MAX_RESUME = 2 * 1024 * 1024; // 2 MB
 
-const inputStyles =
-  'w-full p-2 border rounded text-sm bg-white dark:bg-slate-800 border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors';
+const inputCls = "apple-input";
+const labelCls = "block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1";
 
-// Shrinks the photo to a 400x500 passport-style JPEG (~100 KB) before upload,
-// so it uses very little MongoDB space.
+// Shrinks the photo to a 400x500 passport-style JPEG (~100 KB) before upload
 const compressPhoto = (file) =>
   new Promise((resolve, reject) => {
     const img = new Image();
@@ -130,7 +128,7 @@ const ApplyJobForm = ({ job, profile, onClose, onApplied }) => {
 
       const token = localStorage.getItem('token');
       const res = await axios.post(`${API}/api/jobs/${job._id}/apply`, fd, {
-        headers: { Authorization: `Bearer ${token}` } // axios sets the multipart header itself
+        headers: { Authorization: `Bearer ${token}` }
       });
       alert(res.data.message);
       onApplied(res.data.application);
@@ -143,76 +141,88 @@ const ApplyJobForm = ({ job, profile, onClose, onApplied }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between p-6 border-b dark:border-slate-700">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 backdrop-blur-md p-4 animate-fade-in">
+      <div className="glass-panel w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[2.5rem] shadow-2xl relative flex flex-col">
+        
+        {/* Modal Header */}
+        <div className="flex items-center justify-between p-6 md:p-8 bg-gray-50 dark:bg-slate-800/80 border-b border-gray-200 dark:border-slate-700 shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Apply for {job.title}</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {job.jobId}. You cannot edit these details after you submit.
-            </p>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Apply for {job.title}</h2>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-300 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-md uppercase tracking-wider shadow-sm">{job.jobId}</span>
+              <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest hidden sm:block">Details cannot be edited post-submission.</p>
+            </div>
           </div>
-          <button onClick={onClose} type="button" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-            <FiX size={22} />
+          <button onClick={onClose} type="button" className="p-2.5 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600 rounded-full transition-colors border border-gray-300 dark:border-slate-600 shadow-sm shrink-0">
+            <FiX size={18} className="text-gray-600 dark:text-gray-300" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Modal Body */}
+        <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-5 overflow-y-auto custom-scrollbar flex-1 bg-white dark:bg-[#1e293b]">
           <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Email</label>
-            <input type="email" value={form.email} onChange={setField('email')} className={inputStyles} required />
+            <label className={labelCls}>Email Address</label>
+            <input type="email" value={form.email} onChange={setField('email')} className={inputCls} required />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Contact number</label>
-              <input type="tel" inputMode="numeric" maxLength={10} placeholder="10 digits" value={form.phone} onChange={setField('phone')} className={inputStyles} required />
+              <label className={labelCls}>Contact number</label>
+              <input type="tel" inputMode="numeric" maxLength={10} placeholder="10 digits" value={form.phone} onChange={setField('phone')} className={inputCls} required />
             </div>
             <div>
-              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">Parent's contact number</label>
-              <input type="tel" inputMode="numeric" maxLength={10} placeholder="10 digits" value={form.parentPhone} onChange={setField('parentPhone')} className={inputStyles} required />
+              <label className={labelCls}>Parent's contact number</label>
+              <input type="tel" inputMode="numeric" maxLength={10} placeholder="10 digits" value={form.parentPhone} onChange={setField('parentPhone')} className={inputCls} required />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">LinkedIn profile link</label>
-            <input type="url" placeholder="https://www.linkedin.com/in/your-name" value={form.linkedin} onChange={setField('linkedin')} className={inputStyles} required />
+            <label className={labelCls}>LinkedIn Profile Link</label>
+            <input type="url" placeholder="https://www.linkedin.com/in/your-name" value={form.linkedin} onChange={setField('linkedin')} className={inputCls} required />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1">GitHub profile link</label>
-            <input type="url" placeholder="https://github.com/your-username" value={form.github} onChange={setField('github')} className={inputStyles} required />
+            <label className={labelCls}>GitHub Profile Link</label>
+            <input type="url" placeholder="https://github.com/your-username" value={form.github} onChange={setField('github')} className={inputCls} required />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 text-center">
-              <label className="cursor-pointer text-sm font-bold text-gray-600 dark:text-gray-300 flex flex-col items-center gap-2">
-                <FiUploadCloud size={24} className="text-blue-500" />
-                Passport-size photo
-                <span className="text-[11px] font-normal text-gray-400">JPG or PNG</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2">
+            <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-[1.5rem] p-5 text-center bg-gray-50 dark:bg-slate-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/10 transition-colors group">
+              <label className="cursor-pointer flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-500/20 group-hover:scale-105 transition-transform shadow-sm">
+                  <FiUploadCloud size={24} />
+                </div>
+                <div>
+                  <span className="block text-sm font-extrabold text-gray-700 dark:text-gray-300">Passport Photo</span>
+                  <span className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">JPG or PNG</span>
+                </div>
                 <input type="file" accept="image/jpeg,image/png" onChange={handlePhoto} className="hidden" />
               </label>
               {photoPreview && (
-                <img src={photoPreview} alt="Your photo" className="w-20 h-24 object-cover rounded border dark:border-slate-600 mx-auto mt-3" />
+                <img src={photoPreview} alt="Your photo" className="w-20 h-24 object-cover rounded-xl border border-gray-200 dark:border-slate-600 mx-auto mt-4 shadow-sm" />
               )}
             </div>
 
-            <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-lg p-4 text-center">
-              <label className="cursor-pointer text-sm font-bold text-gray-600 dark:text-gray-300 flex flex-col items-center gap-2">
-                <FiUploadCloud size={24} className="text-blue-500" />
-                Resume
-                <span className="text-[11px] font-normal text-gray-400">PDF, up to 2 MB</span>
+            <div className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-[1.5rem] p-5 text-center bg-gray-50 dark:bg-slate-800/50 hover:bg-green-50 dark:hover:bg-green-900/10 transition-colors group">
+              <label className="cursor-pointer flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 flex items-center justify-center border border-green-500/20 group-hover:scale-105 transition-transform shadow-sm">
+                  <FiUploadCloud size={24} />
+                </div>
+                <div>
+                  <span className="block text-sm font-extrabold text-gray-700 dark:text-gray-300">Resume / CV</span>
+                  <span className="text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">PDF, max 2MB</span>
+                </div>
                 <input type="file" accept="application/pdf" onChange={handleResume} className="hidden" />
               </label>
-              {resume && <p className="text-xs text-gray-600 dark:text-gray-300 mt-3 break-all">{resume.name}</p>}
+              {resume && <p className="text-xs font-bold text-green-600 dark:text-green-400 mt-4 break-all bg-green-500/10 py-1.5 px-3 rounded-lg border border-green-500/20 shadow-sm inline-block">{resume.name}</p>}
             </div>
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm rounded-lg p-3">
-              <p className="font-bold">{error}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-[1rem] p-4 shadow-sm">
+              <p className="font-extrabold text-sm">{error}</p>
               {reasons.length > 0 && (
-                <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
+                <ul className="mt-2 space-y-1.5 text-xs font-bold pl-4 list-disc marker:text-red-500">
                   {reasons.map((r, i) => (
                     <li key={i}>{r}</li>
                   ))}
@@ -221,12 +231,12 @@ const ApplyJobForm = ({ job, profile, onClose, onApplied }) => {
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-5 py-2 rounded-lg font-bold border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+          <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-gray-200 dark:border-slate-700">
+            <button type="button" onClick={onClose} className="flex-1 glass-button py-3.5 rounded-xl font-extrabold text-gray-700 dark:text-gray-300 text-[15px] border border-gray-300 dark:border-slate-600">
               Cancel
             </button>
-            <button type="submit" disabled={submitting} className="px-6 py-2 rounded-lg font-bold bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white">
-              {submitting ? 'Submitting...' : 'Submit application'}
+            <button type="submit" disabled={submitting} className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:opacity-60 text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-green-500/30 hover:scale-[0.98] transition-transform text-[15px]">
+              {submitting ? 'Submitting...' : 'Submit Application'}
             </button>
           </div>
         </form>

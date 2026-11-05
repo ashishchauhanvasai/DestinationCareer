@@ -5,6 +5,9 @@ import { FiX } from 'react-icons/fi';
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
+const inputCls = "apple-input";
+const labelCls = "block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5 pl-1";
+
 const ChangeCredentialsModal = ({ onClose }) => {
   const [form, setForm] = useState({ currentPassword: '', newEmail: '', newPassword: '', confirmPassword: '' });
   const [busy, setBusy] = useState(false);
@@ -30,28 +33,42 @@ const ChangeCredentialsModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] max-w-sm w-full shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 rounded-full transition-colors">
-          <FiX size={20} className="text-gray-500 dark:text-gray-300" />
+    <div className="fixed inset-0 bg-gray-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="glass-panel p-8 md:p-10 rounded-[2.5rem] max-w-sm w-full shadow-2xl relative bg-white dark:bg-slate-900" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-6 right-6 p-2.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors border border-gray-200 dark:border-slate-600 shadow-sm shrink-0">
+          <FiX size={18} className="text-gray-600 dark:text-gray-300" />
         </button>
         
-        <h2 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight mb-6">Change Login Details</h2>
+        <h2 className="font-extrabold text-2xl text-gray-900 dark:text-white tracking-tight mb-8">Change Login Details</h2>
         
-        <form onSubmit={submit} className="space-y-4">
-          <input required type="password" placeholder="Current password" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} className="apple-input font-medium" />
-          <input type="email" placeholder="New email (optional)" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} className="apple-input font-medium" />
-          <input type="password" placeholder="New password (optional)" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} className="apple-input font-medium" />
+        <form onSubmit={submit} className="space-y-5">
+          <div>
+            <label className={labelCls}>Current Password</label>
+            <input required type="password" placeholder="Verify it's you" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>New Email <span className="opacity-60 lowercase font-medium">(optional)</span></label>
+            <input type="email" placeholder="Leave blank to keep current" value={form.newEmail} onChange={(e) => setForm({ ...form, newEmail: e.target.value })} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls}>New Password <span className="opacity-60 lowercase font-medium">(optional)</span></label>
+            <input type="password" placeholder="Create a new password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} className={inputCls} />
+          </div>
+          
           {form.newPassword && (
-            <input type="password" placeholder="Confirm new password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} className="apple-input font-medium animate-fade-in" />
+            <div className="animate-fade-in">
+              <label className={labelCls}>Confirm New Password</label>
+              <input type="password" placeholder="Re-type new password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} className={inputCls} />
+            </div>
           )}
-          <button disabled={busy} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3.5 mt-2 rounded-xl font-extrabold text-[15px] shadow-lg shadow-blue-500/30 disabled:opacity-60 transition-all hover:scale-[0.98]">
-            {busy ? 'Saving...' : 'Save Changes'}
+          
+          <button disabled={busy} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-4 mt-2 rounded-xl font-extrabold text-[15px] shadow-lg shadow-blue-500/30 disabled:opacity-60 transition-transform hover:scale-[0.98] flex items-center justify-center">
+            {busy ? 'Saving Changes...' : 'Save Changes'}
           </button>
         </form>
         
-        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-6 leading-relaxed text-center px-2">
-          Leave email/password blank to keep them unchanged. You'll be logged out after saving.
+        <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-6 leading-relaxed text-center px-4">
+          You will be logged out immediately after saving your new credentials.
         </p>
       </div>
     </div>

@@ -16,6 +16,7 @@ const DoubtSection = ({ videoId }) => {
   useEffect(() => {
     if (videoId) fetchDoubts();
     else { setDoubts([]); setLoading(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
   const fetchDoubts = async () => {
@@ -70,17 +71,17 @@ const DoubtSection = ({ videoId }) => {
   };
 
   if (!videoId) return null;
-  if (loading) return <div className="mt-8 glass-panel p-10 rounded-[2rem] text-center text-gray-500 font-bold">Loading discussions...</div>;
+  if (loading) return <div className="mt-8 glass-panel p-16 rounded-[2.5rem] text-center text-gray-500 font-bold text-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm animate-pulse">Loading discussions...</div>;
 
   return (
-    <div className="mt-10 glass-panel p-8 md:p-10 rounded-[2.5rem] shadow-sm border-white/60 animate-fade-in">
+    <div className="mt-8 glass-panel p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 animate-fade-in">
       
-      <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center border border-blue-500/20 shadow-sm">
-          <FiMessageCircle size={22} />
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-[1rem] flex items-center justify-center border border-blue-200 dark:border-blue-800 shadow-sm shrink-0">
+          <FiMessageCircle size={24} />
         </div>
         <div>
-          <h2 className="text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Class Discussion</h2>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">Class Discussion</h2>
           <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">Ask questions and learn together.</p>
         </div>
       </div>
@@ -91,64 +92,64 @@ const DoubtSection = ({ videoId }) => {
           value={newQuestion}
           onChange={(e) => setNewQuestion(e.target.value)}
           placeholder="Got a doubt about this topic? Ask here..."
-          className="apple-input pr-[110px]"
+          className="apple-input pr-[120px] py-4 text-[15px] shadow-sm"
         />
         <button
           type="submit"
           disabled={!newQuestion.trim()}
-          className="absolute right-2 top-2 bottom-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white px-6 rounded-lg font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+          className="absolute right-2 top-2 bottom-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white px-6 rounded-xl font-extrabold text-sm shadow-md transition-transform hover:scale-[0.98] flex items-center justify-center gap-2"
         >
-          Ask <FiSend size={14} className="hidden sm:inline" />
+          Ask <FiSend size={16} className="hidden sm:inline" />
         </button>
       </form>
 
-      {error && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm font-bold rounded-2xl shadow-sm">{error}</div>}
+      {error && <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-extrabold rounded-2xl shadow-sm">{error}</div>}
 
       {doubts.length === 0 ? (
-        <div className="bg-black/5 dark:bg-white/5 border border-dashed border-black/10 dark:border-white/10 rounded-[2rem] p-12 text-center">
-          <p className="text-gray-500 dark:text-gray-400 font-bold text-base">No doubts asked yet. Be the first to start the discussion!</p>
+        <div className="bg-gray-50 dark:bg-slate-800 border border-dashed border-gray-300 dark:border-slate-600 rounded-[2rem] p-16 text-center shadow-inner">
+          <p className="text-gray-500 dark:text-gray-400 font-bold text-lg">No doubts asked yet. Be the first to start the discussion!</p>
         </div>
       ) : (
         <div className="space-y-6">
           {doubts.map((doubt) => (
-            <div key={doubt._id} className="bg-white/50 dark:bg-slate-800/50 border border-white/50 dark:border-slate-700/50 rounded-[2rem] p-6 md:p-8 shadow-sm transition-all hover:shadow-md">
+            <div key={doubt._id} className="bg-gray-50 dark:bg-slate-800/80 border border-gray-200 dark:border-slate-700 rounded-[2rem] p-6 md:p-8 shadow-sm transition-shadow hover:shadow-md">
               
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="w-10 h-10 rounded-[1rem] bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-extrabold text-blue-600 dark:text-blue-400 border border-white dark:border-slate-600 shadow-sm shrink-0">
+              <div className="flex items-start justify-between gap-4 mb-5">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="w-12 h-12 rounded-[1rem] bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center text-lg font-black text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-slate-600 shadow-sm shrink-0">
                     {doubt.user?.name?.charAt(0).toUpperCase() || 'S'}
                   </div>
                   <div>
-                    <span className="font-extrabold text-gray-900 dark:text-white block text-base">{doubt.user?.name || 'Student'}</span>
-                    <div className="flex gap-2 mt-1">
-                      {doubt.user?.role && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 uppercase tracking-wider shadow-sm">{doubt.user.role}</span>}
-                      {doubt.isResolved && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/20 uppercase tracking-wider shadow-sm flex items-center gap-1"><FiCheckCircle /> Resolved</span>}
+                    <span className="font-extrabold text-gray-900 dark:text-white block text-lg tracking-tight leading-none mb-1.5">{doubt.user?.name || 'Student'}</span>
+                    <div className="flex gap-2.5 flex-wrap">
+                      {doubt.user?.role && <span className="text-[9px] font-extrabold px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-slate-700 uppercase tracking-wider shadow-sm">{doubt.user.role}</span>}
+                      {doubt.isResolved && <span className="text-[9px] font-extrabold px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 uppercase tracking-wider shadow-sm flex items-center gap-1.5"><FiCheckCircle size={12} /> Resolved</span>}
                     </div>
                   </div>
                 </div>
 
                 {isStaff && (
-                  <button onClick={() => handleDeleteDoubt(doubt._id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 bg-red-500/10 hover:bg-red-600 hover:text-white transition-all shadow-sm border border-red-500/20 shrink-0">
-                    <FiTrash2 size={14} />
+                  <button onClick={() => handleDeleteDoubt(doubt._id)} className="w-9 h-9 rounded-xl flex items-center justify-center text-red-500 bg-red-50 dark:bg-red-900/30 hover:bg-red-500 hover:text-white transition-all shadow-sm border border-red-200 dark:border-red-800 shrink-0">
+                    <FiTrash2 size={16} />
                   </button>
                 )}
               </div>
 
-              <p className="text-gray-800 dark:text-gray-200 leading-relaxed font-medium text-[15px] mb-6 pl-13 md:pl-0">{doubt.question}</p>
+              <p className="text-gray-900 dark:text-white leading-relaxed font-medium text-[15px] mb-6 pl-1 sm:pl-16">{doubt.question}</p>
 
               {doubt.replies && doubt.replies.length > 0 && (
-                <div className="space-y-4 mb-6 pl-4 md:pl-10 border-l-2 border-black/5 dark:border-white/5">
+                <div className="space-y-4 mb-6 pl-4 sm:pl-16 border-l-2 border-gray-200 dark:border-slate-700">
                   {doubt.replies.map((reply) => (
-                    <div key={reply._id} className={`p-5 rounded-[1.5rem] border shadow-sm transition-all ${reply.isCorrect ? 'bg-green-500/5 border-green-500/20' : 'bg-white/60 dark:bg-slate-800/60 border-white/50 dark:border-slate-700/50'}`}>
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-sm text-gray-900 dark:text-white">{reply.user?.name || 'User'}</span>
+                    <div key={reply._id} className={`p-5 rounded-[1.5rem] border shadow-sm transition-all ${reply.isCorrect ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800/50' : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700'}`}>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-extrabold text-[15px] text-gray-900 dark:text-white tracking-tight">{reply.user?.name || 'User'}</span>
                           {reply.user?.role && reply.user.role !== 'student' && (
-                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 uppercase tracking-wider">{reply.user.role}</span>
+                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 uppercase tracking-wider">{reply.user.role}</span>
                           )}
                           {reply.isCorrect && (
-                            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-gradient-to-r from-green-500 to-emerald-600 text-white uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                              <FiCheckCircle /> Verified
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-md bg-gradient-to-r from-green-500 to-emerald-600 text-white uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                              <FiCheckCircle size={12}/> Verified
                             </span>
                           )}
                         </div>
@@ -157,32 +158,32 @@ const DoubtSection = ({ videoId }) => {
                           <button
                             type="button"
                             onClick={() => handleMarkCorrect(doubt._id, reply._id, reply.isCorrect)}
-                            className={`glass-button text-[10px] font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-wider transition-all ${
-                              reply.isCorrect ? 'bg-green-600 text-white border-green-500' : 'text-gray-600 dark:text-gray-300'
+                            className={`glass-button text-[10px] font-extrabold px-4 py-2 rounded-xl uppercase tracking-wider transition-all shadow-sm ${
+                              reply.isCorrect ? 'bg-green-600 text-white border-green-500' : 'text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-slate-600 w-fit'
                             }`}
                           >
                             {reply.isCorrect ? 'Unmark' : 'Verify'}
                           </button>
                         )}
                       </div>
-                      <p className="text-[14px] text-gray-700 dark:text-gray-300 font-medium leading-relaxed">{reply.replyText}</p>
+                      <p className="text-[14px] text-gray-800 dark:text-gray-200 font-medium leading-relaxed">{reply.replyText}</p>
                     </div>
                   ))}
                 </div>
               )}
 
-              <form onSubmit={(e) => handleReply(e, doubt._id)} className="relative">
+              <form onSubmit={(e) => handleReply(e, doubt._id)} className="relative sm:ml-16">
                 <input
                   type="text"
                   value={replyInputs[doubt._id] || ''}
                   onChange={(e) => setReplyInputs((prevInputs) => ({ ...prevInputs, [doubt._id]: e.target.value }))}
                   placeholder="Write a reply..."
-                  className="apple-input bg-white/80 dark:bg-slate-900/80 pr-[90px]"
+                  className="apple-input bg-white dark:bg-slate-900 pr-[100px] text-[13px] py-3.5 shadow-sm"
                 />
                 <button
                   type="submit"
                   disabled={!replyInputs[doubt._id]?.trim()}
-                  className="absolute right-2 top-2 bottom-2 glass-button border-none bg-blue-600/90 text-white px-5 rounded-lg font-extrabold text-xs disabled:opacity-50 transition-all hover:bg-blue-600 flex items-center justify-center shadow-md"
+                  className="absolute right-2 top-2 bottom-2 glass-button border border-gray-200 dark:border-slate-700 bg-blue-600/10 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-6 rounded-xl font-extrabold text-[11px] disabled:opacity-50 transition-all hover:bg-blue-600 hover:text-white flex items-center justify-center uppercase tracking-wider"
                 >
                   Reply
                 </button>

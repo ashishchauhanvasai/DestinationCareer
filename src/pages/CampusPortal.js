@@ -155,35 +155,35 @@ const CampusPortal = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        <div className="glass-panel p-10 rounded-[2.5rem] flex flex-col items-center gap-4 animate-pulse">
-           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-           <p className="text-lg font-extrabold text-gray-800 dark:text-gray-200">Loading Assessment Portal...</p>
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gray-50 dark:bg-slate-900">
+        <div className="glass-panel p-12 rounded-[2.5rem] flex flex-col items-center gap-5 animate-pulse shadow-sm">
+           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+           <p className="text-xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Loading Assessment Portal...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#f1f5f9] dark:bg-slate-900">
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#f1f5f9] dark:bg-[#0f172a]">
       {/* Background gradients */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-teal-500/10 dark:bg-teal-500/5 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 dark:bg-blue-500/5 blur-[120px] rounded-full pointer-events-none"></div>
 
       {/* Minimal Header */}
-      <header className="glass-panel m-4 rounded-[2rem] px-8 py-4 flex items-center justify-between shadow-sm z-20">
+      <header className="glass-panel m-4 rounded-[2rem] px-8 py-5 flex items-center justify-between shadow-sm z-20 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-gray-200 dark:border-slate-700">
         <div>
-          <h1 className="text-lg font-extrabold tracking-tight text-teal-600 dark:text-teal-400">
-            Destination Career
+          <h1 className="text-xl font-black tracking-tight text-teal-600 dark:text-teal-400">
+            Destination<span className="text-gray-900 dark:text-white opacity-90">Career</span>
           </h1>
           {drive?.collegeName && (
-            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{drive.collegeName}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-0.5">{drive.collegeName}</p>
           )}
         </div>
         {!testStarted && (
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 bg-red-500/10 hover:bg-red-600 text-red-600 hover:text-white px-5 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all border border-red-500/20"
+            className="flex items-center gap-2 bg-red-50 dark:bg-red-900/30 hover:bg-red-500 text-red-600 dark:text-red-400 hover:text-white px-5 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all border border-red-200 dark:border-red-800 shadow-sm"
           >
             <FiLogOut size={16} /> Sign Out
           </button>
@@ -191,28 +191,28 @@ const CampusPortal = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center p-4 z-10 w-full overflow-y-auto custom-scrollbar pb-10">
+      <main className="flex-1 flex flex-col items-center justify-center p-4 z-10 w-full overflow-y-auto custom-scrollbar pb-12">
         {error ? (
-          <div className="glass-panel p-10 rounded-[2.5rem] shadow-xl max-w-md w-full text-center border-white/60">
-            <div className="w-16 h-16 bg-red-500/10 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20"><FiAlertTriangle size={28} /></div>
-            <p className="text-red-600 font-extrabold text-xl mb-6">{error}</p>
-            <button onClick={handleLogout} className="w-full glass-button text-gray-800 dark:text-gray-200 px-6 py-3 rounded-xl text-sm font-extrabold">
+          <div className="glass-panel p-10 md:p-12 rounded-[2.5rem] shadow-sm max-w-md w-full text-center bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 animate-fade-in">
+            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 border border-red-200 dark:border-red-800 shadow-sm"><FiAlertTriangle size={36} /></div>
+            <p className="text-gray-900 dark:text-white font-extrabold text-xl mb-6 tracking-tight leading-snug">{error}</p>
+            <button onClick={handleLogout} className="w-full glass-button text-gray-700 dark:text-gray-300 px-6 py-4 rounded-xl text-[15px] font-extrabold border border-gray-300 dark:border-slate-600">
               Back to Login
             </button>
           </div>
         ) : submittedMsg ? (
           /* BLIND THANK YOU SCREEN */
-          <div className="glass-panel p-12 rounded-[2.5rem] shadow-2xl max-w-lg w-full text-center border-white/60 animate-fade-in">
-            <div className="w-24 h-24 bg-teal-500/10 text-teal-600 rounded-full flex items-center justify-center mx-auto mb-6 border border-teal-500/20">
+          <div className="glass-panel p-10 md:p-12 rounded-[2.5rem] shadow-sm max-w-lg w-full text-center bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 animate-fade-in">
+            <div className="w-24 h-24 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border border-teal-200 dark:border-teal-800 shadow-sm">
               <FiCheckCircle size={44} />
             </div>
             <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">
               Test Completed
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-8 font-medium">
+            <p className="text-gray-600 dark:text-gray-400 text-[15px] leading-relaxed mb-8 font-medium">
               {submittedMsg}
             </p>
-            <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl border border-black/5 dark:border-white/5 text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-8 shadow-inner">
+            <div className="bg-gray-50 dark:bg-slate-800 p-5 rounded-2xl border border-gray-200 dark:border-slate-700 text-[11px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-8 shadow-inner">
               Your responses are securely recorded and pending evaluation.
             </div>
             <button onClick={handleLogout} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 text-white py-4 rounded-xl font-extrabold shadow-lg hover:scale-[0.98] transition-transform text-[15px]">
@@ -221,28 +221,28 @@ const CampusPortal = () => {
           </div>
         ) : !testStarted ? (
           /* UPCOMING TEST LOBBY */
-          <div className="glass-panel p-10 rounded-[2.5rem] shadow-2xl max-w-xl w-full border-white/60 animate-fade-in">
-            <div className="border-b border-black/5 dark:border-white/5 pb-6 mb-6 text-center">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest px-4 py-2 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20 shadow-sm inline-block mb-4">
+          <div className="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-sm max-w-xl w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 animate-fade-in">
+            <div className="border-b border-gray-200 dark:border-slate-700 pb-6 mb-6 text-center">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest px-4 py-2 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800 shadow-sm inline-block mb-5">
                 Upcoming Assessment
               </span>
-              <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-tight">
+              <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
                 {drive.collegeName} Recruitment Test
               </h2>
             </div>
 
             <div className="grid grid-cols-2 gap-5 mb-8">
-              <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl text-center border border-black/5 dark:border-white/5 shadow-inner">
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-widest mb-1.5">Scheduled</p>
-                <p className="font-extrabold text-gray-900 dark:text-white text-base">{new Date(drive.scheduledTestTime).toLocaleString('en-IN')}</p>
+              <div className="bg-gray-50 dark:bg-slate-800 p-5 rounded-2xl text-center border border-gray-200 dark:border-slate-700 shadow-sm">
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-widest mb-2">Scheduled</p>
+                <p className="font-black text-gray-900 dark:text-white text-lg tracking-tight leading-none">{new Date(drive.scheduledTestTime).toLocaleString('en-IN', { hour: 'numeric', minute: 'numeric', hour12: true, day: 'numeric', month: 'short' })}</p>
               </div>
-              <div className="bg-black/5 dark:bg-white/5 p-5 rounded-2xl text-center border border-black/5 dark:border-white/5 shadow-inner">
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-widest mb-1.5">Duration</p>
-                <p className="font-extrabold text-gray-900 dark:text-white text-base">{drive.durationMinutes} Minutes</p>
+              <div className="bg-gray-50 dark:bg-slate-800 p-5 rounded-2xl text-center border border-gray-200 dark:border-slate-700 shadow-sm">
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold uppercase tracking-widest mb-2">Duration</p>
+                <p className="font-black text-gray-900 dark:text-white text-lg tracking-tight leading-none">{drive.durationMinutes} Minutes</p>
               </div>
             </div>
 
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6 text-xs text-amber-900 dark:text-amber-400 space-y-3 mb-8 shadow-sm">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-[1.5rem] p-6 text-[13px] text-amber-900 dark:text-amber-400 space-y-3 mb-8 shadow-sm">
               <p className="font-extrabold flex items-center gap-2 text-sm uppercase tracking-wider">
                 <FiAlertTriangle size={18} /> Anti-Malpractice Rules
               </p>
@@ -254,15 +254,15 @@ const CampusPortal = () => {
             </div>
 
             {drive.isTestLive ? (
-              <button onClick={startTest} className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white py-4 rounded-xl font-extrabold text-[15px] flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-all hover:scale-[0.98]">
-                <FiPlay size={18} /> Start Assessment Now
+              <button onClick={startTest} className="w-full bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-600 hover:to-emerald-700 text-white py-4 rounded-xl font-extrabold text-[15px] flex items-center justify-center gap-2 shadow-lg shadow-teal-500/30 transition-transform hover:scale-[0.98]">
+                <FiPlay size={20} /> Start Assessment Now
               </button>
             ) : (
-              <div className="text-center p-6 bg-black/5 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5 shadow-inner">
+              <div className="text-center p-6 bg-gray-50 dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 shadow-inner">
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase tracking-widest font-extrabold mb-3">
                   Test unlocks automatically
                 </p>
-                <p className="text-2xl font-extrabold text-gray-900 dark:text-white flex items-center justify-center gap-3">
+                <p className="text-2xl font-black text-gray-900 dark:text-white flex items-center justify-center gap-3 tracking-tight">
                   <FiClock className="text-teal-600 dark:text-teal-400" />
                   {Math.max(0, Math.ceil((new Date(drive.scheduledTestTime).getTime() - nowTime) / 60000))} mins remaining
                 </p>
@@ -271,21 +271,21 @@ const CampusPortal = () => {
           </div>
         ) : (
           /* ACTIVE TEST INTERFACE */
-          <div className="max-w-4xl w-full flex flex-col min-h-0 h-full animate-fade-in">
+          <div className="max-w-4xl w-full flex flex-col min-h-0 h-full animate-fade-in relative pt-4 md:pt-0">
             {/* Sticky Status Bar */}
-            <div className="glass-panel p-5 rounded-[2rem] shadow-md border-white/60 flex flex-wrap items-center justify-between gap-4 sticky top-4 z-50 mb-8">
+            <div className="glass-panel p-5 rounded-[2rem] shadow-sm border border-gray-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-5 sticky top-2 z-50 mb-8 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
               <div>
-                <h3 className="font-extrabold text-gray-900 dark:text-white tracking-tight text-lg">{drive.collegeName} Test</h3>
-                <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest mt-1">
+                <h3 className="font-extrabold text-gray-900 dark:text-white tracking-tight text-xl mb-1">{drive.collegeName} Test</h3>
+                <p className="text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                   Answered: <span className="text-blue-600 dark:text-blue-400">{Object.keys(answers).length}</span> / {drive.questions?.length || 0}
                 </p>
               </div>
 
-              <div className="flex items-center gap-4">
-                <span className={`px-4 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-sm border ${warnings > 0 ? 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 animate-pulse' : 'bg-black/5 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-black/5 dark:border-white/5'}`}>
-                  <FiAlertTriangle /> Warnings {warnings}/3
+              <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                <span className={`flex-1 md:flex-none justify-center px-4 py-3 rounded-xl text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-2 shadow-sm border ${warnings > 0 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700'}`}>
+                  <FiAlertTriangle size={14} /> Warnings {warnings}/3
                 </span>
-                <span className="px-5 py-2.5 rounded-xl bg-gray-900 text-white font-mono font-bold text-lg flex items-center gap-2 shadow-inner border border-gray-700">
+                <span className="flex-1 md:flex-none justify-center px-5 py-2.5 rounded-xl bg-gray-900 text-white font-mono font-bold text-lg flex items-center gap-2 shadow-inner border border-gray-700 tracking-wider">
                   <FiClock className="text-teal-400" /> {formatTimer(timeLeft)}
                 </span>
                 <button
@@ -295,7 +295,7 @@ const CampusPortal = () => {
                     }
                   }}
                   disabled={submitting}
-                  className="bg-gradient-to-r from-teal-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-extrabold text-sm transition-transform shadow-lg shadow-teal-500/30 hover:scale-[0.98] disabled:opacity-50 disabled:scale-100"
+                  className="w-full md:w-auto bg-gradient-to-r from-teal-500 to-emerald-600 text-white px-8 py-3 rounded-xl font-extrabold text-[15px] transition-transform shadow-lg shadow-teal-500/30 hover:scale-[0.98] disabled:opacity-50 disabled:scale-100 mt-2 md:mt-0"
                 >
                   {submitting ? 'Submitting...' : 'Submit Test'}
                 </button>
@@ -305,25 +305,25 @@ const CampusPortal = () => {
             {/* Questions List */}
             <div className="space-y-6 pb-20">
               {(drive.questions || []).map((q, idx) => (
-                <div key={q._id} className="glass-panel p-8 md:p-10 rounded-[2.5rem] shadow-sm border-white/60">
-                  <div className="flex justify-between items-start gap-4 mb-6 border-b border-black/5 dark:border-white/5 pb-4">
+                <div key={q._id} className="glass-panel p-6 md:p-10 rounded-[2.5rem] shadow-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6 border-b border-gray-200 dark:border-slate-700 pb-5">
                     <p className="font-extrabold text-gray-900 dark:text-white text-lg tracking-tight leading-relaxed">
-                      <span className="text-gray-400 mr-1">Q{idx + 1}.</span> {q.text}
+                      <span className="text-gray-400 dark:text-gray-500 mr-2">Q{idx + 1}.</span> {q.text}
                     </p>
-                    <span className="text-[11px] font-extrabold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-lg shrink-0 shadow-sm uppercase tracking-wider">
+                    <span className="text-[10px] font-extrabold bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg shrink-0 shadow-sm uppercase tracking-wider w-fit">
                       {q.marks || 1} Mark(s)
                     </span>
                   </div>
 
                   {q.images && q.images.length > 0 && (
-                    <div className="flex flex-wrap gap-4 mb-8 bg-white/40 dark:bg-slate-800/40 p-4 rounded-[1.5rem] shadow-inner border border-white/50 dark:border-slate-700/50">
+                    <div className="flex flex-wrap gap-4 mb-8 bg-gray-50 dark:bg-slate-800/80 p-5 rounded-[1.5rem] shadow-inner border border-gray-200 dark:border-slate-700">
                       {q.images.map((imgId) => (
-                        <img key={imgId} src={`${API}/assignment-images/${imgId}`} alt="question" className="max-h-56 rounded-xl border border-gray-200 shadow-sm bg-white" />
+                        <img key={imgId} src={`${API}/assignment-images/${imgId}`} alt="question" className="max-h-56 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm bg-white object-cover" />
                       ))}
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 gap-3.5">
+                  <div className="grid grid-cols-1 gap-4">
                     {(q.options || []).map((opt, oIdx) => {
                       const selected = answers[q._id] === oIdx;
                       return (
@@ -331,21 +331,21 @@ const CampusPortal = () => {
                           key={oIdx}
                           type="button"
                           onClick={() => setAnswers({ ...answers, [q._id]: oIdx })}
-                          className={`text-left p-4 md:p-5 rounded-[1.2rem] border-2 text-sm font-bold transition-all flex items-center gap-4 ${
+                          className={`text-left p-4 md:p-5 rounded-[1.5rem] border-2 text-[15px] font-bold transition-all duration-200 flex items-center gap-4 group ${
                             selected
-                              ? 'border-teal-500 bg-teal-500/10 text-teal-900 dark:text-teal-300 shadow-sm'
-                              : 'border-white/50 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-800/60 text-gray-700 dark:text-gray-200'
+                              ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20 text-teal-900 dark:text-teal-200 shadow-sm'
+                              : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-gray-200'
                           }`}
                         >
-                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold border-2 shrink-0 transition-colors ${
+                          <span className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-black border-2 shrink-0 transition-colors ${
                               selected
                                 ? 'bg-teal-500 border-teal-500 text-white'
-                                : 'border-gray-300 dark:border-slate-600 text-gray-500'
+                                : 'border-gray-300 dark:border-slate-600 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 bg-white dark:bg-slate-900'
                             }`}
                           >
                             {String.fromCharCode(65 + oIdx)}
                           </span>
-                          <span className="leading-snug">{opt}</span>
+                          <span className="leading-relaxed">{opt}</span>
                         </button>
                       );
                     })}
