@@ -110,13 +110,8 @@ const Layout = ({ children }) => {
 
       {/* SIDEBAR: Solid 100% opaque background to prevent bleed-through, upgraded rounding */}
       <aside
-<<<<<<< HEAD
-        className={`fixed inset-y-0 left-0 z-50 w-[270px] m-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-2xl rounded-[2.5rem] flex flex-col justify-between transition-transform duration-300 ease-out md:relative md:m-4 shrink-0
-        ${isSidebarOpen ? 'translate-x-0 md:ml-4' : '-translate-x-full md:-ml-[290px]'}`}
-=======
         className={`fixed inset-y-0 left-0 z-50 w-[260px] m-4 bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-[0.5rem] flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
         ${isSidebarOpen ? 'translate-x-0 md:ml-4' : '-translate-x-full md:-ml-[280px]'}`}
->>>>>>> 3c055dd (Aside bar rounded corner removed)
       >
         <div className="overflow-y-auto custom-scrollbar h-full flex flex-col pt-2 pb-2">
           <div className="p-6 md:p-8 flex justify-between items-center shrink-0">
