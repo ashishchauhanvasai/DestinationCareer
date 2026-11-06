@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiHome, FiBookOpen, FiFileText, FiBriefcase, FiSun, FiMoon, FiLogOut, FiUser,
   FiBook, FiStar, FiAward, FiImage, FiUsers, FiHelpCircle, FiClipboard, FiGrid, FiCheckSquare,
-  FiMenu, FiX, FiTarget, FiVideo
+  FiMenu, FiX, FiTarget, FiVideo, FiSearch
 } from 'react-icons/fi';
 import { BsPatchQuestion } from 'react-icons/bs';
 import ChangeCredentialsModal from './ChangeCredentialsModal';
@@ -57,6 +57,67 @@ const Layout = ({ children }) => {
     { tab: 'Students by Batch & Attendance Reports', text: 'Students & Attendance', icon: FiUsers },
   ];
 
+  // --- Search Bar Logic ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getSearchableRoutes = () => {
+    if (isAdmin) {
+      return adminMenu.map(item => ({ name: item.text, path: `/admin?tab=${encodeURIComponent(item.tab)}`, icon: item.icon }));
+    } else if (isTrainer) {
+      return [
+        { name: 'My Batches', path: '/trainer', icon: FiGrid },
+        { name: 'My Students', path: '/trainer/students', icon: FiUsers },
+        { name: 'Courses & Doubts', path: '/courses', icon: FiBookOpen },
+        { name: 'Assignments', path: '/trainer/assignments', icon: FiClipboard },
+        { name: 'Company Questions', path: '/trainer/company-questions', icon: FiHelpCircle },
+        { name: 'Top Performers', path: '/trainer/performers', icon: FiAward },
+      ];
+    } else if (isPromotional) {
+      return [
+        { name: 'Campus Drives', path: '/promo-dashboard', icon: FiTarget },
+        { name: 'My Profile', path: '/profile', icon: FiUser },
+      ];
+    } else {
+      return [
+        { name: 'Dashboard', path: '/', icon: FiHome },
+        { name: 'My Profile', path: '/profile', icon: FiUser },
+        { name: 'Courses', path: '/courses', icon: FiBookOpen },
+        { name: 'Coding Tests', path: '/tests', icon: FiFileText },
+        { name: 'Assignments', path: '/assignments', icon: FiFileText },
+        { name: 'Attendance', path: '/attendance', icon: FiCheckSquare },
+        { name: 'Mock Ratings', path: '/mock-ratings', icon: FiStar },
+        { name: 'Company Questions', path: '/company-questions', icon: BsPatchQuestion },
+        { name: 'Jobs', path: '/jobs', icon: FiBriefcase },
+        { name: 'My Applications', path: '/my-applications', icon: FiClipboard },
+      ];
+    }
+  };
+
+  const searchableRoutes = getSearchableRoutes();
+  const filteredRoutes = searchableRoutes.filter(route => 
+    route.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSelectRoute = (path) => {
+    navigate(path);
+    setSearchQuery('');
+    setShowSearchDropdown(false);
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
+  // ------------------------
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
@@ -102,15 +163,15 @@ const Layout = ({ children }) => {
   return (
     <div className="flex h-[100dvh] bg-transparent transition-colors duration-300 overflow-hidden">
 
-      {/* Mobile Overlay (Dark and fully opaque backdrop) */}
+      {/* Mobile Overlay */}
       <div
         className={`fixed inset-0 bg-gray-900/70 backdrop-blur-md z-40 md:hidden transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
         onClick={() => setIsSidebarOpen(false)}
       />
 
-      {/* SIDEBAR: Solid 100% opaque background to prevent bleed-through, upgraded rounding */}
+      {/* SIDEBAR */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] m-4 bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-[0.5rem] flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] m-4 bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-slate-800 shadow-2xl rounded-[1.5rem] flex flex-col justify-between transition-all duration-300 ease-in-out md:relative md:m-4 shrink-0
         ${isSidebarOpen ? 'translate-x-0 md:ml-4' : '-translate-x-full md:-ml-[280px]'}`}
       >
         <div className="overflow-y-auto custom-scrollbar h-full flex flex-col pt-2 pb-2">
@@ -175,26 +236,26 @@ const Layout = ({ children }) => {
           </nav>
 
           {/* User Widget / Dark Mode Toggle */}
-          <div className="p-5 mx-3 mb-2 bg-gray-50 dark:bg-slate-800 rounded-[2rem] border border-gray-200 dark:border-slate-700 shrink-0 shadow-sm">
+          <div className="p-5 mx-3 mb-2 bg-gray-50 dark:bg-slate-800 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shrink-0 shadow-sm">
             {role === 'student' && (
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] mb-5 border border-gray-200 dark:border-slate-700 flex flex-col items-center shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl mb-5 border border-gray-200 dark:border-slate-700 flex flex-col items-center shadow-sm">
                 <p className="text-[10px] text-gray-500 dark:text-gray-400 font-extrabold mb-1 tracking-widest uppercase">Employability</p>
                 <p className="text-2xl font-black text-gray-900 dark:text-white leading-none">0 <span className="text-sm font-bold text-gray-400">/ 100</span></p>
               </div>
             )}
 
-            <div className="flex bg-gray-200 dark:bg-slate-900 rounded-[1.5rem] p-1.5 mb-5 border border-gray-300 dark:border-slate-800 shadow-inner">
-              <button onClick={() => setIsDarkMode(false)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-extrabold transition-all ${!isDarkMode ? 'bg-white shadow-sm text-gray-900 border border-gray-100' : 'text-gray-500 hover:text-gray-700'}`}>
+            <div className="flex bg-gray-200 dark:bg-slate-900 rounded-xl p-1.5 mb-5 border border-gray-300 dark:border-slate-800 shadow-inner">
+              <button onClick={() => setIsDarkMode(false)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-extrabold transition-all ${!isDarkMode ? 'bg-white shadow-sm text-gray-900 border border-gray-100' : 'text-gray-500 hover:text-gray-700'}`}>
                 <FiSun size={14} /> Light
               </button>
-              <button onClick={() => setIsDarkMode(true)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-extrabold transition-all ${isDarkMode ? 'bg-slate-700 shadow-sm text-white border border-slate-600' : 'text-gray-500 hover:text-gray-300'}`}>
+              <button onClick={() => setIsDarkMode(true)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-extrabold transition-all ${isDarkMode ? 'bg-slate-700 shadow-sm text-white border border-slate-600' : 'text-gray-500 hover:text-gray-300'}`}>
                 <FiMoon size={14} /> Dark
               </button>
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0 pr-2">
-                <div className={`w-10 h-10 shrink-0 rounded-xl shadow-sm flex items-center justify-center text-white font-black text-sm border border-white/20 ${isAdmin ? 'bg-red-500' : isTrainer ? 'bg-purple-500' : isPromotional ? 'bg-teal-500' : 'bg-blue-600'}`}>
+                <div className={`w-10 h-10 shrink-0 rounded-[0.8rem] shadow-sm flex items-center justify-center text-white font-black text-sm border border-white/20 ${isAdmin ? 'bg-red-500' : isTrainer ? 'bg-purple-500' : isPromotional ? 'bg-teal-500' : 'bg-blue-600'}`}>
                   {isAdmin ? 'A' : isTrainer ? 'T' : isPromotional ? 'P' : 'S'}
                 </div>
                 <div className="min-w-0">
@@ -206,7 +267,7 @@ const Layout = ({ children }) => {
                   </p>
                 </div>
               </div>
-              <button onClick={handleLogout} className="p-2.5 text-gray-500 hover:text-red-500 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-200 dark:hover:border-red-800 rounded-xl transition-colors shrink-0 shadow-sm" title="Logout">
+              <button onClick={handleLogout} className="p-2.5 text-gray-500 hover:text-red-500 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 hover:bg-red-50 dark:hover:bg-red-900/30 hover:border-red-200 dark:hover:border-red-800 rounded-[0.8rem] transition-colors shrink-0 shadow-sm" title="Logout">
                 <FiLogOut size={16} />
               </button>
             </div>
@@ -215,9 +276,9 @@ const Layout = ({ children }) => {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Top Header - Now fully solid backing to prevent bleed-through */}
-        <header className="bg-white/90 dark:bg-[#1e293b]/90 backdrop-blur-xl border border-gray-200 dark:border-slate-700 m-4 mb-0 p-3 px-5 rounded-[1.5rem] flex items-center justify-between z-10 shrink-0 shadow-sm">
-          <div className="flex items-center gap-3">
+        {/* Top Header */}
+        <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-gray-200 dark:border-slate-700 m-4 mb-0 p-3 px-5 rounded-[1.2rem] flex items-center justify-between z-10 shrink-0 shadow-sm">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="text-gray-600 dark:text-gray-300 p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors border border-transparent dark:hover:border-slate-700"
@@ -225,13 +286,55 @@ const Layout = ({ children }) => {
               <FiMenu size={22} />
             </button>
 
-            <h1 className={`text-lg font-black text-blue-600 dark:text-blue-400 transition-opacity duration-300 tracking-tight ${!isSidebarOpen || window.innerWidth < 768 ? 'opacity-100' : 'md:opacity-0 md:w-0 overflow-hidden'}`}>
+            <h1 className={`text-lg font-black text-blue-600 dark:text-blue-400 transition-opacity duration-300 tracking-tight hidden sm:block ${!isSidebarOpen || window.innerWidth < 768 ? 'opacity-100' : 'md:opacity-0 md:w-0 overflow-hidden'}`}>
               Destination<span className="text-gray-900 dark:text-white opacity-90">Career</span>
             </h1>
           </div>
 
+          {/* Search Bar Block */}
+          <div className="flex-1 max-w-md px-4 relative" ref={searchRef}>
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search menus..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSearchDropdown(true);
+                }}
+                onFocus={() => setShowSearchDropdown(true)}
+                className="w-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full py-2 pl-9 pr-4 text-[13px] font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
+              />
+            </div>
+
+            {showSearchDropdown && searchQuery.length > 0 && (
+              <div className="absolute top-full left-4 right-4 mt-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar z-50 p-2">
+                {filteredRoutes.length > 0 ? (
+                  filteredRoutes.map((route, idx) => {
+                    const Icon = route.icon;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectRoute(route.path)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl transition-colors text-left"
+                      >
+                        <Icon size={16} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                        <span className="text-[13px] font-extrabold text-gray-900 dark:text-gray-100 truncate">{route.name}</span>
+                      </button>
+                    )
+                  })
+                ) : (
+                  <div className="px-4 py-4 text-center text-[13px] font-bold text-gray-500 dark:text-gray-400">
+                    No matching menus found.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div
-            className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm shadow-md border border-white/20 ${
+            className={`w-10 h-10 rounded-[0.8rem] flex items-center justify-center text-white font-black text-sm shadow-sm border border-white/20 shrink-0 ${
               isAdmin ? 'bg-gradient-to-br from-red-500 to-red-600' : isTrainer ? 'bg-gradient-to-br from-purple-500 to-purple-600' : isPromotional ? 'bg-gradient-to-br from-teal-500 to-teal-600' : 'bg-gradient-to-br from-blue-500 to-blue-600'
             }`}
             title={role}
