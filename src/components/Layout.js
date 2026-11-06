@@ -291,8 +291,8 @@ const Layout = ({ children }) => {
             </h1>
           </div>
 
-          {/* Search Bar Block */}
-          <div className="flex-1 max-w-md px-4 relative" ref={searchRef}>
+          {/* Search Bar Block - Compact & Centered */}
+          <div className="flex-1 max-w-[260px] sm:max-w-[320px] px-4 relative mx-auto" ref={searchRef}>
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
@@ -304,7 +304,7 @@ const Layout = ({ children }) => {
                   setShowSearchDropdown(true);
                 }}
                 onFocus={() => setShowSearchDropdown(true)}
-                className="w-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full py-2 pl-9 pr-4 text-[13px] font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
+                className="w-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-full py-2.5 pl-9 pr-4 text-[13px] font-bold text-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-inner"
               />
             </div>
 
