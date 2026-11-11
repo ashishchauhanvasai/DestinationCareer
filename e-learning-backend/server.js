@@ -256,10 +256,10 @@ const userSchema = new mongoose.Schema({
   pendingMobileId: { type: String, default: null },
   mobileChangeRequested: { type: Boolean, default: false },
 
-  desktopDeviceId: { type: String, default: null },
+ desktopDeviceId: { type: String, default: null },
   pendingDesktopDeviceId: { type: String, default: null },
   mobileDeviceId: { type: String, default: null },
-  pendingMobileDeviceId: { type: Boolean, default: null },
+  pendingMobileDeviceId: { type: String, default: null }, // ✅ FIX: Changed from Boolean to String
   
   tokenVersion: { type: Number, default: 0 },
   domain: { type: String, enum: ['', 'Java', 'Python', 'Data Analytics', 'Frontend'], default: '' }
@@ -762,16 +762,21 @@ app.post('/api/login', authLimiter, async (req, res) => {
       }
     }
 
-    // 🚀 Run any needed DB updates and Drive Code lookup in parallel
+    // 🚀 Run any needed DB updates and Drive Code lookup in parallel safely
     const hasUpdates = Object.keys(dbUpdates).length > 0;
     const needDriveLookup = user.role === 'campus_student' && user.registeredDrive;
 
-    const [, driveDoc] = await Promise.all([
-      hasUpdates ? User.updateOne({ _id: user._id }, { $set: dbUpdates }) : Promise.resolve(),
-      needDriveLookup
-        ? CollegeDrive.findById(user.registeredDrive).select('driveCode').lean()
-        : Promise.resolve(null)
-    ]);
+    let driveDoc = null;
+    if (hasUpdates || needDriveLookup) {
+      const results = await Promise.all([
+        hasUpdates ? User.updateOne({ _id: user._id }, { $set: dbUpdates }) : Promise.resolve(),
+        needDriveLookup
+          // ✅ FIX: Use mongoose.model to avoid ReferenceErrors caused by file ordering
+          ? mongoose.model('CollegeDrive').findById(user.registeredDrive).select('driveCode').lean()
+          : Promise.resolve(null)
+      ]);
+      driveDoc = results[1];
+    }
 
     // JWT TOKEN GENERATION
     const token = jwt.sign(
