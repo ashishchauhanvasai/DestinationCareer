@@ -3,7 +3,7 @@ import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import QrScannerModal from '../components/QrScannerModal';
 import {
-  FiMapPin, FiClock, FiUsers, FiLogIn, FiLogOut, FiList, FiStar, FiX, FiVideo, FiCheckCircle, FiTarget
+  FiMapPin, FiClock, FiUsers, FiLogIn, FiLogOut, FiList, FiStar, FiX, FiVideo, FiCheckCircle, FiTarget, FiSmartphone
 } from 'react-icons/fi';
 
 import OnlineClassesManager from '../components/OnlineClassesManager';
@@ -30,6 +30,11 @@ const TrainerDashboard = () => {
   const [roster, setRoster] = useState([]);
   const [ratings, setRatings] = useState([]);
   const [rForm, setRForm] = useState(emptyRating);
+
+  // NEW: Students Modal for Device Approvals
+  const [studentsModalBatch, setStudentsModalBatch] = useState(null);
+  const [batchStudents, setBatchStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
 
   const load = useCallback(async () => {
     try { setBatches((await axios.get(`${API}/batches/mine`, cfg())).data); }
@@ -96,6 +101,37 @@ const TrainerDashboard = () => {
       setRatings((await axios.get(`${API}/mock-ratings/batch/${mockBatch._id}`, cfg())).data);
       setRForm(emptyRating);
     } catch (err) { alert(err.response?.data?.message || 'Failed to save rating'); }
+  };
+
+  // NEW: Open Students Modal for Device Approval
+  const openStudentsModal = async (batch) => {
+    setStudentsModalBatch(batch);
+    setLoadingStudents(true);
+    try {
+      const res = await axios.get(`${API}/staff/batches/${batch._id}/students`, cfg());
+      setBatchStudents(res.data.students || []);
+    } catch (err) {
+      alert("Failed to load students");
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  // NEW: Approve Single Device
+  const handleApproveDevice = async (studentId) => {
+    try {
+      const res = await axios.put(`${API}/users/${studentId}/approve-device`, {}, cfg());
+      alert(res.data.message || 'Device approved successfully!');
+      
+      // Refresh the modal data
+      setLoadingStudents(true);
+      const refresh = await axios.get(`${API}/staff/batches/${studentsModalBatch._id}/students`, cfg());
+      setBatchStudents(refresh.data.students || []);
+      setLoadingStudents(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to approve device');
+      setLoadingStudents(false);
+    }
   };
 
   const ongoingBatches = batches.filter((b) => b.isActive !== false);
@@ -178,11 +214,14 @@ const TrainerDashboard = () => {
           </div>
         )}
 
-        <div className="flex gap-4 pt-6 mt-auto border-t border-gray-200 dark:border-slate-700">
-          <button onClick={() => openHistory(b)} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
+        <div className="flex flex-wrap sm:flex-nowrap gap-3 pt-6 mt-auto border-t border-gray-200 dark:border-slate-700">
+          <button onClick={() => openStudentsModal(b)} className="w-full sm:flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
+            <FiUsers size={16} className="text-emerald-500" /> Students
+          </button>
+          <button onClick={() => openHistory(b)} className="w-full sm:flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
             <FiList size={16} className="text-blue-500" /> History
           </button>
-          <button onClick={() => openMock(b)} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
+          <button onClick={() => openMock(b)} className="w-full sm:flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
             <FiStar size={16} className="text-yellow-500" /> Mocks
           </button>
         </div>
@@ -272,7 +311,54 @@ const TrainerDashboard = () => {
         </div>
       )}
 
-      {scanFor && <QrScannerModal onResult={handleScan} onClose={() => setScanFor(null)} />}
+      {/* NEW: STUDENTS & DEVICE APPROVAL MODAL */}
+      {studentsModalBatch && (
+        <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setStudentsModalBatch(null)}>
+          <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-slate-700 pb-5">
+              <p className="font-black text-2xl text-gray-900 dark:text-white tracking-tight">{studentsModalBatch.subject} <span className="text-gray-400 font-bold">Students</span></p>
+              <button onClick={() => setStudentsModalBatch(null)} className="p-3 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-full transition-colors border border-gray-200 dark:border-slate-700 shadow-sm"><FiX size={20} className="text-gray-600 dark:text-gray-400" /></button>
+            </div>
+            
+            {loadingStudents ? (
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 py-10 text-center font-bold animate-pulse">Loading students...</p>
+            ) : batchStudents.length === 0 ? (
+              <p className="text-[15px] text-gray-500 dark:text-gray-400 py-10 text-center font-bold">No students in this batch.</p>
+            ) : (
+              <div className="space-y-4">
+                {batchStudents.map(s => {
+                  const needsApproval = s.desktopChangeRequested || s.mobileChangeRequested;
+                  return (
+                    <div key={s._id} className="p-5 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 rounded-2xl transition-colors shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-5 group">
+                      <div className="flex items-center gap-4">
+                        <img src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="w-12 h-12 rounded-[1rem] object-cover border border-gray-200 dark:border-slate-700 shadow-sm shrink-0 bg-white" alt="dp" />
+                        <div>
+                          <div className="font-black text-[15px] text-gray-900 dark:text-white tracking-tight flex items-center gap-2">
+                            {s.name}
+                            {needsApproval && <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-sm" title="Device Approval Pending"></span>}
+                          </div>
+                          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 mt-0.5">{s.email}</p>
+                        </div>
+                      </div>
+                      <div>
+                        {needsApproval ? (
+                          <button onClick={() => handleApproveDevice(s._id)} className="w-full sm:w-auto bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-400 hover:text-white border border-emerald-200 dark:border-emerald-800 px-4 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-colors shadow-sm flex items-center justify-center gap-2">
+                            <FiSmartphone size={14} /> Approve Device
+                          </button>
+                        ) : (
+                          <span className="text-[11px] font-extrabold uppercase tracking-widest text-gray-400 dark:text-gray-500 flex items-center justify-center sm:justify-end gap-1.5 px-4 py-2.5">
+                             <FiCheckCircle size={14} /> Verified
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* HISTORY MODAL */}
       {historyBatch && (

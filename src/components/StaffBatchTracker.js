@@ -105,7 +105,7 @@ const StaffBatchTracker = ({ title }) => {
     }
   };
 
-  // Super Admin: Toggle Batch Ongoing / Completed
+  // ✅ NEW: Super Admin / Admin: Toggle Batch Ongoing / Completed
   const handleToggleBatchStatus = async (e, targetBatch) => {
     if (e) e.stopPropagation();
     const nextStateLabel = targetBatch.isActive === false ? 'Ongoing' : 'Completed';
@@ -127,7 +127,7 @@ const StaffBatchTracker = ({ title }) => {
     }
   };
 
-  // Trainer / Admin / SuperAdmin: Approve Single Student Device
+  // ✅ NEW: Trainer / Admin / SuperAdmin: Approve Single Student Device
   const handleApproveDevice = async (s) => {
     try {
       const res = await axios.put(`${API}/users/${s._id}/approve-device`, {}, cfg());
@@ -138,7 +138,7 @@ const StaffBatchTracker = ({ title }) => {
     }
   };
 
-  // Trainer / Admin / SuperAdmin: Bulk Approve Devices
+  // ✅ NEW: Trainer / Admin / SuperAdmin: Bulk Approve Devices
   const handleBulkApproveDevices = async () => {
     try {
       const res = await axios.put(`${API}/users/bulk-approve-device`, { userIds: selectedStudentIds }, cfg());
@@ -363,7 +363,7 @@ const StaffBatchTracker = ({ title }) => {
               <span className="text-[11px] font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg shadow-sm">
                 {batch.batchCode}
               </span>
-              {isSuperAdmin && !isUnassigned && (
+              {isAdmin && !isUnassigned && (
                 <button
                   type="button"
                   onClick={(e) => handleToggleBatchStatus(e, batch)}
@@ -740,7 +740,7 @@ const StaffBatchTracker = ({ title }) => {
             </div>
           </div>
 
-          {isSuperAdmin && (
+          {isAdmin && (
             <button
               type="button"
               onClick={(e) => handleToggleBatchStatus(e, b)}
