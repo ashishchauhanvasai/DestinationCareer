@@ -9,7 +9,11 @@ import {
   FiChevronUp,
   FiCheckSquare,
   FiTrash2,
-  FiX
+  FiX,
+  FiCheckCircle,
+  FiSmartphone,
+  FiRotateCcw,
+  FiTarget
 } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
@@ -45,7 +49,10 @@ const BackButton = ({ onClick, children }) => (
 );
 
 const StaffBatchTracker = ({ title }) => {
-  const isAdmin = ['admin', 'superadmin'].includes(localStorage.getItem('role'));
+  const role = localStorage.getItem('role');
+  const isAdmin = ['admin', 'superadmin'].includes(role);
+  const isSuperAdmin = role === 'superadmin';
+  const canApproveDevice = ['admin', 'superadmin', 'trainer'].includes(role);
 
   const [list, setList] = useState({ batches: [], unassignedCount: null });
   const [loading, setLoading] = useState(true);
@@ -95,6 +102,50 @@ const StaffBatchTracker = ({ title }) => {
         setStudents(r.data);
         setSelectedStudentIds([]);
       } catch (err) { console.error(err); }
+    }
+  };
+
+  // Super Admin: Toggle Batch Ongoing / Completed
+  const handleToggleBatchStatus = async (e, targetBatch) => {
+    if (e) e.stopPropagation();
+    const nextStateLabel = targetBatch.isActive === false ? 'Ongoing' : 'Completed';
+    if (!window.confirm(`Mark "${targetBatch.subject} (${targetBatch.batchCode})" as ${nextStateLabel}?`)) return;
+    try {
+      const res = await axios.put(`${API}/batches/${targetBatch._id}/status`, {}, cfg());
+      const updatedIsActive = res.data.isActive;
+      setList((prev) => ({
+        ...prev,
+        batches: prev.batches.map((item) =>
+          item._id === targetBatch._id ? { ...item, isActive: updatedIsActive } : item
+        )
+      }));
+      if (batch && batch._id === targetBatch._id) {
+        setBatch((prev) => ({ ...prev, isActive: updatedIsActive }));
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update batch status');
+    }
+  };
+
+  // Trainer / Admin / SuperAdmin: Approve Single Student Device
+  const handleApproveDevice = async (s) => {
+    try {
+      const res = await axios.put(`${API}/users/${s._id}/approve-device`, {}, cfg());
+      alert(res.data.message || `Approved new device for ${s.name}`);
+      await refreshCurrentBatch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to approve device');
+    }
+  };
+
+  // Trainer / Admin / SuperAdmin: Bulk Approve Devices
+  const handleBulkApproveDevices = async () => {
+    try {
+      const res = await axios.put(`${API}/users/bulk-approve-device`, { userIds: selectedStudentIds }, cfg());
+      alert(res.data.message || 'Approved pending devices for selected students!');
+      await refreshCurrentBatch();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to bulk approve devices');
     }
   };
 
@@ -296,10 +347,36 @@ const StaffBatchTracker = ({ title }) => {
 
         <div className="glass-panel bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6 border border-gray-200 dark:border-slate-700">
           <div>
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-3 leading-tight">{batch.subject}</h2>
-            <span className="text-[11px] font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg shadow-sm">
-              {batch.batchCode}
-            </span>
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">{batch.subject}</h2>
+              {!isUnassigned && (
+                <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest border shadow-sm ${
+                  batch.isActive === false
+                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                }`}>
+                  {batch.isActive === false ? 'Completed' : 'Ongoing'}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-[11px] font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg shadow-sm">
+                {batch.batchCode}
+              </span>
+              {isSuperAdmin && !isUnassigned && (
+                <button
+                  type="button"
+                  onClick={(e) => handleToggleBatchStatus(e, batch)}
+                  className={`text-[11px] font-extrabold uppercase tracking-wider px-4 py-1.5 rounded-lg border shadow-sm flex items-center gap-1.5 transition-colors ${
+                    batch.isActive === false
+                      ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-600 hover:text-white'
+                      : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white'
+                  }`}
+                >
+                  {batch.isActive === false ? <><FiRotateCcw size={13} /> Reopen Batch</> : <><FiCheckCircle size={13} /> Mark Batch Completed</>}
+                </button>
+              )}
+            </div>
           </div>
           
           {!isUnassigned && (
@@ -328,24 +405,34 @@ const StaffBatchTracker = ({ title }) => {
           )}
         </div>
 
-        {isAdmin && tab === 'students' && selectedStudentIds.length > 0 && (
+        {canApproveDevice && tab === 'students' && selectedStudentIds.length > 0 && (
           <div className="glass-panel p-6 md:p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between shadow-sm border border-blue-200 dark:border-blue-800/50 gap-6 animate-fade-in bg-blue-50 dark:bg-blue-900/20">
             <span className="text-blue-800 dark:text-blue-300 font-black text-xl tracking-tight">
               {selectedStudentIds.length} student(s) selected
             </span>
-            <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
+            <div className="flex flex-col sm:flex-row flex-wrap w-full md:w-auto gap-4">
               <button
-                onClick={() => { setTargetBatchId(''); setMovingStudent('BULK'); }}
-                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3.5 rounded-xl text-[13px] uppercase tracking-wider font-extrabold shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-center"
+                onClick={handleBulkApproveDevices}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-3.5 rounded-xl text-[13px] uppercase tracking-wider font-extrabold shadow-lg shadow-emerald-500/30 hover:scale-[0.98] transition-transform flex items-center justify-center gap-2"
               >
-                {isUnassigned ? 'Assign to Batch' : 'Move to Batch'}
+                <FiSmartphone size={16} /> Approve Selected Devices
               </button>
-              <button
-                onClick={handleBulkDeleteStudents}
-                className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-8 py-3.5 rounded-xl text-[13px] uppercase tracking-wider font-extrabold shadow-lg shadow-red-500/30 hover:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-              >
-                <FiTrash2 size={16} /> Delete
-              </button>
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => { setTargetBatchId(''); setMovingStudent('BULK'); }}
+                    className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3.5 rounded-xl text-[13px] uppercase tracking-wider font-extrabold shadow-lg shadow-blue-500/30 hover:scale-[0.98] transition-transform text-center"
+                  >
+                    {isUnassigned ? 'Assign to Batch' : 'Move to Batch'}
+                  </button>
+                  <button
+                    onClick={handleBulkDeleteStudents}
+                    className="w-full sm:w-auto bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3.5 rounded-xl text-[13px] uppercase tracking-wider font-extrabold shadow-lg shadow-red-500/30 hover:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+                  >
+                    <FiTrash2 size={16} /> Delete
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -357,7 +444,7 @@ const StaffBatchTracker = ({ title }) => {
               <table className="w-full text-left text-[15px] whitespace-nowrap">
                 <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 text-[11px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
                   <tr>
-                    {isAdmin && (
+                    {canApproveDevice && (
                       <th className="p-6 w-12 text-center">
                         <input
                           type="checkbox"
@@ -376,64 +463,88 @@ const StaffBatchTracker = ({ title }) => {
                 <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
                   {!students ? <tr><td colSpan="5" className="p-20 text-center text-xl font-bold text-gray-500 animate-pulse">Loading...</td></tr>
                   : students.students.length === 0 ? <tr><td colSpan="5" className="p-20 text-center text-xl font-bold text-gray-500">No students here.</td></tr>
-                  : students.students.map((s) => (
-                    <tr key={s._id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
-                      {isAdmin && (
-                        <td className="p-6 text-center">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
-                            checked={selectedStudentIds.includes(s._id)}
-                            onChange={() => handleSelectOne(s._id)}
+                  : students.students.map((s) => {
+                    const hasDeviceRequest = Boolean(s.desktopChangeRequested || s.mobileChangeRequested);
+                    return (
+                      <tr key={s._id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group">
+                        {canApproveDevice && (
+                          <td className="p-6 text-center">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 cursor-pointer accent-blue-600 rounded"
+                              checked={selectedStudentIds.includes(s._id)}
+                              onChange={() => handleSelectOne(s._id)}
+                            />
+                          </td>
+                        )}
+                        <td className="p-6 flex items-center gap-5">
+                          <img 
+                            src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
+                            alt="DP" 
+                            className="w-14 h-14 rounded-[1.2rem] object-cover border border-gray-200 dark:border-slate-700 shadow-sm bg-white"
                           />
+                          <div>
+                            <div className="font-black text-[17px] text-gray-900 dark:text-white tracking-tight mb-1 flex items-center gap-2">
+                              {s.name}
+                              {s.desktopChangeRequested && (
+                                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                                  Laptop Req
+                                </span>
+                              )}
+                              {s.mobileChangeRequested && (
+                                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                                  Mobile Req
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[13px] font-bold text-gray-500 dark:text-gray-400">{s.email}</div>
+                          </div>
                         </td>
-                      )}
-                      <td className="p-6 flex items-center gap-5">
-                        <img 
-                          src={s.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} 
-                          alt="DP" 
-                          className="w-14 h-14 rounded-[1.2rem] object-cover border border-gray-200 dark:border-slate-700 shadow-sm bg-white"
-                        />
-                        <div>
-                          <div className="font-black text-[17px] text-gray-900 dark:text-white tracking-tight mb-1">{s.name}</div>
-                          <div className="text-[13px] font-bold text-gray-500 dark:text-gray-400">{s.email}</div>
-                        </div>
-                      </td>
-                      {!isUnassigned && (
-                        <td className="p-6 text-center font-black text-gray-900 dark:text-white text-2xl">
-                          {s.attended} <span className="text-sm text-gray-500 font-bold">/ {students.totalClasses}</span>
+                        {!isUnassigned && (
+                          <td className="p-6 text-center font-black text-gray-900 dark:text-white text-2xl">
+                            {s.attended} <span className="text-sm text-gray-500 font-bold">/ {students.totalClasses}</span>
+                          </td>
+                        )}
+                        <td className="p-6 text-center font-black text-gray-900 dark:text-white text-xl">
+                          {s.assignmentsAnswered} <span className="text-sm text-gray-500 font-bold">answered</span>
+                          {s.assignmentsPending > 0 && <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50 px-3 py-1.5 rounded-lg text-[10px] ml-3 uppercase tracking-widest shadow-sm block sm:inline-block mt-2 sm:mt-0 w-fit mx-auto">{s.assignmentsPending} pending</span>}
                         </td>
-                      )}
-                      <td className="p-6 text-center font-black text-gray-900 dark:text-white text-xl">
-                        {s.assignmentsAnswered} <span className="text-sm text-gray-500 font-bold">answered</span>
-                        {s.assignmentsPending > 0 && <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800/50 px-3 py-1.5 rounded-lg text-[10px] ml-3 uppercase tracking-widest shadow-sm block sm:inline-block mt-2 sm:mt-0 w-fit mx-auto">{s.assignmentsPending} pending</span>}
-                      </td>
-                      <td className="p-6">
-                        <div className="flex items-center justify-end gap-3">
-                          <button onClick={() => openStudent(s._id)} className="glass-button text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 font-extrabold text-[11px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-colors border border-gray-200 dark:border-slate-700 shadow-sm">
-                            History
-                          </button>
-                          {isAdmin && (
-                            <>
+                        <td className="p-6">
+                          <div className="flex items-center justify-end gap-3">
+                            {canApproveDevice && hasDeviceRequest && (
                               <button
-                                onClick={() => { setTargetBatchId(''); setMovingStudent(s); }}
-                                className="bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-600 text-orange-600 dark:text-orange-400 hover:text-white border border-orange-200 dark:border-orange-800 px-4 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-colors shadow-sm"
+                                onClick={() => handleApproveDevice(s)}
+                                className="bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-400 hover:text-white border border-emerald-200 dark:border-emerald-800 px-4 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-colors shadow-sm flex items-center gap-1.5"
+                                title="Approve Pending Device Change"
                               >
-                                {isUnassigned ? 'Assign' : 'Change'}
+                                <FiSmartphone size={14} /> Approve Device
                               </button>
-                              <button
-                                onClick={() => handleDeleteStudent(s)}
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-600 hover:text-white border border-red-200 dark:border-red-800 transition-colors shadow-sm opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                                title="Delete Student"
-                              >
-                                <FiTrash2 size={16} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            )}
+                            <button onClick={() => openStudent(s._id)} className="glass-button text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 font-extrabold text-[11px] uppercase tracking-wider px-4 py-2.5 rounded-xl transition-colors border border-gray-200 dark:border-slate-700 shadow-sm">
+                              History
+                            </button>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  onClick={() => { setTargetBatchId(''); setMovingStudent(s); }}
+                                  className="bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-600 text-orange-600 dark:text-orange-400 hover:text-white border border-orange-200 dark:border-orange-800 px-4 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition-colors shadow-sm"
+                                >
+                                  {isUnassigned ? 'Assign' : 'Change'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteStudent(s)}
+                                  className="w-10 h-10 rounded-xl flex items-center justify-center text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-600 hover:text-white border border-red-200 dark:border-red-800 transition-colors shadow-sm opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                                  title="Delete Student"
+                                >
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -574,55 +685,126 @@ const StaffBatchTracker = ({ title }) => {
   // ---------------- ALL BATCHES ----------------
   if (loading) return <div className="h-[50vh] flex items-center justify-center text-xl font-bold text-gray-500 animate-pulse">Loading batches...</div>;
 
+  const ongoingBatches = list.batches.filter((b) => b.isActive !== false);
+  const completedBatches = list.batches.filter((b) => b.isActive === false);
+
+  const renderBatchTile = (b) => {
+    const isCompleted = b.isActive === false;
+    return (
+      <div
+        key={b._id}
+        onClick={() => openBatch(b)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && openBatch(b)}
+        className="glass-panel bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] border border-gray-200 dark:border-slate-700 text-left hover:-translate-y-1.5 transition-all duration-300 group flex flex-col justify-between h-full shadow-sm hover:shadow-lg cursor-pointer"
+      >
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg tracking-widest uppercase shadow-sm">
+              {b.batchCode}
+            </span>
+            <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest border shadow-sm ${
+              isCompleted
+                ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-slate-700'
+            }`}>
+              {isCompleted ? 'Completed' : 'Ongoing'}
+            </span>
+          </div>
+
+          <p className="font-black text-3xl text-gray-900 dark:text-white leading-tight tracking-tight mb-5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{b.subject}</p>
+          {isAdmin && b.trainerName && (
+            <p className="text-[11px] font-extrabold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800 w-fit px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm uppercase tracking-wider">
+              <span className="text-purple-600 dark:text-purple-400">Trainer:</span> {b.trainerName}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <div className="grid grid-cols-3 gap-3 md:gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-slate-700 text-center">
+            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
+              <FiUsers className="mx-auto text-blue-500 mb-2.5" size={24} />
+              <p className="font-black text-2xl text-gray-900 dark:text-white leading-none mb-1.5">{b.studentCount}</p>
+              <p className="text-[9px] uppercase font-extrabold tracking-widest text-gray-500 dark:text-gray-400">Students</p>
+            </div>
+            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
+              <FiClock className="mx-auto text-purple-500 mb-2.5" size={24} />
+              <p className="font-black text-2xl text-gray-900 dark:text-white leading-none mb-1.5">{b.classesTaken}</p>
+              <p className="text-[9px] uppercase font-extrabold tracking-widest text-gray-500 dark:text-gray-400">Classes</p>
+            </div>
+            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
+              <FiStar className="mx-auto text-yellow-500 mb-2.5" size={24} />
+              <p className="font-black text-2xl text-gray-900 dark:text-white leading-none mb-1.5">{b.mocksTaken}</p>
+              <p className="text-[9px] uppercase font-extrabold tracking-widest text-gray-500 dark:text-gray-400">Mocks</p>
+            </div>
+          </div>
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={(e) => handleToggleBatchStatus(e, b)}
+              className={`w-full mt-5 py-3 rounded-xl text-[11px] font-extrabold uppercase tracking-wider border shadow-sm flex items-center justify-center gap-2 transition-colors ${
+                isCompleted
+                  ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-600 hover:text-white'
+                  : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white'
+              }`}
+            >
+              {isCompleted ? <><FiRotateCcw size={14} /> Mark as Ongoing</> : <><FiCheckCircle size={14} /> Mark Batch Completed</>}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-16 animate-fade-in">
+    <div className="space-y-12 max-w-7xl mx-auto pb-16 animate-fade-in">
       {heading}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {isAdmin && list.unassignedCount > 0 && (
-          <button
-            type="button"
-            onClick={() => openBatch({ _id: 'unassigned', subject: 'Students not in any batch yet', batchCode: 'Unassigned' })}
-            className="text-left rounded-[2.5rem] border-2 border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors group flex flex-col justify-center shadow-sm p-10"
-          >
-            <div className="w-20 h-20 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl border border-red-200 dark:border-red-800 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-sm"><FiUsers size={40} /></div>
-            <p className="font-black text-3xl text-gray-900 dark:text-white tracking-tight leading-tight">Unassigned Students</p>
-            <p className="text-[15px] font-medium text-gray-500 dark:text-gray-400 mt-3 leading-relaxed opacity-90">Click to assign these students to ongoing batches or remove them.</p>
-            <p className="text-5xl font-black text-gray-900 dark:text-white mt-8">{list.unassignedCount}</p>
-          </button>
+      {/* ONGOING BATCHES */}
+      <div>
+        <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-gray-200 dark:border-slate-700 pb-4">
+          <FiTarget className="text-blue-500" /> Ongoing Batches ({ongoingBatches.length})
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {isAdmin && list.unassignedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => openBatch({ _id: 'unassigned', subject: 'Students not in any batch yet', batchCode: 'Unassigned' })}
+              className="text-left rounded-[2.5rem] border-2 border-dashed border-gray-300 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors group flex flex-col justify-center shadow-sm p-10"
+            >
+              <div className="w-20 h-20 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl border border-red-200 dark:border-red-800 flex items-center justify-center mb-8 group-hover:scale-110 transition-transform shadow-sm"><FiUsers size={40} /></div>
+              <p className="font-black text-3xl text-gray-900 dark:text-white tracking-tight leading-tight">Unassigned Students</p>
+              <p className="text-[15px] font-medium text-gray-500 dark:text-gray-400 mt-3 leading-relaxed opacity-90">Click to assign these students to ongoing batches or remove them.</p>
+              <p className="text-5xl font-black text-gray-900 dark:text-white mt-8">{list.unassignedCount}</p>
+            </button>
+          )}
+
+          {ongoingBatches.length === 0 && (
+            <div className="col-span-full glass-panel bg-white dark:bg-slate-900 p-16 rounded-[2.5rem] border border-gray-200 dark:border-slate-700 text-center shadow-sm">
+              <p className="text-gray-500 dark:text-gray-400 font-bold text-xl">No ongoing batches right now.</p>
+            </div>
+          )}
+
+          {ongoingBatches.map(renderBatchTile)}
+        </div>
+      </div>
+
+      {/* COMPLETED BATCHES */}
+      <div>
+        <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-gray-200 dark:border-slate-700 pb-4 opacity-80">
+          <FiCheckCircle className="text-emerald-500" /> Completed Batches ({completedBatches.length})
+        </h2>
+        {completedBatches.length === 0 ? (
+          <div className="glass-panel bg-white dark:bg-slate-900 p-16 rounded-[2.5rem] border border-gray-200 dark:border-slate-700 text-center shadow-sm opacity-75">
+            <p className="text-gray-500 dark:text-gray-400 font-bold text-xl">No completed batches yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 opacity-85 hover:opacity-100 transition-opacity">
+            {completedBatches.map(renderBatchTile)}
+          </div>
         )}
-
-        {list.batches.length === 0 && <div className="col-span-3 glass-panel bg-white dark:bg-slate-900 p-20 rounded-[2.5rem] border border-gray-200 dark:border-slate-700 text-center shadow-sm"><p className="text-gray-500 dark:text-gray-400 font-bold text-xl">No batches created yet.</p></div>}
-        
-        {list.batches.map((b) => (
-          <button key={b._id} type="button" onClick={() => openBatch(b)} className="glass-panel bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[2.5rem] border border-gray-200 dark:border-slate-700 text-left hover:-translate-y-1.5 transition-all duration-300 group flex flex-col justify-between h-full shadow-sm hover:shadow-lg">
-            <div>
-              <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-lg tracking-widest uppercase mb-5 inline-block shadow-sm">
-                {b.batchCode}
-              </span>
-              <p className="font-black text-3xl text-gray-900 dark:text-white leading-tight tracking-tight mb-5 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{b.subject}</p>
-              {isAdmin && b.trainerName && <p className="text-[11px] font-extrabold text-gray-600 dark:text-gray-300 flex items-center gap-1.5 bg-gray-50 dark:bg-slate-800 w-fit px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm uppercase tracking-wider"><span className="text-purple-600 dark:text-purple-400">Trainer:</span> {b.trainerName}</p>}
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 md:gap-4 mt-8 pt-6 border-t border-gray-200 dark:border-slate-700 text-center">
-              <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
-                <FiUsers className="mx-auto text-blue-500 mb-2.5" size={24} />
-                <p className="font-black text-2xl text-gray-900 dark:text-white leading-none mb-1.5">{b.studentCount}</p>
-                <p className="text-[9px] uppercase font-extrabold tracking-widest text-gray-500 dark:text-gray-400">Students</p>
-              </div>
-              <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
-                <FiClock className="mx-auto text-purple-500 mb-2.5" size={24} />
-                <p className="font-black text-2xl text-gray-900 dark:text-white leading-none mb-1.5">{b.classesTaken}</p>
-                <p className="text-[9px] uppercase font-extrabold tracking-widest text-gray-500 dark:text-gray-400">Classes</p>
-              </div>
-              <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 shadow-sm">
-                <FiStar className="mx-auto text-yellow-500 mb-2.5" size={24} />
-                <p className="font-black text-2xl text-gray-900 dark:text-white leading-none mb-1.5">{b.mocksTaken}</p>
-                <p className="text-[9px] uppercase font-extrabold tracking-widest text-gray-500 dark:text-gray-400">Mocks</p>
-              </div>
-            </div>
-          </button>
-        ))}
       </div>
 
       {/* MOVE BATCH MODAL */}
@@ -651,9 +833,14 @@ const StaffBatchTracker = ({ title }) => {
             <div className="p-8 md:p-10 space-y-8">
               <div>
                 <label className={labelCls}>Select Target Batch</label>
-                <select id="new-batch-select" className={`${inputCls} cursor-pointer text-[15px]`}>
+                <select
+                  id="new-batch-select"
+                  value={targetBatchId}
+                  onChange={(e) => setTargetBatchId(e.target.value)}
+                  className={`${inputCls} cursor-pointer text-[15px]`}
+                >
                   <option value="">-- Choose a Batch --</option>
-                  {list.batches.filter((b) => b._id !== (batch?._id || '')).map((b) => (
+                  {list.batches.filter((b) => b.isActive !== false && b._id !== (batch?._id || '')).map((b) => (
                     <option key={b._id} value={b._id}>{b.subject} ({b.batchCode})</option>
                   ))}
                 </select>

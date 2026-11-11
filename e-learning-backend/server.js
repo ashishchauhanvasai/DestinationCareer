@@ -108,9 +108,6 @@ app.use(securityHeaders);
 // EXISTING BODY PARSERS (UNCHANGED)
 // ==========================================
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
-
 // Increase limits to allow image uploads (Base64 strings)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -220,8 +217,9 @@ transporter.verify(function (error, success) {
 
 // 0. DATABASE SCHEMAS
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  name: { type: String, required: true, trim: true },
+  // ✅ Added lowercase: true & trim: true so MongoDB always uses the unique index
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['student', 'campus_student', 'admin', 'superadmin', 'trainer', 'promotional'], default: 'student' },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, 
@@ -238,26 +236,9 @@ const userSchema = new mongoose.Schema({
   contactNumber: { type: String, default: '' },
   aadharNumber: { type: String, default: '' },
   address: { type: String, default: '' },
-  skillsAcquired: { type: String, default: '' }, // Stored as comma-separated string
-  
-  // --- Flag to lock profile after first edit ---
-  profileLocked: { type: Boolean, default: false },
-
-  // NEW: Profile Picture (Base64 string store karne ke liye)
-  profilePic: { type: String, default: '' },                        
-
-
-  // --- STUDENT ELIGIBILITY PROFILE ---
-  highestQualification: { type: String, default: '' },
-  passingYear: { type: String, default: '' },
-  percentage: { type: Number, default: null },
-  backlogs: { type: Number, default: 0 },
-  educationGap: { type: Number, default: 0 },
-  readyForRelocation: { type: Boolean, default: false },
-  contactNumber: { type: String, default: '' },
-  aadharNumber: { type: String, default: '' },
-  address: { type: String, default: '' },
   skillsAcquired: { type: String, default: '' },
+  profileLocked: { type: Boolean, default: false },
+  profilePic: { type: String, default: '' },                        
 
   // --- NEW FIELDS FOR CAMPUS REGISTRATION ---
   stream: { type: String, default: '' },
@@ -267,9 +248,7 @@ const userSchema = new mongoose.Schema({
   twelfthPercentage: { type: Number, default: null },
   panCard: { type: String, default: '' },
 
-
   // --- STRICT 1 DESKTOP + 1 MOBILE DEVICE BINDING ---
-  // Existing field names are retained for compatibility with the current admin UI.
   allowedDesktopId: { type: String, default: null },
   pendingDesktopId: { type: String, default: null },
   desktopChangeRequested: { type: Boolean, default: false },
@@ -277,16 +256,12 @@ const userSchema = new mongoose.Schema({
   pendingMobileId: { type: String, default: null },
   mobileChangeRequested: { type: Boolean, default: false },
 
-  // New descriptive aliases used by the updated device-approval logic.
-  // Both old and new fields are synchronized to avoid breaking existing records/UI.
   desktopDeviceId: { type: String, default: null },
   pendingDesktopDeviceId: { type: String, default: null },
   mobileDeviceId: { type: String, default: null },
-  pendingMobileDeviceId: { type: String, default: null },
+  pendingMobileDeviceId: { type: Boolean, default: null },
   
   tokenVersion: { type: Number, default: 0 },
-
-  // trainers only: the top-performer category he can manage
   domain: { type: String, enum: ['', 'Java', 'Python', 'Data Analytics', 'Frontend'], default: '' }
 });
 
@@ -472,17 +447,31 @@ const createSuperAdmin = async () => {
 };
 createSuperAdmin();
 
+// Normalize any legacy mixed-case emails on startup so index lookups are 100% instant
+const normalizeExistingEmails = async () => {
+  try {
+    await User.updateMany(
+      { email: { $regex: /[A-Z]/ } },
+      [{ $set: { email: { $toLower: "$email" } } }]
+    );
+    console.log("✅ All user emails verified lowercase for fast indexing");
+  } catch (err) {
+    // Ignore if duplicate key exists on a legacy test account
+    console.warn("Email normalization note:", err.message);
+  }
+};
+normalizeExistingEmails();
 
-
-// 3. AUTH MIDDLEWARE
+// 3. AUTH MIDDLEWARE (OPTIMIZED WITH .lean())
 const verifyToken = async (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   if (!token) return res.status(401).json({ message: 'Access denied' });
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    const user = await User.findById(decoded.id).select('tokenVersion');
-    if (!user || user.tokenVersion !== decoded.version) {
+    // 🚀 .lean() skips Mongoose document hydration on every single API request
+    const user = await User.findById(decoded.id).select('tokenVersion').lean();
+    if (!user || (user.tokenVersion || 0) !== (decoded.version || 0)) {
       return res.status(401).json({ message: 'Session expired or device access revoked. Please log in again.' });
     }
 
@@ -618,12 +607,14 @@ app.post(
   }
 );
 
-// --- AUTH: LOGIN ---
-app.post(
-  '/api/login',
-  authLimiter,
-  // 🛠️ FIX: Removed validateLoginInput middleware so it never strips Gmail dots or blocks valid logins
-  async (req, res) => {
+// Only fetch the exact fields needed for authentication & device binding
+const LOGIN_PROJECTION =
+  'password role status tokenVersion registeredDrive ' +
+  'mobileDeviceId allowedMobileId mobileChangeRequested pendingMobileDeviceId pendingMobileId ' +
+  'desktopDeviceId allowedDesktopId desktopChangeRequested pendingDesktopDeviceId pendingDesktopId';
+
+// --- AUTH: LOGIN (ULTRA-FAST OPTIMIZED) ---
+app.post('/api/login', authLimiter, async (req, res) => {
   try {
     const { email, password, deviceId, deviceType } = req.body;
 
@@ -633,34 +624,47 @@ app.post(
 
     const normalizedEmail = String(email).trim().toLowerCase();
 
-    // 🚀 SPEED BOOST: Exclude heavy profilePic during login check + case-insensitive lookup
-    const user = await User.findOne({ 
-      email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') } 
-    }).select('-profilePic');
+    // 🚀 1. FAST PATH: Direct O(1) B-Tree index lookup using .lean() (~2-5ms)
+    let user = await User.findOne({ email: normalizedEmail })
+      .select(LOGIN_PROJECTION)
+      .lean();
+
+    let needsEmailNormalization = false;
+
+    // 2. FALLBACK PATH: Only for legacy users whose email was saved with capital letters
+    if (!user) {
+      user = await User.findOne({
+        email: { $regex: new RegExp(`^${escapeRegex(normalizedEmail)}$`, 'i') }
+      })
+        .select(LOGIN_PROJECTION)
+        .lean();
+
+      if (user) {
+        needsEmailNormalization = true;
+      }
+    }
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // ==========================================
-    // 🛠️ FIX: SILENT PASSWORD MIGRATION 
+    // PASSWORD VERIFICATION & SILENT MIGRATION
     // ==========================================
     let isMatch = false;
+    const dbUpdates = {};
+
+    if (needsEmailNormalization) {
+      dbUpdates.email = normalizedEmail;
+    }
 
     if (user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'))) {
       isMatch = await bcrypt.compare(password, user.password);
-    } else {
+    } else if (password === user.password) {
       // Legacy user with plaintext password in DB
-      if (password === user.password) {
-        isMatch = true;
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-        await User.updateOne(
-          { _id: user._id },
-          { $set: { password: hashedPassword } }
-        );
-        console.log(`✅ Automatically secured password for user: ${normalizedEmail}`);
-      }
+      isMatch = true;
+      const salt = await bcrypt.genSalt(10);
+      dbUpdates.password = await bcrypt.hash(password, salt);
     }
 
     if (!isMatch) {
@@ -675,7 +679,9 @@ app.post(
       return res.status(403).json({ message: 'Registration declined.' });
     }
 
-    // Device locking applies only to students.
+    // ==========================================
+    // DEVICE LOCKING (STUDENTS & CAMPUS STUDENTS)
+    // ==========================================
     if (user.role === 'student' || user.role === 'campus_student') {
       if (typeof deviceId !== 'string' || !deviceId.trim()) {
         return res.status(400).json({
@@ -683,7 +689,6 @@ app.post(
         });
       }
 
-      // Support both the explicit deviceType and the MOB- prefix from the frontend ID.
       const normalizedDeviceType = String(deviceType || '').toLowerCase();
       const isMobileDevice =
         normalizedDeviceType === 'mobile' || deviceId.startsWith('MOB-');
@@ -695,83 +700,96 @@ app.post(
       }
 
       if (isMobileDevice) {
-        // Read the new field first, with fallback to the existing field for old records.
         const savedMobileId = user.mobileDeviceId || user.allowedMobileId;
 
         if (!savedMobileId) {
-          // First login or device was reset by an administrator: bind this device.
-          user.mobileDeviceId = deviceId;
-          user.allowedMobileId = deviceId;
-          user.mobileChangeRequested = false;
-          user.pendingMobileDeviceId = null;
-          user.pendingMobileId = null;
-          await user.save();
+          // First login or reset: bind device
+          dbUpdates.mobileDeviceId = deviceId;
+          dbUpdates.allowedMobileId = deviceId;
+          dbUpdates.mobileChangeRequested = false;
+          dbUpdates.pendingMobileDeviceId = null;
+          dbUpdates.pendingMobileId = null;
         } else if (savedMobileId !== deviceId) {
-          // New device: preserve the existing approved ID and store the request.
-          user.mobileChangeRequested = true;
-          user.pendingMobileDeviceId = deviceId;
-          user.pendingMobileId = deviceId;
-          await user.save();
-
+          // New mobile device detected: record pending request & block login
+          await User.updateOne(
+            { _id: user._id },
+            {
+              $set: {
+                ...dbUpdates,
+                mobileChangeRequested: true,
+                pendingMobileDeviceId: deviceId,
+                pendingMobileId: deviceId
+              }
+            }
+          );
           return res.status(403).json({
             message: 'New mobile device detected! Approval request sent to Admin.'
           });
         } else if (user.mobileDeviceId !== deviceId || user.allowedMobileId !== deviceId) {
-          // Keep old and new field names synchronized for existing records.
-          user.mobileDeviceId = deviceId;
-          user.allowedMobileId = deviceId;
-          await user.save();
+          dbUpdates.mobileDeviceId = deviceId;
+          dbUpdates.allowedMobileId = deviceId;
         }
       } else {
         const savedDesktopId = user.desktopDeviceId || user.allowedDesktopId;
 
         if (!savedDesktopId) {
-          user.desktopDeviceId = deviceId;
-          user.allowedDesktopId = deviceId;
-          user.desktopChangeRequested = false;
-          user.pendingDesktopDeviceId = null;
-          user.pendingDesktopId = null;
-          await user.save();
+          // First login or reset: bind device
+          dbUpdates.desktopDeviceId = deviceId;
+          dbUpdates.allowedDesktopId = deviceId;
+          dbUpdates.desktopChangeRequested = false;
+          dbUpdates.pendingDesktopDeviceId = null;
+          dbUpdates.pendingDesktopId = null;
         } else if (savedDesktopId !== deviceId) {
-          user.desktopChangeRequested = true;
-          user.pendingDesktopDeviceId = deviceId;
-          user.pendingDesktopId = deviceId;
-          await user.save();
-
+          // New desktop detected: record pending request & block login
+          await User.updateOne(
+            { _id: user._id },
+            {
+              $set: {
+                ...dbUpdates,
+                desktopChangeRequested: true,
+                pendingDesktopDeviceId: deviceId,
+                pendingDesktopId: deviceId
+              }
+            }
+          );
           return res.status(403).json({
             message: 'New laptop/desktop detected! Approval request sent to Admin.'
           });
         } else if (user.desktopDeviceId !== deviceId || user.allowedDesktopId !== deviceId) {
-          user.desktopDeviceId = deviceId;
-          user.allowedDesktopId = deviceId;
-          await user.save();
+          dbUpdates.desktopDeviceId = deviceId;
+          dbUpdates.allowedDesktopId = deviceId;
         }
       }
     }
+
+    // 🚀 Run any needed DB updates and Drive Code lookup in parallel
+    const hasUpdates = Object.keys(dbUpdates).length > 0;
+    const needDriveLookup = user.role === 'campus_student' && user.registeredDrive;
+
+    const [, driveDoc] = await Promise.all([
+      hasUpdates ? User.updateOne({ _id: user._id }, { $set: dbUpdates }) : Promise.resolve(),
+      needDriveLookup
+        ? CollegeDrive.findById(user.registeredDrive).select('driveCode').lean()
+        : Promise.resolve(null)
+    ]);
 
     // JWT TOKEN GENERATION
     const token = jwt.sign(
       {
         id: user._id,
         role: user.role,
-        version: user.tokenVersion
+        version: user.tokenVersion || 0
       },
       JWT_SECRET,
       { expiresIn: '4h' }
     );
-
-    let driveCode = null;
-    if (user.role === 'campus_student' && user.registeredDrive) {
-      const d = await CollegeDrive.findById(user.registeredDrive).select('driveCode');
-      driveCode = d?.driveCode || null;
-    }
 
     res.json({
       message: 'Login successful',
       role: user.role,
       token,
       userId: user._id,
-      driveCode
+      driveCode: driveDoc?.driveCode || null
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -779,9 +797,9 @@ app.post(
   }
 });
 
-// --- ADMIN APPROVE DEVICE CHANGE ---
+// --- ADMIN / SUPERADMIN / TRAINER APPROVE DEVICE CHANGE ---
 app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) {
     return res.status(403).json({ message: 'Access denied' });
   }
 
@@ -792,7 +810,6 @@ app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
     let deviceApproved = false;
 
     if (user.desktopChangeRequested) {
-      // Never overwrite the approved ID with null if no pending ID exists.
       const pendingId = user.pendingDesktopDeviceId || user.pendingDesktopId;
       if (pendingId) {
         user.desktopDeviceId = pendingId;
@@ -822,13 +839,67 @@ app.put('/api/users/:id/approve-device', verifyToken, async (req, res) => {
       });
     }
 
-    // Invalidate previously issued sessions after device approval.
     user.tokenVersion = (user.tokenVersion || 0) + 1;
     await user.save();
 
     return res.json({ message: 'Device permanently approved! Old sessions have been logged out.' });
   } catch (error) {
     console.error('Approve device error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// --- BULK APPROVE DEVICE CHANGES (ADMIN / SUPERADMIN / TRAINER) ---
+app.put('/api/users/bulk-approve-device', verifyToken, async (req, res) => {
+  if (!['admin', 'superadmin', 'trainer'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Access denied' });
+  }
+
+  try {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ message: 'No users selected' });
+    }
+
+    const users = await User.find({ _id: { $in: userIds } });
+    let approvedCount = 0;
+
+    for (const user of users) {
+      let deviceApproved = false;
+
+      if (user.desktopChangeRequested) {
+        const pendingId = user.pendingDesktopDeviceId || user.pendingDesktopId;
+        if (pendingId) {
+          user.desktopDeviceId = pendingId;
+          user.allowedDesktopId = pendingId;
+          user.pendingDesktopDeviceId = null;
+          user.pendingDesktopId = null;
+          user.desktopChangeRequested = false;
+          deviceApproved = true;
+        }
+      }
+
+      if (user.mobileChangeRequested) {
+        const pendingId = user.pendingMobileDeviceId || user.pendingMobileId;
+        if (pendingId) {
+          user.mobileDeviceId = pendingId;
+          user.allowedMobileId = pendingId;
+          user.pendingMobileDeviceId = null;
+          user.pendingMobileId = null;
+          user.mobileChangeRequested = false;
+          deviceApproved = true;
+        }
+      }
+
+      if (deviceApproved) {
+        user.tokenVersion = (user.tokenVersion || 0) + 1;
+        await user.save();
+        approvedCount++;
+      }
+    }
+
+    res.json({ message: `Successfully approved devices for ${approvedCount} users.` });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -950,6 +1021,23 @@ app.get('/api/users/pending', verifyToken, async (req, res) => {
   }
 });
 
+// Toggle Batch Ongoing / Completed Status (Super Admin Only)
+app.put('/api/batches/:id/status', verifyToken, async (req, res) => {
+  if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Only super admin can change batch status' });
+  try {
+    const batch = await Batch.findById(req.params.id);
+    if (!batch) return res.status(404).json({ message: 'Batch not found' });
+    batch.isActive = !batch.isActive;
+    await batch.save();
+    res.json({
+      message: `Batch marked as ${batch.isActive ? 'Ongoing' : 'Completed'}`,
+      isActive: batch.isActive,
+      batch
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
 
 app.put('/api/users/:id/status', verifyToken, async (req, res) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
@@ -1733,18 +1821,29 @@ app.get('/api/batches/:id/qr', verifyToken, async (req, res) => {
   res.json({ qrValue: `BQR:${batch._id}:${batch.qrToken}` });
 });
 
-// ---------- TRAINER: my batches ----------
+// ---------- TRAINER: my batches (Ongoing + Completed) ----------
 app.get('/api/batches/mine', verifyToken, async (req, res) => {
   if (!isTrainer(req)) return res.status(403).json({ message: 'Access denied' });
-  const batches = await Batch.find({ trainer: req.user.id, isActive: true }).lean();
-  const today = dateKeyOf();
-  const result = await Promise.all(batches.map(async (b) => {
-    const classesTaken = await ClassSession.countDocuments({ batch: b._id, status: 'closed' });
-    const open = await ClassSession.findOne({ batch: b._id, trainer: req.user.id, dateKey: today, status: 'open' });
-    const attendedCount = open ? await Attendance.countDocuments({ session: open._id }) : 0;
-    return { ...b, classesTaken, openSession: open ? { _id: open._id, checkInTime: open.checkInTime, attendedCount } : null };
-  }));
-  res.json(result);
+  try {
+    const batches = await Batch.find({ trainer: req.user.id }).sort({ createdAt: -1 }).lean();
+    const today = dateKeyOf();
+    const result = await Promise.all(batches.map(async (b) => {
+      const classesTaken = await ClassSession.countDocuments({ batch: b._id, status: 'closed' });
+      const open = b.isActive !== false
+        ? await ClassSession.findOne({ batch: b._id, trainer: req.user.id, dateKey: today, status: 'open' }).lean()
+        : null;
+      const attendedCount = open ? await Attendance.countDocuments({ session: open._id }) : 0;
+      return {
+        ...b,
+        isActive: b.isActive !== false,
+        classesTaken,
+        openSession: open ? { _id: open._id, checkInTime: open.checkInTime, attendedCount } : null
+      };
+    }));
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 app.post('/api/sessions/checkin', verifyToken, async (req, res) => {
@@ -3061,6 +3160,7 @@ app.get('/api/staff/batches', verifyToken, async (req, res) => {
       unassignedCount,
       batches: batches.map((b) => ({
         _id: b._id, batchCode: b.batchCode, subject: b.subject, trainerName: b.trainerName, venue: b.venue,
+        isActive: b.isActive !== false,
         studentCount: memberMap[String(b._id)] || 0,
         classesTaken: sessionMap[String(b._id)] || 0,
         mocksTaken: mockDays[String(b._id)] ? mockDays[String(b._id)].size : 0
@@ -3092,7 +3192,7 @@ app.get('/api/staff/batches/:id/students', verifyToken, async (req, res) => {
     const mockMatch = batch ? { batch: batch._id, student: { $in: studentIds } } : { student: { $in: studentIds } };
 
     const [students, attended, assignStats, mockStats] = await Promise.all([
-      User.find({ _id: { $in: studentIds } }).select('name email status profilePic').sort({ name: 1 }).lean(),
+      User.find({ _id: { $in: studentIds } }).select('name email status profilePic desktopChangeRequested mobileChangeRequested').sort({ name: 1 }).lean(),
       batch
         ? Attendance.aggregate([
             { $match: { session: { $in: sessionIds }, student: { $in: studentIds } } },
@@ -3121,6 +3221,8 @@ app.get('/api/staff/batches/:id/students', verifyToken, async (req, res) => {
         const k = String(s._id);
         return {
           _id: s._id, name: s.name, email: s.email, status: s.status, profilePic: s.profilePic,
+          desktopChangeRequested: Boolean(s.desktopChangeRequested),
+          mobileChangeRequested: Boolean(s.mobileChangeRequested),
           attended: attMap[k]?.n || 0,
           assignmentsAnswered: asgMap[k]?.answered || 0,
           assignmentMarks: asgMap[k]?.marks || 0,
@@ -3339,58 +3441,7 @@ app.put('/api/users/bulk-approve', verifyToken, async (req, res) => {
   }
 });
 
-// 1. Bulk Approve Device Changes
-app.put('/api/users/bulk-approve-device', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Access denied' });
 
-  try {
-    const { userIds } = req.body;
-    if (!Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(400).json({ message: 'No users selected' });
-    }
-
-    const users = await User.find({ _id: { $in: userIds } });
-    let approvedCount = 0;
-
-    for (const user of users) {
-      let deviceApproved = false;
-
-      if (user.desktopChangeRequested) {
-        const pendingId = user.pendingDesktopDeviceId || user.pendingDesktopId;
-        if (pendingId) {
-          user.desktopDeviceId = pendingId;
-          user.allowedDesktopId = pendingId;
-          user.pendingDesktopDeviceId = null;
-          user.pendingDesktopId = null;
-          user.desktopChangeRequested = false;
-          deviceApproved = true;
-        }
-      }
-
-      if (user.mobileChangeRequested) {
-        const pendingId = user.pendingMobileDeviceId || user.pendingMobileId;
-        if (pendingId) {
-          user.mobileDeviceId = pendingId;
-          user.allowedMobileId = pendingId;
-          user.pendingMobileDeviceId = null;
-          user.pendingMobileId = null;
-          user.mobileChangeRequested = false;
-          deviceApproved = true;
-        }
-      }
-
-      if (deviceApproved) {
-        user.tokenVersion = (user.tokenVersion || 0) + 1;
-        await user.save();
-        approvedCount++;
-      }
-    }
-
-    res.json({ message: `Successfully approved devices for ${approvedCount} users.` });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // 2. Bulk Move Students to Another Batch
 app.put('/api/staff/batches/bulk-change-student', verifyToken, async (req, res) => {

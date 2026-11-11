@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
 import QrScannerModal from '../components/QrScannerModal';
-import { FiMapPin, FiClock, FiUsers, FiLogIn, FiLogOut, FiList, FiStar, FiX, FiVideo } from 'react-icons/fi';
+import {
+  FiMapPin, FiClock, FiUsers, FiLogIn, FiLogOut, FiList, FiStar, FiX, FiVideo, FiCheckCircle, FiTarget
+} from 'react-icons/fi';
 
 import OnlineClassesManager from '../components/OnlineClassesManager';
 
@@ -96,6 +98,98 @@ const TrainerDashboard = () => {
     } catch (err) { alert(err.response?.data?.message || 'Failed to save rating'); }
   };
 
+  const ongoingBatches = batches.filter((b) => b.isActive !== false);
+  const completedBatches = batches.filter((b) => b.isActive === false);
+
+  const renderBatchCard = (b) => {
+    const open = b.openSession;
+    const isCompleted = b.isActive === false;
+    const showingQr = qrPanel?.sessionId === open?._id;
+
+    return (
+      <div key={b._id} className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] flex flex-col hover:-translate-y-1 transition-transform duration-300 group shadow-sm hover:shadow-lg">
+        <div className="flex justify-between items-start mb-6">
+          <div className="pr-4">
+            <h3 className="font-black text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight mb-2 leading-tight">{b.subject}</h3>
+            <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm inline-block mt-1">
+              {b.batchCode}
+            </span>
+          </div>
+          {isCompleted ? (
+            <span className="text-[10px] font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest border shadow-sm shrink-0 whitespace-nowrap bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+              <FiCheckCircle size={13} /> Batch Completed
+            </span>
+          ) : (
+            <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest border shadow-sm shrink-0 whitespace-nowrap ${open ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700'}`}>
+              {open ? 'Session Active' : 'Ongoing Batch'}
+            </span>
+          )}
+        </div>
+
+        <div className="bg-gray-50 dark:bg-slate-800/80 p-5 md:p-6 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 space-y-4 mb-8 shadow-sm">
+          <p className="flex items-center gap-3 text-[15px] font-bold text-gray-800 dark:text-gray-200">
+            <FiMapPin className="text-blue-500" size={18} /> 
+            <span className="truncate">{b.venue}{b.location ? `, ${b.location}` : ''}</span>
+          </p>
+          <p className="flex items-center gap-3 text-[15px] font-bold text-gray-800 dark:text-gray-200">
+            <FiClock className="text-purple-500" size={18} /> 
+            <span>{b.scheduledStartTime} - {b.scheduledEndTime} <span className="text-gray-500 dark:text-gray-400 font-medium">({b.durationMinutes} min)</span></span>
+          </p>
+          <p className="flex items-center gap-3 text-[15px] font-bold text-gray-800 dark:text-gray-200">
+            <FiUsers className="text-orange-500" size={18} /> 
+            <span>Classes taken: {b.classesTaken} <span className="text-gray-500 dark:text-gray-400 font-medium">{b.expectedStrength ? ` / Strength: ${b.expectedStrength}` : ''}</span></span>
+          </p>
+        </div>
+
+        {isCompleted ? (
+          <div className="w-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-slate-700 py-3.5 rounded-xl font-extrabold flex items-center justify-center gap-2 mb-2 text-[13px] uppercase tracking-wider">
+            <FiCheckCircle size={16} className="text-emerald-500" /> Completed — Check-In Closed
+          </div>
+        ) : !open ? (
+          <button onClick={() => setScanFor({ action: 'checkin' })} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 rounded-xl font-extrabold flex items-center justify-center gap-2 transition-transform hover:scale-[0.98] shadow-lg shadow-blue-500/30 mb-2 text-[15px]">
+            <FiLogIn size={20} /> Check In (Scan Batch QR)
+          </button>
+        ) : (
+          <div className="space-y-5 mb-4">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 p-6 rounded-[1.5rem] text-center shadow-sm">
+              <p className="text-[11px] font-extrabold text-green-700 dark:text-green-500 uppercase tracking-widest mb-1">
+                Checked in at {new Date(open.checkInTime).toLocaleTimeString('en-IN', {hour:'numeric', minute:'numeric', hour12:true})}
+              </p>
+              <p className="text-2xl font-black text-green-800 dark:text-green-400 tracking-tight">
+                {showingQr ? qrPanel.attendedCount : open.attendedCount} <span className="text-sm font-bold">students present</span>
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button onClick={() => setQrPanel(showingQr ? null : { sessionId: open._id, qrValue: '', attendedCount: open.attendedCount })} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 py-3.5 rounded-xl font-extrabold text-[13px] uppercase tracking-wider transition-colors shadow-sm">
+                {showingQr ? 'Hide QR' : 'Show Attendance QR'}
+              </button>
+              <button onClick={() => setScanFor({ action: 'checkout' })} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-extrabold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 transition-colors shadow-lg shadow-red-500/30">
+                <FiLogOut size={16} /> Check Out
+              </button>
+            </div>
+
+            {showingQr && (
+              <div className="flex flex-col items-center p-8 bg-white dark:bg-slate-800 rounded-[2rem] border border-gray-200 dark:border-slate-700 mt-6 shadow-sm">
+                {qrPanel.qrValue ? <QRCodeSVG value={qrPanel.qrValue} size={200} className="bg-white p-2 rounded-xl" /> : <p className="text-[15px] text-gray-500 dark:text-gray-400 h-[200px] flex items-center font-bold">Loading QR...</p>}
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-5 text-center">Students scan this to mark attendance. Refreshes automatically.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-4 pt-6 mt-auto border-t border-gray-200 dark:border-slate-700">
+          <button onClick={() => openHistory(b)} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
+            <FiList size={16} className="text-blue-500" /> History
+          </button>
+          <button onClick={() => openMock(b)} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
+            <FiStar size={16} className="text-yellow-500" /> Mocks
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 pb-16 animate-fade-in">
       {/* Header & Tabs */}
@@ -134,7 +228,7 @@ const TrainerDashboard = () => {
           <OnlineClassesManager />
         </div>
       ) : (
-        <div className="animate-fade-in space-y-8">
+        <div className="animate-fade-in space-y-12">
           <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-5 rounded-[1.5rem] flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm">
             <div className="w-12 h-12 rounded-[1rem] bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-800 shadow-sm">
               <FiLogIn size={20} />
@@ -144,90 +238,36 @@ const TrainerDashboard = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {batches.length === 0 && (
-              <div className="lg:col-span-2 glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-20 rounded-[2.5rem] text-center shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400 font-bold text-xl">No offline batches assigned to you yet.</p>
+          {/* ONGOING BATCHES */}
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-gray-200 dark:border-slate-700 pb-4">
+              <FiTarget className="text-blue-500" /> Ongoing Batches ({ongoingBatches.length})
+            </h2>
+            {ongoingBatches.length === 0 ? (
+              <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-12 rounded-[2.5rem] text-center shadow-sm">
+                <p className="text-gray-500 dark:text-gray-400 font-bold text-lg">No ongoing batches right now.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {ongoingBatches.map(renderBatchCard)}
               </div>
             )}
-            
-            {batches.map((b) => {
-              const open = b.openSession;
-              const showingQr = qrPanel?.sessionId === open?._id;
-              
-              return (
-                <div key={b._id} className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-8 md:p-10 rounded-[2.5rem] flex flex-col hover:-translate-y-1 transition-transform duration-300 group shadow-sm hover:shadow-lg">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="pr-4">
-                      <h3 className="font-black text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight mb-2 leading-tight">{b.subject}</h3>
-                      <span className="text-[10px] font-extrabold text-blue-700 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/30 px-3.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 shadow-sm inline-block mt-1">
-                        {b.batchCode}
-                      </span>
-                    </div>
-                    <span className={`text-[10px] font-extrabold px-3 py-1.5 rounded-lg uppercase tracking-widest border shadow-sm shrink-0 whitespace-nowrap ${open ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700'}`}>
-                      {open ? 'Session Active' : 'Not started'}
-                    </span>
-                  </div>
+          </div>
 
-                  <div className="bg-gray-50 dark:bg-slate-800/80 p-5 md:p-6 rounded-[1.5rem] border border-gray-200 dark:border-slate-700 space-y-4 mb-8 shadow-sm">
-                    <p className="flex items-center gap-3 text-[15px] font-bold text-gray-800 dark:text-gray-200">
-                      <FiMapPin className="text-blue-500" size={18} /> 
-                      <span className="truncate">{b.venue}{b.location ? `, ${b.location}` : ''}</span>
-                    </p>
-                    <p className="flex items-center gap-3 text-[15px] font-bold text-gray-800 dark:text-gray-200">
-                      <FiClock className="text-purple-500" size={18} /> 
-                      <span>{b.scheduledStartTime} - {b.scheduledEndTime} <span className="text-gray-500 dark:text-gray-400 font-medium">({b.durationMinutes} min)</span></span>
-                    </p>
-                    <p className="flex items-center gap-3 text-[15px] font-bold text-gray-800 dark:text-gray-200">
-                      <FiUsers className="text-orange-500" size={18} /> 
-                      <span>Classes taken: {b.classesTaken} <span className="text-gray-500 dark:text-gray-400 font-medium">{b.expectedStrength ? ` / Strength: ${b.expectedStrength}` : ''}</span></span>
-                    </p>
-                  </div>
-
-                  {!open ? (
-                    <button onClick={() => setScanFor({ action: 'checkin' })} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 rounded-xl font-extrabold flex items-center justify-center gap-2 transition-transform hover:scale-[0.98] shadow-lg shadow-blue-500/30 mb-2 text-[15px]">
-                      <FiLogIn size={20} /> Check In (Scan Batch QR)
-                    </button>
-                  ) : (
-                    <div className="space-y-5 mb-4">
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 p-6 rounded-[1.5rem] text-center shadow-sm">
-                        <p className="text-[11px] font-extrabold text-green-700 dark:text-green-500 uppercase tracking-widest mb-1">
-                          Checked in at {new Date(open.checkInTime).toLocaleTimeString('en-IN', {hour:'numeric', minute:'numeric', hour12:true})}
-                        </p>
-                        <p className="text-2xl font-black text-green-800 dark:text-green-400 tracking-tight">
-                          {showingQr ? qrPanel.attendedCount : open.attendedCount} <span className="text-sm font-bold">students present</span>
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-4">
-                        <button onClick={() => setQrPanel(showingQr ? null : { sessionId: open._id, qrValue: '', attendedCount: open.attendedCount })} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 py-3.5 rounded-xl font-extrabold text-[13px] uppercase tracking-wider transition-colors shadow-sm">
-                          {showingQr ? 'Hide QR' : 'Show Attendance QR'}
-                        </button>
-                        <button onClick={() => setScanFor({ action: 'checkout' })} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3.5 rounded-xl font-extrabold text-[13px] uppercase tracking-wider flex items-center justify-center gap-2 transition-colors shadow-lg shadow-red-500/30">
-                          <FiLogOut size={16} /> Check Out
-                        </button>
-                      </div>
-
-                      {showingQr && (
-                        <div className="flex flex-col items-center p-8 bg-white dark:bg-slate-800 rounded-[2rem] border border-gray-200 dark:border-slate-700 mt-6 shadow-sm">
-                          {qrPanel.qrValue ? <QRCodeSVG value={qrPanel.qrValue} size={200} className="bg-white p-2 rounded-xl" /> : <p className="text-[15px] text-gray-500 dark:text-gray-400 h-[200px] flex items-center font-bold">Loading QR...</p>}
-                          <p className="text-[11px] font-extrabold uppercase tracking-widest text-gray-500 dark:text-gray-400 mt-5 text-center">Students scan this to mark attendance. Refreshes automatically.</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex gap-4 pt-6 mt-auto border-t border-gray-200 dark:border-slate-700">
-                    <button onClick={() => openHistory(b)} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
-                      <FiList size={16} className="text-blue-500" /> History
-                    </button>
-                    <button onClick={() => openMock(b)} className="flex-1 glass-button bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 py-3.5 rounded-xl flex items-center justify-center gap-2 text-[13px] uppercase tracking-wider font-extrabold transition-colors shadow-sm">
-                      <FiStar size={16} className="text-yellow-500" /> Mocks
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+          {/* COMPLETED BATCHES */}
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-6 flex items-center gap-3 tracking-tight border-b border-gray-200 dark:border-slate-700 pb-4 opacity-80">
+              <FiCheckCircle className="text-emerald-500" /> Completed Batches ({completedBatches.length})
+            </h2>
+            {completedBatches.length === 0 ? (
+              <div className="glass-panel bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-12 rounded-[2.5rem] text-center shadow-sm opacity-75">
+                <p className="text-gray-500 dark:text-gray-400 font-bold text-lg">No completed batches yet.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 opacity-85 hover:opacity-100 transition-opacity">
+                {completedBatches.map(renderBatchCard)}
+              </div>
+            )}
           </div>
         </div>
       )}
