@@ -150,6 +150,9 @@ const topPerformerSchema = new mongoose.Schema({
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true }); // ✅ FIX: Added timestamps here so sorting works perfectly
 
+// SPEED BOOST: Index category and creation date for dashboard feeds
+topPerformerSchema.index({ category: 1, createdAt: -1 });
+
 const TopPerformer = mongoose.model('TopPerformer', topPerformerSchema);
 
 const dns = require('dns');
@@ -262,7 +265,13 @@ const userSchema = new mongoose.Schema({
   pendingMobileDeviceId: { type: String, default: null }, // ✅ FIX: Changed from Boolean to String
   
   tokenVersion: { type: Number, default: 0 },
-  domain: { type: String, enum: ['', 'Java', 'Python', 'Data Analytics', 'Frontend'], default: '' }
+
+  // Trainers only: multiple top-performer categories they can manage
+  domain: {
+    type: [String],
+    enum: ['Java', 'Python', 'Data Analytics', 'Frontend'],
+    default: []
+  }
 });
 
 // Hash password before saving (requires bcryptjs)
@@ -285,9 +294,11 @@ userSchema.pre('save', async function () {
 });
 
 
-// 🚀 SPEED BOOST: Index frequently queried fields
+// SPEED BOOST: Index frequently queried fields.
+// email already has an automatic unique index from unique: true in userSchema.
 userSchema.index({ role: 1, status: 1 });
 userSchema.index({ registeredDrive: 1, status: 1 });
+userSchema.index({ domain: 1 }); // Fast filtering for multi-domain trainers
 
 const User = mongoose.model('User', userSchema);
 
@@ -1741,9 +1752,20 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.post('/api/trainers', verifyToken, async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Only super admin can add trainers' });
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, domain } = req.body;
     if (await User.findOne({ email })) return res.status(400).json({ message: 'Email already in use' });
-    const trainer = await User.create({ name, email, password, role: 'trainer', status: 'approved' });
+
+    // Ensure domain is stored as an array
+    const domainArray = Array.isArray(domain) ? domain : (domain ? [domain] : []);
+
+    const trainer = await User.create({
+      name,
+      email,
+      password,
+      role: 'trainer',
+      status: 'approved',
+      domain: domainArray
+    });
 
     const loginUrl = `${APP_URL}/login`;
 
@@ -1761,7 +1783,7 @@ app.post('/api/trainers', verifyToken, async (req, res) => {
       `
     }, (err) => { if (err) console.error('Trainer welcome email failed:', err); });
 
-    res.status(201).json({ _id: trainer._id, name: trainer.name, email: trainer.email });
+    res.status(201).json({ _id: trainer._id, name: trainer.name, email: trainer.email, domain: trainer.domain });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
@@ -2738,9 +2760,16 @@ app.put('/api/trainers/:id/domain', verifyToken, async (req, res) => {
   if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Only super admin can set a trainer domain' });
   try {
     const { domain } = req.body;
-    if (!['', ...DOMAINS].includes(domain)) return res.status(400).json({ message: 'Invalid domain' });
-    const t = await User.findOneAndUpdate({ _id: req.params.id, role: 'trainer' }, { domain }, { returnDocument: 'after' })
-      .select('name email domain');
+    const domainsArr = Array.isArray(domain) ? domain : (domain ? [domain] : []);
+    const valid = ['Java', 'Python', 'Data Analytics', 'Frontend'];
+    const filteredDomains = [...new Set(domainsArr.filter(d => valid.includes(d)))];
+
+    const t = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'trainer' },
+      { $set: { domain: filteredDomains } },
+      { returnDocument: 'after', runValidators: true }
+    ).select('name email domain');
+
     if (!t) return res.status(404).json({ message: 'Trainer not found' });
     res.json(t);
   } catch (e) { res.status(400).json({ message: e.message }); }
@@ -2752,15 +2781,23 @@ app.put('/api/trainers/:id/domain', verifyToken, async (req, res) => {
 
 app.get('/api/trainer/performers', verifyToken, async (req, res) => {
   if (!['trainer', 'admin', 'superadmin'].includes(req.user.role)) return res.status(403).json({ message: 'Access denied' });
-  
+
   if (req.user.role === 'superadmin' || req.user.role === 'admin') {
-    const performers = await TopPerformer.find().sort({ createdAt: -1 });
-    return res.json({ domain: 'All', performers });
+    const performers = await TopPerformer.find().sort({ createdAt: -1 }).lean();
+    return res.json({ domain: ['All'], performers });
   } else {
-    const trainer = await User.findById(req.user.id);
-    if (!trainer.domain) return res.json({ domain: '', performers: [] });
-    const performers = await TopPerformer.find({ category: trainer.domain }).sort({ createdAt: -1 });
-    res.json({ domain: trainer.domain, performers });
+    const trainer = await User.findById(req.user.id).select('domain').lean();
+    const trainerDomains = Array.isArray(trainer?.domain)
+      ? trainer.domain
+      : (trainer?.domain ? [trainer.domain] : []);
+
+    if (trainerDomains.length === 0) {
+      return res.json({ domain: [], performers: [] });
+    }
+
+    const performers = await TopPerformer.find({ category: { $in: trainerDomains } })
+      .sort({ createdAt: -1 }).lean();
+    res.json({ domain: trainerDomains, performers });
   }
 });
 
@@ -2788,9 +2825,23 @@ app.post('/api/trainer/performers', verifyToken, async (req, res) => {
   let finalCategory = category;
   
   if (req.user.role === 'trainer') {
-    const trainer = await User.findById(req.user.id);
-    if (!trainer.domain) return res.status(400).json({ message: 'Your domain is not set' });
-    finalCategory = trainer.domain;
+    const trainer = await User.findById(req.user.id).select('domain').lean();
+    const trainerDomains = Array.isArray(trainer?.domain)
+      ? trainer.domain
+      : (trainer?.domain ? [trainer.domain] : []);
+
+    if (trainerDomains.length === 0) {
+      return res.status(400).json({ message: 'Your domain is not set' });
+    }
+
+    // A trainer may add a performer only to one of their assigned domains.
+    finalCategory = category && trainerDomains.includes(category)
+      ? category
+      : (trainerDomains.length === 1 ? trainerDomains[0] : null);
+
+    if (!finalCategory) {
+      return res.status(400).json({ message: 'Select a valid category from your assigned domains' });
+    }
   }
 
   if (!finalCategory) return res.status(400).json({ message: 'Category/Domain is required' });
