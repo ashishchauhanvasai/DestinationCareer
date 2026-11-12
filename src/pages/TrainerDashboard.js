@@ -485,6 +485,14 @@ const TrainerDashboard = () => {
           </div>
         </div>
       )}
+
+{/* QR SCANNER MODAL */}
+      {scanFor && (
+        <QrScannerModal 
+          onResult={handleScan} 
+          onClose={() => setScanFor(null)} 
+        />
+      )}
     </div>
   );
 };
