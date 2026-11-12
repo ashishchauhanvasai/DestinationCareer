@@ -57,29 +57,23 @@ app.use('/api/', generalLimiter);
 // ==========================================
 
 const securityHeaders = (req, res, next) => {
-
   // Prevent clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-
   // Prevent MIME type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-
   // Legacy browser XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
-
   // Referrer policy
   res.setHeader(
     'Referrer-Policy',
     'strict-origin-when-cross-origin'
   );
-
   // HTTP Strict Transport Security
   // Browsers honour this header when received over HTTPS.
   res.setHeader(
     'Strict-Transport-Security',
     'max-age=31536000'
   );
-
   // Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
@@ -91,10 +85,8 @@ const securityHeaders = (req, res, next) => {
     "connect-src 'self'; " +
     "frame-ancestors 'none';"
   );
-
   // Hide Express technology header
   res.removeHeader('Server');
-
   next();
 };
 
@@ -163,9 +155,6 @@ if (typeof dns.setDefaultResultOrder === 'function') {
 
 const EMAIL_USER = process.env.EMAIL_USER;
 
-
-
-
 // Custom HTTPS Transporter using Google Apps Script Webhook (Bypasses Render SMTP block)
 const transporter = {
   sendMail: async (mailOptions, callback) => {
@@ -198,7 +187,6 @@ const transporter = {
       else throw error;
     }
   },
-
   // Supports existing transporter.verify() calls without crashing
   verify: (callback) => {
     if (process.env.GMAIL_WEBHOOK_URL) {
