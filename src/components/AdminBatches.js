@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { QRCodeSVG } from 'qrcode.react';
-import { FiPlus, FiTrash2, FiX, FiPrinter, FiUsers, FiClock, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiTrash2, FiX, FiPrinter, FiUsers, FiClock, FiMapPin, FiSettings } from 'react-icons/fi';
 
 const API = `${process.env.REACT_APP_API_URL}/api`;
 const cfg = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
 
-const DOMAINS = ['Java', 'Python', 'Data Analytics', 'Frontend'];
 const emptyStaff = { name: '', email: '', password: '', domain: [], role: 'trainer' };
 const emptyBatch = { batchCode: '', subject: '', trainerId: '', venue: '', location: '', scheduledStartTime: '', scheduledEndTime: '', durationMinutes: 60, expectedStrength: '' };
 
@@ -22,16 +21,23 @@ const AdminBatches = () => {
   const [bForm, setBForm] = useState(emptyBatch);
   const [qrBatch, setQrBatch] = useState(null);
 
+  // Dynamic Domains State
+  const [domainsList, setDomainsList] = useState([]);
+  const [isManagingDomains, setIsManagingDomains] = useState(false);
+  const [newDomainName, setNewDomainName] = useState('');
+
   const load = async () => {
     try {
-      const [t, b, p] = await Promise.all([
+      const [t, b, p, dRes] = await Promise.all([
         axios.get(`${API}/trainers/overview`, cfg()).catch(() => ({ data: [] })),
         axios.get(`${API}/batches`, cfg()).catch(() => ({ data: [] })),
-        axios.get(`${API}/users?role=promotional`, cfg()).catch(() => ({ data: [] }))
+        axios.get(`${API}/users?role=promotional`, cfg()).catch(() => ({ data: [] })),
+        axios.get(`${API}/domains`, cfg()).catch(() => ({ data: [] }))
       ]);
       setTrainers(t.data || []);
       setBatches(b.data || []);
       setPromoUsers(p.data || []);
+      setDomainsList(dRes.data || []);
     } catch (e) {
       console.error(e);
     }
@@ -83,6 +89,29 @@ const AdminBatches = () => {
       load();
     } catch (err) {
       alert(err.response?.data?.message || 'Could not change the domain');
+    }
+  };
+
+  // ADD NEW DOMAIN
+  const handleAddDomain = async () => {
+    if (!newDomainName.trim()) return;
+    try {
+      await axios.post(`${API}/domains`, { name: newDomainName.trim() }, cfg());
+      setNewDomainName('');
+      load();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add domain');
+    }
+  };
+
+  // DELETE EXISTING DOMAIN
+  const handleDeleteDomain = async (id) => {
+    if (!window.confirm('Delete this domain? It will still remain on trainers who already have it, but cannot be assigned to new ones.')) return;
+    try {
+      await axios.delete(`${API}/domains/${id}`, cfg());
+      load();
+    } catch (err) {
+      alert('Failed to delete domain');
     }
   };
 
@@ -172,26 +201,66 @@ const AdminBatches = () => {
 
             {tForm.role === 'trainer' && (
               <div>
-                <label className={labelCls}>Domain Assignment (Multi-Select)</label>
-                <div className="flex flex-wrap gap-2.5">
-                  {DOMAINS.map((d) => {
-                    const isSel = tForm.domain.includes(d);
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => toggleFormDomain(d)}
-                        className={`px-3.5 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border transition-all shadow-sm ${
-                          isSel
-                            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-                            : 'bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-gray-50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        {d}
-                      </button>
-                    )
-                  })}
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[10px] font-extrabold text-gray-500 dark:text-gray-400 uppercase tracking-widest pl-1">Domain Assignment</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setIsManagingDomains(!isManagingDomains)}
+                    className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:underline flex items-center gap-1 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md"
+                  >
+                    <FiSettings size={12}/> {isManagingDomains ? 'Done' : 'Manage'}
+                  </button>
                 </div>
+
+                {isManagingDomains ? (
+                  <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-2xl border border-gray-200 dark:border-slate-700 animate-fade-in space-y-4">
+                    <div className="flex gap-2">
+                      <input 
+                        placeholder="Add new domain..." 
+                        value={newDomainName} 
+                        onChange={e => setNewDomainName(e.target.value)} 
+                        onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddDomain())}
+                        className={`${inputCls} py-2.5 text-[13px] font-bold`} 
+                      />
+                      <button type="button" onClick={handleAddDomain} className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-xl shadow-sm transition-colors">
+                        <FiPlus size={18} />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {domainsList.length === 0 && <p className="text-xs text-gray-500 font-bold w-full text-center">No domains added yet.</p>}
+                      {domainsList.map(dObj => (
+                         <span key={dObj._id} className="pl-3 pr-2 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 flex items-center gap-2 shadow-sm text-gray-700 dark:text-gray-300">
+                           {dObj.name}
+                           <button type="button" onClick={() => handleDeleteDomain(dObj._id)} className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 p-1 rounded-md transition-colors">
+                             <FiX size={14} />
+                           </button>
+                         </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2.5 animate-fade-in">
+                    {domainsList.length === 0 && <p className="text-xs text-gray-500 font-bold">No domains available. Click Manage to add.</p>}
+                    {domainsList.map((dObj) => {
+                      const d = dObj.name;
+                      const isSel = tForm.domain.includes(d);
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => toggleFormDomain(d)}
+                          className={`px-3.5 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-widest border transition-all shadow-sm ${
+                            isSel
+                              ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                              : 'bg-white dark:bg-slate-900 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-gray-50 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -230,7 +299,8 @@ const AdminBatches = () => {
                     
                     {/* Multi-Select Pills for Trainer Row */}
                     <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200 dark:border-slate-700">
-                      {DOMAINS.map(d => {
+                      {domainsList.map(dObj => {
+                        const d = dObj.name;
                         const tDomains = Array.isArray(t.domain) ? t.domain : [];
                         const isSel = tDomains.includes(d);
                         return (

@@ -143,12 +143,17 @@ const Testimonial = mongoose.model('Testimonial', testimonialSchema);
 
 // --- Top Performer Schema ---
 const topPerformerSchema = new mongoose.Schema({
-  category: { type: String, enum: ['Java', 'Python', 'Data Analytics', 'Frontend'], required: true },
+ category: { type: String, required: true },
   studentName: { type: String, required: true },
   imageUrl: { type: String, default: 'https://via.placeholder.com/150' },
   metric: { type: String, default: 'Top Scorer' },
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true }); // ✅ FIX: Added timestamps here so sorting works perfectly
+// 3. ✅ ADD NEW DOMAIN SCHEMA (Add this anywhere near your other schemas)
+const domainSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true, trim: true }
+});
+const Domain = mongoose.model('Domain', domainSchema);
 
 // SPEED BOOST: Index category and creation date for dashboard feeds
 topPerformerSchema.index({ category: 1, createdAt: -1 });
@@ -163,6 +168,34 @@ if (typeof dns.setDefaultResultOrder === 'function') {
 }
 
 const EMAIL_USER = process.env.EMAIL_USER;
+
+
+
+// =========================================================
+// DYNAMIC DOMAINS API
+// =========================================================
+app.get('/api/domains', verifyToken, async (req, res) => {
+  try {
+    const domains = await Domain.find().sort({ name: 1 }).lean();
+    res.json(domains);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/domains', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Denied' });
+  try {
+    const newDomain = await Domain.create({ name: req.body.name });
+    res.status(201).json(newDomain);
+  } catch (err) { res.status(400).json({ message: 'Domain already exists' }); }
+});
+
+app.delete('/api/domains/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Denied' });
+  try {
+    await Domain.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Custom HTTPS Transporter using Google Apps Script Webhook (Bypasses Render SMTP block)
 const transporter = {
@@ -267,11 +300,7 @@ const userSchema = new mongoose.Schema({
   tokenVersion: { type: Number, default: 0 },
 
   // Trainers only: multiple top-performer categories they can manage
-  domain: {
-    type: [String],
-    enum: ['Java', 'Python', 'Data Analytics', 'Frontend'],
-    default: []
-  }
+  domain: { type: [String], default: [] }
 });
 
 // Hash password before saving (requires bcryptjs)
@@ -2757,24 +2786,22 @@ app.get('/api/trainers/overview', verifyToken, async (req, res) => {
 });
 
 app.put('/api/trainers/:id/domain', verifyToken, async (req, res) => {
-  if (!isSuperAdmin(req)) return res.status(403).json({ message: 'Only super admin can set a trainer domain' });
+  if (!isSuperAdmin(req) && req.user.role !== 'admin') return res.status(403).json({ message: 'Denied' });
   try {
     const { domain } = req.body;
-    const domainsArr = Array.isArray(domain) ? domain : (domain ? [domain] : []);
-    const valid = ['Java', 'Python', 'Data Analytics', 'Frontend'];
-    const filteredDomains = [...new Set(domainsArr.filter(d => valid.includes(d)))];
+    // ✅ Safely accept any domains sent from the frontend array
+    const filteredDomains = Array.isArray(domain) ? domain : (domain ? [domain] : []);
 
     const t = await User.findOneAndUpdate(
-      { _id: req.params.id, role: 'trainer' },
-      { $set: { domain: filteredDomains } },
-      { returnDocument: 'after', runValidators: true }
+      { _id: req.params.id, role: 'trainer' }, 
+      { $set: { domain: filteredDomains } }, 
+      { returnDocument: 'after' }
     ).select('name email domain');
-
+    
     if (!t) return res.status(404).json({ message: 'Trainer not found' });
     res.json(t);
   } catch (e) { res.status(400).json({ message: e.message }); }
 });
-
 // =========================================================
 // TOP PERFORMERS API (Trainer, Admin & Superadmin)
 // =========================================================
