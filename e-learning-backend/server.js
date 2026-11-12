@@ -171,31 +171,6 @@ const EMAIL_USER = process.env.EMAIL_USER;
 
 
 
-// =========================================================
-// DYNAMIC DOMAINS API
-// =========================================================
-app.get('/api/domains', verifyToken, async (req, res) => {
-  try {
-    const domains = await Domain.find().sort({ name: 1 }).lean();
-    res.json(domains);
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
-app.post('/api/domains', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Denied' });
-  try {
-    const newDomain = await Domain.create({ name: req.body.name });
-    res.status(201).json(newDomain);
-  } catch (err) { res.status(400).json({ message: 'Domain already exists' }); }
-});
-
-app.delete('/api/domains/:id', verifyToken, async (req, res) => {
-  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Denied' });
-  try {
-    await Domain.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Deleted' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
 
 // Custom HTTPS Transporter using Google Apps Script Webhook (Bypasses Render SMTP block)
 const transporter = {
@@ -521,6 +496,38 @@ const verifyToken = async (req, res, next) => {
     res.status(400).json({ message: 'Invalid token' });
   }
 };
+
+
+// =========================================================
+// DYNAMIC DOMAINS SCHEMA & API
+// =========================================================
+const domainSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true, trim: true }
+});
+const Domain = mongoose.model('Domain', domainSchema);
+
+app.get('/api/domains', verifyToken, async (req, res) => {
+  try {
+    const domains = await Domain.find().sort({ name: 1 }).lean();
+    res.json(domains);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/domains', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Denied' });
+  try {
+    const newDomain = await Domain.create({ name: req.body.name });
+    res.status(201).json(newDomain);
+  } catch (err) { res.status(400).json({ message: 'Domain already exists' }); }
+});
+
+app.delete('/api/domains/:id', verifyToken, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ message: 'Denied' });
+  try {
+    await Domain.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Deleted' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // GET TOP PERFORMERS (Public/Student Dashboard)
 app.get('/api/performers', async (req, res) => {
