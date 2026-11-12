@@ -149,12 +149,6 @@ const topPerformerSchema = new mongoose.Schema({
   metric: { type: String, default: 'Top Scorer' },
   addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true }); // ✅ FIX: Added timestamps here so sorting works perfectly
-// 3. ✅ ADD NEW DOMAIN SCHEMA (Add this anywhere near your other schemas)
-const domainSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true, trim: true }
-});
-const Domain = mongoose.model('Domain', domainSchema);
-
 // SPEED BOOST: Index category and creation date for dashboard feeds
 topPerformerSchema.index({ category: 1, createdAt: -1 });
 
